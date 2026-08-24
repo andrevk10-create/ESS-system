@@ -4111,12 +4111,32 @@ function audiLockLabel`);
 mapper.func = mapper.func
   .replace('const audiLockReading = audiDashboardReading(/lock|vergrendel|door.?lock/);', "const audiLockReading = audiDashboardReading('lock.ev');")
   .replace('const audiTemperatureReading = audiDashboardReading(/temperature|temperatuur/);', "const audiTemperatureReading = audiDashboardReading('sensor.ev_temperature');");
+if (!mapper.func.includes('function powerWatts(')) {
+  mapper.func = mapper.func.replace(
+    'function energyKwh(item) {',
+    `function powerWatts(id) {
+    const item = entity(id);
+    const reading = value(id);
+    if (reading === null) return null;
+    const unit = String((item && item.attributes && item.attributes.unit_of_measurement) || '').trim().toLowerCase();
+    if (unit === 'kw') return reading * 1000;
+    if (unit === 'mw') return reading * 1000000;
+    if (unit === 'w') return reading;
+    // Oudere laadpuntsensoren hadden soms geen eenheid. Vermogens onder
+    // 50 zijn daar in de praktijk kW; grotere waarden zijn watt.
+    return Math.abs(reading) < 50 ? reading * 1000 : reading;
+}
+
+function energyKwh(item) {`);
+}
 mapper.func = mapper.func
   .replace("const audiTodayEnergy = chargerDayEnergy('Links');", "const audiTodayEnergy = chargerDayEnergy('sensor.ev_charger_energy_today');")
   .replace("const kiaTodayEnergy = chargerDayEnergy('1');", "const kiaTodayEnergy = chargerDayEnergy('sensor.ev_charger_2_energy_today');")
   .replace("const audiTodayEnergy = energyKwh(entity('sensor.ev_charger_energy_today'));", "const audiTodayEnergy = chargerDayEnergy('sensor.ev_charger_energy_today');")
   .replace("const kiaTodayEnergy = energyKwh(entity('sensor.ev_charger_2_energy_today'));", "const kiaTodayEnergy = chargerDayEnergy('sensor.ev_charger_2_energy_today');")
-  .replace("const kiaPower = value('sensor.1_vermogen', 1000);", "const kiaPower = value('sensor.ev_charger_2_power');")
+  .replace("const audiPower = value('sensor.ev_charger_power', 1000);", "const audiPower = powerWatts('sensor.ev_charger_power');")
+  .replace("const kiaPower = value('sensor.1_vermogen', 1000);", "const kiaPower = powerWatts('sensor.ev_charger_2_power');")
+  .replace("const kiaPower = value('sensor.ev_charger_2_power');", "const kiaPower = powerWatts('sensor.ev_charger_2_power');")
   .replace("status: chargeStatus('sensor.1_status')", "status: chargeStatus('sensor.ev_charger_2_status')");
 if (!mapper.func.includes('function configuredFriendlyName(')) {
   mapper.func = mapper.func.replace(

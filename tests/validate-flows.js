@@ -173,8 +173,8 @@ const states = {
     'sensor.growatt_battery_battery_soc': state(83),
     'select.growatt_grid_vpp_export_limit_enable': state('Disabled'),
     'number.growatt_grid_vpp_export_limit_power_rate': state(1),
-    'sensor.ev_charger_power': state(1.2),
-    'sensor.ev_charger_2_power': state(2300),
+    'sensor.ev_charger_power': state(1.2, { unit_of_measurement: 'kW', device_class: 'power' }),
+    'sensor.ev_charger_2_power': state(2.3, { unit_of_measurement: 'kW', device_class: 'power' }),
     'sensor.ev_charger_energy_today': state(0, { unit_of_measurement: 'EUR', cost_day_totalEnergyUsage:8.4 }),
     'sensor.ev_charger_2_energy_today': state(3.2, { unit_of_measurement: 'kWh' }),
     'sensor.ev_charger_status': state('charging', { id: 'TEST-CHARGER', state_outputPhase: 30 }),
@@ -410,6 +410,11 @@ assert.strictEqual(dashboard.ev[0].temperature, '19.5 °C', 'EV-temperatuur moet
 assert.strictEqual(dashboard.ev[0].today, 8.4, 'EV-dagenergie moet uit de Easee-dagsensor komen');
 assert.strictEqual(dashboard.ev[1].power, 2300, 'EV 2 kW-naar-W-conversie klopt niet');
 assert.strictEqual(dashboard.ev[1].today, 3.2, 'EV 2-dagenergie moet uit de Easee-dagsensor komen');
+states['sensor.ev_charger_2_power'] = state(2300, { unit_of_measurement: 'W', device_class: 'power' });
+dashboard = null;
+runMapper(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(dashboard.ev[1].power, 2300, 'Een EV 2-vermogenssensor in watt mag niet nogmaals worden vermenigvuldigd');
+states['sensor.ev_charger_2_power'] = state(2.3, { unit_of_measurement: 'kW', device_class: 'power' });
 assert.strictEqual(dashboard.grid.l1, 1);
 assert.strictEqual(dashboard.grid.l2, -2, 'Negatieve P1-fase betekent teruglevering en moet negatief blijven');
 assert.strictEqual(dashboard.grid.importToday, 4.2, 'Growatt-dagteller moet alleen als tijdelijke terugval beschikbaar blijven');
