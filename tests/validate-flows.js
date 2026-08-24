@@ -155,6 +155,7 @@ assert.strictEqual(homeAssistantServer.name, 'Home Assistant');
 assert.strictEqual(homeAssistantServer.addon, true, 'Server Config moet de Home Assistant-add-on gebruiken');
 assert.strictEqual(homeAssistantServer.version, 6, 'Server Config moet het actuele Home Assistant-schema gebruiken');
 assert.deepStrictEqual(homeAssistantServer.ha_boolean, ['y', 'yes', 'true', 'on', 'home', 'open'], 'Home Assistant-booleans moeten het schema-6 arrayformaat gebruiken');
+assert.strictEqual(homeAssistantServer.heartbeat, true, 'De Home Assistant-WebSocket moet met heartbeat automatisch herstellen');
 assert.strictEqual(homeAssistantServer.enableGlobalContextStore, true, 'Globale Home Assistant-context moet aanstaan');
 assert.strictEqual(homeAssistantServer.url, undefined, 'Add-onconfiguratie mag geen vaste Home Assistant-URL bevatten');
 assert.strictEqual(homeAssistantServer.access_token, undefined, 'Een toegangstoken hoort niet in flows.json');

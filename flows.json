@@ -521,7 +521,7 @@
     ],
     "connectionDelay": true,
     "cacheJson": true,
-    "heartbeat": false,
+    "heartbeat": true,
     "heartbeatInterval": "30",
     "areaSelector": "friendlyName",
     "deviceSelector": "friendlyName",
