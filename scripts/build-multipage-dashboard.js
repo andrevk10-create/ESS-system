@@ -547,6 +547,16 @@ function normalize(input) {
     }
     return config;
 }
+function parseStoredConfig(payload) {
+    if (typeof payload === 'string') return JSON.parse(payload);
+    if (typeof Buffer !== 'undefined' && (Buffer.isBuffer(payload) || payload instanceof Uint8Array)) {
+        return JSON.parse(Buffer.from(payload).toString('utf8'));
+    }
+    if (payload && payload.type === 'Buffer' && Array.isArray(payload.data) && typeof Buffer !== 'undefined') {
+        return JSON.parse(Buffer.from(payload.data).toString('utf8'));
+    }
+    return payload;
+}
 function validate(config, discovery) {
     const required = [];
     if (config.modules.energy) required.push('sensor.p1_meter_vermogen','sensor.p1_meter_energie_import','sensor.p1_meter_energie_export');
@@ -783,7 +793,7 @@ if (msg.topic === 'ess/config/reset' && msg.payload === true) {
     config = result.config;
     discovery = result.discovery;
 } else if (msg.topic === 'ess/config/restore' || [${JSON.stringify(SYSTEM_CONFIG_PATH)}, ${JSON.stringify(SYSTEM_CONFIG_BACKUP_PATH)}].includes(String(msg.filename || ''))) {
-    try { config = normalize(typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload); }
+    try { config = normalize(parseStoredConfig(msg.payload)); }
     catch (error) { node.warn('Lokale ESS-configuratie kon niet worden gelezen: '+error.message); config = normalize(config); }
 } else {
     config = normalize(config);

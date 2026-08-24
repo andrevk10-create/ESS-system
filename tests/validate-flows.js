@@ -70,6 +70,7 @@ assert.strictEqual(configBackupRead.allProps, true, 'Configuratieback-up moet he
 assert(configControl.wires[1].includes(configWrite.id) && configControl.wires[1].includes(configBackupWrite.id), 'Opslaan moet hoofdconfiguratie en lokale back-up samen bijwerken');
 assert(configReadDelay.wires[0].includes(configRead.id), 'De hoofdconfiguratie moet na de back-up worden verwerkt en dus voorrang krijgen');
 assert(configControl.func.includes("msg.filename || ''") && configControl.func.includes('/config/node-red/ess-system-config.backup.json'), 'Configuratieherstel moet ook robuust op de gelezen bestandsnaam reageren');
+assert(configControl.func.includes('parseStoredConfig') && configControl.func.includes('Buffer.from(payload)'), 'Configuratieherstel moet ook een Node-RED Buffer als JSON kunnen lezen');
 assert(configControl.func.includes('ess_system_config_status') && configControl.func.includes('missing'), 'Configuratiecontroller moet entiteiten valideren en status publiceren');
 assert(configControl.func.includes('siteName') && configControl.func.includes('modules') && configControl.func.includes('specs') && configControl.func.includes('entities'), 'Configuratiecontroller mist een configuratieonderdeel');
 assert(configControl.func.includes('discoverEntities') && configControl.func.includes('chargerStatusCandidates') && configControl.func.includes('nasCpu'), 'Configuratiecontroller mist veilige apparaatherkenning');
@@ -343,6 +344,15 @@ assert.strictEqual(discovered.entities['sensor.nas_cpu_gebruik_totaal'], 'sensor
 assert(discoveryStatus.discovery.matched >= 15, 'Automatische koppeling heeft te weinig overtuigende matches gevonden');
 assert(discoveryStatus.valid, 'Een bestaande schrijfentiteit met tijdelijk onbekende status moet wel als gekoppeld gelden');
 assert(!discoveryStatus.unavailable.includes('select.growatt_work_mode'), 'De oude Growatt-werkmodus mag de configuratie niet meer blokkeren');
+const bufferStoredConfig = { ...discovered, siteName:'Buffer hersteltest' };
+new Function('global', 'flow', 'node', 'msg', configControl.func)(
+    discoveryGlobal,
+    discoveryFlow,
+    { status:() => undefined, warn:() => undefined },
+    { topic:'ess/config/restore', payload:Buffer.from(JSON.stringify(bufferStoredConfig), 'utf8') }
+);
+assert.strictEqual(discoveredValues.ess_system_config.siteName, 'Buffer hersteltest', 'Lokale configuratie moet na een herstart ook uit een Buffer worden hersteld');
+assert.strictEqual(discoveredValues.ess_system_config.entities['sensor.ev_charger_power'], 'sensor.primary_charger_power', 'Bufferherstel mag opgeslagen entiteitskoppelingen niet wissen');
 
 let dashboard = null;
 const mapperTodaySlotStart = new Date();
