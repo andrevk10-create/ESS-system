@@ -782,7 +782,7 @@ if (msg.topic === 'ess/config/reset' && msg.payload === true) {
     const result = discoverEntities(msg.payload);
     config = result.config;
     discovery = result.discovery;
-} else if (msg.topic === 'ess/config/restore') {
+} else if (msg.topic === 'ess/config/restore' || [${JSON.stringify(SYSTEM_CONFIG_PATH)}, ${JSON.stringify(SYSTEM_CONFIG_BACKUP_PATH)}].includes(String(msg.filename || ''))) {
     try { config = normalize(typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload); }
     catch (error) { node.warn('Lokale ESS-configuratie kon niet worden gelezen: '+error.message); config = normalize(config); }
 } else {
@@ -819,12 +819,12 @@ flows.push({
 });
 flows.push({
   id:ids.configBackupRead, type:'file in', z:FLOW_ID, name:'Lees lokale configuratieback-up',
-  filename:SYSTEM_CONFIG_BACKUP_PATH, filenameType:'str', format:'utf8', chunk:false, sendError:false, encoding:'none', allProps:false,
+  filename:SYSTEM_CONFIG_BACKUP_PATH, filenameType:'str', format:'utf8', chunk:false, sendError:false, encoding:'none', allProps:true,
   x:400, y:700, wires:[[ids.configControl]]
 });
 flows.push({
   id:ids.configFileRead, type:'file in', z:FLOW_ID, name:'Lees privéconfiguratie buiten Git',
-  filename:SYSTEM_CONFIG_PATH, filenameType:'str', format:'utf8', chunk:false, sendError:false, encoding:'none', allProps:false,
+  filename:SYSTEM_CONFIG_PATH, filenameType:'str', format:'utf8', chunk:false, sendError:false, encoding:'none', allProps:true,
   x:350, y:700, wires:[[ids.configControl]]
 });
 flows.push({

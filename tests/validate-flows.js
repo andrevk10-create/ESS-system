@@ -65,8 +65,11 @@ assert.strictEqual(configRead.filename, '/config/node-red/ess-system-config.json
 assert.strictEqual(configWrite.filename, '/config/node-red/ess-system-config.json');
 assert.strictEqual(configBackupRead.filename, '/config/node-red/ess-system-config.backup.json');
 assert.strictEqual(configBackupWrite.filename, '/config/node-red/ess-system-config.backup.json');
+assert.strictEqual(configRead.allProps, true, 'Hoofdconfiguratie moet het herstelonderwerp bij het lezen behouden');
+assert.strictEqual(configBackupRead.allProps, true, 'Configuratieback-up moet het herstelonderwerp bij het lezen behouden');
 assert(configControl.wires[1].includes(configWrite.id) && configControl.wires[1].includes(configBackupWrite.id), 'Opslaan moet hoofdconfiguratie en lokale back-up samen bijwerken');
 assert(configReadDelay.wires[0].includes(configRead.id), 'De hoofdconfiguratie moet na de back-up worden verwerkt en dus voorrang krijgen');
+assert(configControl.func.includes("msg.filename || ''") && configControl.func.includes('/config/node-red/ess-system-config.backup.json'), 'Configuratieherstel moet ook robuust op de gelezen bestandsnaam reageren');
 assert(configControl.func.includes('ess_system_config_status') && configControl.func.includes('missing'), 'Configuratiecontroller moet entiteiten valideren en status publiceren');
 assert(configControl.func.includes('siteName') && configControl.func.includes('modules') && configControl.func.includes('specs') && configControl.func.includes('entities'), 'Configuratiecontroller mist een configuratieonderdeel');
 assert(configControl.func.includes('discoverEntities') && configControl.func.includes('chargerStatusCandidates') && configControl.func.includes('nasCpu'), 'Configuratiecontroller mist veilige apparaatherkenning');
