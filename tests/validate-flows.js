@@ -60,7 +60,8 @@ const configWrite = flows.find((node) => node.id === 'essconfig_filewrite');
 const configBackupRead = flows.find((node) => node.id === 'essconfig_bakread');
 const configBackupWrite = flows.find((node) => node.id === 'essconfig_bakwrite');
 const configReadDelay = flows.find((node) => node.id === 'essconfig_readdelay');
-assert(configControl && configRead && configWrite && configBackupRead && configBackupWrite && configReadDelay, 'Lokale configuratiecontroller, back-up of bestandsopslag ontbreekt');
+const configRetryDelay = flows.find((node) => node.id === 'essconfig_retrydelay');
+assert(configControl && configRead && configWrite && configBackupRead && configBackupWrite && configReadDelay && configRetryDelay, 'Lokale configuratiecontroller, hercontrole, back-up of bestandsopslag ontbreekt');
 assert.strictEqual(configRead.filename, '/config/node-red/ess-system-config.json');
 assert.strictEqual(configWrite.filename, '/config/node-red/ess-system-config.json');
 assert.strictEqual(configBackupRead.filename, '/config/node-red/ess-system-config.backup.json');
@@ -69,6 +70,8 @@ assert.strictEqual(configRead.allProps, true, 'Hoofdconfiguratie moet het herste
 assert.strictEqual(configBackupRead.allProps, true, 'Configuratieback-up moet het herstelonderwerp bij het lezen behouden');
 assert(configControl.wires[1].includes(configWrite.id) && configControl.wires[1].includes(configBackupWrite.id), 'Opslaan moet hoofdconfiguratie en lokale back-up samen bijwerken');
 assert(configReadDelay.wires[0].includes(configRead.id), 'De hoofdconfiguratie moet na de back-up worden verwerkt en dus voorrang krijgen');
+assert.strictEqual(configRetryDelay.timeout, '10', 'De configuratie moet na de Home Assistant-start opnieuw worden gecontroleerd');
+assert(configRetryDelay.wires[0].includes(configRead.id), 'De vertraagde hercontrole moet de opgeslagen hoofdconfiguratie opnieuw valideren');
 assert(configControl.func.includes("msg.filename || ''") && configControl.func.includes('/config/node-red/ess-system-config.backup.json'), 'Configuratieherstel moet ook robuust op de gelezen bestandsnaam reageren');
 assert(configControl.func.includes('parseStoredConfig') && configControl.func.includes('Buffer.from(payload)'), 'Configuratieherstel moet ook een Node-RED Buffer als JSON kunnen lezen');
 assert(configControl.func.includes('ess_system_config_status') && configControl.func.includes('missing'), 'Configuratiecontroller moet entiteiten valideren en status publiceren');

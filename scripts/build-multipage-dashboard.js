@@ -162,7 +162,7 @@ const ids = {
   systemPage: 'esspage_system01', systemGroup: 'essgroup_system1', systemTemplate: 'esstpl_system001',
   configPage: 'esspage_config01', configGroup: 'essgroup_config1', configTemplate: 'esstpl_config001',
   configControl: 'essconfig_control', configReadInject: 'essconfig_readin', configFileRead: 'essconfig_fileread',
-  configRestore: 'essconfig_restore', configFileWrite: 'essconfig_filewrite', configReadDelay:'essconfig_readdelay',
+  configRestore: 'essconfig_restore', configFileWrite: 'essconfig_filewrite', configReadDelay:'essconfig_readdelay', configRetryDelay:'essconfig_retrydelay',
   configBackupRead:'essconfig_bakread', configBackupWrite:'essconfig_bakwrite',
   climateDevice: 'essaudi_device001', vehicleDevice: 'essaudi_device002',
   climateAction: 'essaudi_climate01', vehicleAction: 'essaudi_vehicle01',
@@ -829,12 +829,17 @@ return [refresh, write];`,
 flows.push({
   id:ids.configReadInject, type:'inject', z:FLOW_ID, name:'Herstel lokale ESS-configuratie',
   props:[{p:'payload'},{p:'topic',vt:'str'}], repeat:'', crontab:'', once:true, onceDelay:0.8,
-  topic:'ess/config/restore', payload:'', payloadType:'date', x:170, y:740, wires:[[ids.configBackupRead, ids.configReadDelay]]
+  topic:'ess/config/restore', payload:'', payloadType:'date', x:170, y:740, wires:[[ids.configBackupRead, ids.configReadDelay, ids.configRetryDelay]]
 });
 flows.push({
   id:ids.configReadDelay, type:'delay', z:FLOW_ID, name:'Hoofdconfiguratie heeft voorrang',
   pauseType:'delay', timeout:'0.4', timeoutUnits:'seconds', rate:'1', nbRateUnits:'1', rateUnits:'second', randomFirst:'1', randomLast:'5', randomUnits:'seconds', drop:false, allowrate:false,
   x:390, y:780, wires:[[ids.configFileRead]]
+});
+flows.push({
+  id:ids.configRetryDelay, type:'delay', z:FLOW_ID, name:'Hercontroleer na Home Assistant-start',
+  pauseType:'delay', timeout:'10', timeoutUnits:'seconds', rate:'1', nbRateUnits:'1', rateUnits:'second', randomFirst:'1', randomLast:'5', randomUnits:'seconds', drop:false, allowrate:false,
+  x:410, y:830, wires:[[ids.configFileRead]]
 });
 flows.push({
   id:ids.configBackupRead, type:'file in', z:FLOW_ID, name:'Lees lokale configuratieback-up',
@@ -4068,7 +4073,7 @@ const editorGroups = [
     id:ids.configEditorGroup, name:'9 · Lokale configuratie en privacy', color:'#f3e8ff', x:1480, y:40, w:960, h:360,
     positions:{
       [ids.configTemplate]:[2080,100], [ids.configReadInject]:[1580,180], [ids.configBackupRead]:[1800,150],
-      [ids.configReadDelay]:[1780,230], [ids.configFileRead]:[1980,230], [ids.configControl]:[2180,190],
+      [ids.configReadDelay]:[1780,230], [ids.configRetryDelay]:[1780,290], [ids.configFileRead]:[1980,230], [ids.configControl]:[2180,190],
       [ids.configFileWrite]:[2380,160], [ids.configBackupWrite]:[2380,230]
     }
   },

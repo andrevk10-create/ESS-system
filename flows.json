@@ -1323,7 +1323,8 @@
     "wires": [
       [
         "essconfig_bakread",
-        "essconfig_readdelay"
+        "essconfig_readdelay",
+        "essconfig_retrydelay"
       ]
     ],
     "g": "esseditor_config"
@@ -1346,6 +1347,31 @@
     "allowrate": false,
     "x": 1780,
     "y": 230,
+    "wires": [
+      [
+        "essconfig_fileread"
+      ]
+    ],
+    "g": "esseditor_config"
+  },
+  {
+    "id": "essconfig_retrydelay",
+    "type": "delay",
+    "z": "ess000000000001",
+    "name": "Hercontroleer na Home Assistant-start",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "allowrate": false,
+    "x": 1780,
+    "y": 290,
     "wires": [
       [
         "essconfig_fileread"
@@ -2984,6 +3010,7 @@
       "essconfig_readin",
       "essconfig_bakread",
       "essconfig_readdelay",
+      "essconfig_retrydelay",
       "essconfig_fileread",
       "essconfig_control",
       "essconfig_filewrite",
