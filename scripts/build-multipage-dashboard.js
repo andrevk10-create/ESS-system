@@ -782,6 +782,15 @@ function discoverEntities(input) {
 let config = flow.get('ess_system_config') || defaults;
 let persist = false;
 let discovery = null;
+let storedCandidate = null;
+try { storedCandidate = parseStoredConfig(msg.payload); }
+catch (error) { storedCandidate = null; }
+const looksLikeStoredConfig = Boolean(
+    storedCandidate && typeof storedCandidate === 'object' &&
+    storedCandidate.modules && typeof storedCandidate.modules === 'object' &&
+    storedCandidate.specs && typeof storedCandidate.specs === 'object' &&
+    storedCandidate.entities && typeof storedCandidate.entities === 'object'
+);
 if (msg.topic === 'ess/config/reset' && msg.payload === true) {
     config = clone(defaults);
     persist = true;
@@ -792,8 +801,8 @@ if (msg.topic === 'ess/config/reset' && msg.payload === true) {
     const result = discoverEntities(msg.payload);
     config = result.config;
     discovery = result.discovery;
-} else if (msg.topic === 'ess/config/restore' || [${JSON.stringify(SYSTEM_CONFIG_PATH)}, ${JSON.stringify(SYSTEM_CONFIG_BACKUP_PATH)}].includes(String(msg.filename || ''))) {
-    try { config = normalize(parseStoredConfig(msg.payload)); }
+} else if (msg.topic === 'ess/config/restore' || [${JSON.stringify(SYSTEM_CONFIG_PATH)}, ${JSON.stringify(SYSTEM_CONFIG_BACKUP_PATH)}].includes(String(msg.filename || '')) || looksLikeStoredConfig) {
+    try { config = normalize(looksLikeStoredConfig ? storedCandidate : parseStoredConfig(msg.payload)); }
     catch (error) { node.warn('Lokale ESS-configuratie kon niet worden gelezen: '+error.message); config = normalize(config); }
 } else {
     config = normalize(config);

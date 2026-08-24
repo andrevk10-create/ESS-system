@@ -349,9 +349,9 @@ new Function('global', 'flow', 'node', 'msg', configControl.func)(
     discoveryGlobal,
     discoveryFlow,
     { status:() => undefined, warn:() => undefined },
-    { topic:'ess/config/restore', payload:Buffer.from(JSON.stringify(bufferStoredConfig), 'utf8') }
+    { payload:Buffer.from(JSON.stringify(bufferStoredConfig), 'utf8') }
 );
-assert.strictEqual(discoveredValues.ess_system_config.siteName, 'Buffer hersteltest', 'Lokale configuratie moet na een herstart ook uit een Buffer worden hersteld');
+assert.strictEqual(discoveredValues.ess_system_config.siteName, 'Buffer hersteltest', 'Lokale configuratie moet ook zonder behouden onderwerp of bestandsnaam uit een Buffer worden hersteld');
 assert.strictEqual(discoveredValues.ess_system_config.entities['sensor.ev_charger_power'], 'sensor.primary_charger_power', 'Bufferherstel mag opgeslagen entiteitskoppelingen niet wissen');
 
 let dashboard = null;
