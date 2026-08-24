@@ -1,0 +1,33 @@
+# Node-RED runtime en lokale afhankelijkheden
+node_modules/
+.npm/
+*.backup
+*.backup.*
+
+# Credentials, geheimen en lokale configuratie
+flows_cred.json
+flows_cred.json.*
+secrets.yaml
+secrets*.yaml
+*.key
+*.pem
+ess-system-config.json
+ess-system-config.local.json
+config/ess-system-config*.json
+!examples/ess-system-config.example.json
+
+# Lokale omgevingsbestanden
+.env
+.env.*
+!.env.example
+
+# Home Assistant runtimebestanden
+.storage/
+home-assistant_v2.db*
+*.log
+backups/
+
+# Lokale editor- en systeembestanden
+.DS_Store
+Thumbs.db
+.vscode/

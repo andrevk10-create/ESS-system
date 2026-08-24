@@ -1,0 +1,19 @@
+{
+  "name": "smart-ess-home-energy-management",
+  "version": "0.1.0",
+  "description": "Configureerbaar Smart ESS-dashboard en regelsysteem voor Home Assistant en Node-RED",
+  "private": true,
+  "scripts": {
+    "test": "node tests/validate-flows.js && node scripts/validate-privacy.js"
+  },
+  "dependencies": {
+    "@flowfuse/node-red-dashboard": "^1.30.2",
+    "node-red-contrib-home-assistant-websocket": "^0.80.3"
+  },
+  "node-red": {
+    "settings": {
+      "flowFile": "flows.json",
+      "credentialsFile": "flows_cred.json"
+    }
+  }
+}
