@@ -295,7 +295,7 @@ export default {
     storage(v){const n=Number(v);return Number.isFinite(n)?n.toLocaleString('nl-NL',{maximumFractionDigits:2})+' TB':'—'},
     dataRate(v){const n=Number(v);return Number.isFinite(n)?n.toLocaleString('nl-NL',{maximumFractionDigits:1})+' kB/s':'—'},
     slotRange(start,end){const a=new Date(start),b=new Date(end);if(Number.isNaN(a.getTime()))return '—';const day=a.toLocaleDateString('nl-NL',{weekday:'short'});const t=d=>d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});return day+' '+t(a)+(Number.isNaN(b.getTime())?'':'–'+t(b))},
-    modeLabel(value){return ({'none':'Uit','solar':'Zon','departure-plan':'Planning','deadline':'Noodplanning','ultra-cheap':'Spotgoedkoop','force-full':'Direct 100%'})[String(value||'none')]||String(value)},
+    modeLabel(value){return ({'none':'Uit','solar':'Zon','cheap-now':'Goedkoper nu','departure-plan':'Planning','deadline':'Noodplanning','ultra-cheap':'Spotgoedkoop','force-full':'Direct 100%'})[String(value||'none')]||String(value)},
     socSetting(topic,event){const value=Number(event.target.value);if(Number.isFinite(value))this.send({topic,payload:value})},
     timeSetting(event){this.send({topic:'ess/audi/departure-time',payload:event.target.value})},
     toggleEV(){this.send({topic:'ess/audi/smart-enabled',payload:!(this.d.audiSmart&&this.d.audiSmart.enabled===true)})},
@@ -3376,9 +3376,9 @@ const plannedGridCost = selectedSlots.reduce((sum, slot) => sum + (Number(slot.e
 }
 
 // De EV hervat na veel korte onderbrekingen of fasewissels niet altijd
-// vanzelf. Plan daarom een enkel aaneengesloten laadblok van minimaal dertig
+// vanzelf. Plan daarom een enkel aaneengesloten laadblok van minimaal vijftien
 // minuten en houd een al gestart blok vast terwijl het doel nog niet is bereikt.
-const contiguousEVBlockMarker = 'const minimumBlockDurationMs = 30 * 60 * 1000;';
+const contiguousEVBlockMarker = 'function planCheapestSlots(forecast, windowEnd, energyNeeded, excludedStarts = new Set(), keepCurrentBlock = false)';
 if (!regulator.func.includes(contiguousEVBlockMarker)) {
   const legacyEVPlanner = `function planCheapestSlots(forecast, windowEnd, energyNeeded, excludedStarts = new Set()) {
     const windowEndMs = windowEnd instanceof Date ? windowEnd.getTime() : Number(windowEnd);
@@ -3464,6 +3464,12 @@ if (!regulator.func.includes(contiguousEVBlockMarker)) {
       "const departurePlan = planCheapestSlots(forecast, departure, gridDepartureEnergyNeeded, new Set(), previous.controlMode === 'departure-plan' && Number(previous.targetCurrent) >= 6);");
 }
 
+const fifteenMinuteEVBlockMarker = 'const minimumBlockDurationMs = 15 * 60 * 1000;';
+if (!regulator.func.includes(fifteenMinuteEVBlockMarker)) {
+  if (!regulator.func.includes('const minimumBlockDurationMs = 30 * 60 * 1000;')) throw new Error('EV-minimale blokduur niet gevonden.');
+  regulator.func = regulator.func.replace('const minimumBlockDurationMs = 30 * 60 * 1000;', fifteenMinuteEVBlockMarker);
+}
+
 // Een lopend vertreklaadblok mag op de laatste regelcyclus van een kwartier
 // niet verdwijnen. In die laatste seconden is minder dan 0,01 kWh over en
 // filtert de planner het huidige kwartier terecht uit als nieuw planvak. Zonder
@@ -3544,6 +3550,119 @@ let activeDepartureBlockEndMs = departureBlockHandoverActive ? previousActiveDep
   regulator.func = regulator.func
     .replace(previousFullBlockLatch, quarterBoundaryLatch)
     .replace('const scheduledNow = plannerScheduledNow || previousDepartureBlockActive;', 'const scheduledNow = plannerScheduledNow || departureBlockHandoverActive;');
+}
+
+// Als minimaal een kwartier vanaf nu goedkoper is dan ieder later gepland
+// laadkwartier, vervang dan dat duurdere netladen door een huidig blok op het
+// maximaal veilige vermogen. Het SOC-doel verandert niet; alleen het moment en
+// vermogen. Een eenmaal gestart blok houdt een vaste eindtijd om schakelen per
+// kwartier te voorkomen.
+const cheaperCurrentEVBlockMarker = 'function currentCheapBlockCandidate(slots)';
+if (!regulator.func.includes(cheaperCurrentEVBlockMarker)) {
+  regulator.func = regulator.func.replace(
+    `const nextScheduled = selectedSlots.find((slot) => slot.end > now) || null;
+const requiredDepartureSlots`,
+    `const nextScheduled = selectedSlots.find((slot) => slot.end > now) || null;
+const cheapNowMinimumDurationMs = 15 * 60 * 1000;
+const cheapNowPriceMargin = 0.005;
+function currentCheapBlockCandidate(slots) {
+    const ordered = (Array.isArray(slots) ? slots : []).map((slot) => ({
+        start:new Date(slot.start).getTime(),
+        end:new Date(slot.end).getTime(),
+        allInPrice:Number(slot.allInPrice)
+    })).filter((slot) => Number.isFinite(slot.start) && Number.isFinite(slot.end) && Number.isFinite(slot.allInPrice) && slot.end > now && (!departure || slot.start < departure.getTime())).sort((a, b) => a.start - b.start);
+    const currentIndex = ordered.findIndex((slot) => now >= slot.start && now < slot.end);
+    if (currentIndex < 0) return null;
+    let durationMs = 0;
+    let weightedPrice = 0;
+    let previousEnd = null;
+    const blockSlots = [];
+    for (let index = currentIndex; index < ordered.length; index += 1) {
+        const slot = ordered[index];
+        if (previousEnd !== null && Math.abs(slot.start - previousEnd) > 1000) break;
+        const usableStart = Math.max(now, slot.start);
+        const usableEnd = departure ? Math.min(departure.getTime(), slot.end) : slot.end;
+        const usableDuration = Math.max(0, usableEnd - usableStart);
+        if (usableDuration <= 0) continue;
+        durationMs += usableDuration;
+        weightedPrice += slot.allInPrice * usableDuration;
+        blockSlots.push(slot);
+        previousEnd = slot.end;
+        if (durationMs >= cheapNowMinimumDurationMs) {
+            return { start:now, end:slot.end, durationMs, averagePrice:weightedPrice / durationMs, slots:blockSlots };
+        }
+    }
+    return null;
+}
+const plannedReferencePrice = selectedSlots.length
+    ? Math.min(...selectedSlots.map((slot) => Number(slot.allInPrice)).filter(Number.isFinite))
+    : null;
+const previousCheapNowBlockEnd = new Date(previous.cheapNowBlockEnd || 0).getTime();
+const previousCheapNowActive = previous.controlled === true
+    && previous.controlMode === 'cheap-now'
+    && Number(previous.targetCurrent) >= 6
+    && Number.isFinite(previousCheapNowBlockEnd)
+    && now < previousCheapNowBlockEnd
+    && audiSoc !== null
+    && audiSoc < departureSoc;
+const cheapNowCandidate = !scheduledNow && !previousCheapNowActive && gridDepartureEnergyNeeded !== null && gridDepartureEnergyNeeded > 0.05
+    ? currentCheapBlockCandidate(forecast)
+    : null;
+const cheapNowCandidateAccepted = !!cheapNowCandidate
+    && Number.isFinite(plannedReferencePrice)
+    && cheapNowCandidate.averagePrice + cheapNowPriceMargin < plannedReferencePrice;
+const cheapNowActive = previousCheapNowActive || cheapNowCandidateAccepted;
+const cheapNowBlockStartMs = previousCheapNowActive
+    ? new Date(previous.cheapNowBlockStart || 0).getTime()
+    : cheapNowCandidateAccepted ? cheapNowCandidate.start : 0;
+const cheapNowBlockEndMs = previousCheapNowActive
+    ? previousCheapNowBlockEnd
+    : cheapNowCandidateAccepted ? cheapNowCandidate.end : 0;
+const cheapNowAveragePrice = previousCheapNowActive
+    ? Number(previous.cheapNowAveragePrice)
+    : cheapNowCandidateAccepted ? cheapNowCandidate.averagePrice : null;
+const requiredDepartureSlots`);
+
+  regulator.func = regulator.func
+    .replace(
+      `const targetSoc = forceFull || ultraCheapQuarter ? 100 : Math.min(deadlineCharge || scheduledNow ? departureSoc : solarSoc, vehicleTargetSoc);`,
+      `const targetSoc = forceFull || ultraCheapQuarter ? 100 : Math.min(deadlineCharge || scheduledNow || cheapNowActive ? departureSoc : solarSoc, vehicleTargetSoc);`)
+    .replace(
+      `const gridChargeRequiresThreePhase = forceFull || deadlineCharge || ultraCheapQuarter || scheduledNow || scheduledBlockPreparation;`,
+      `const gridChargeRequiresThreePhase = forceFull || deadlineCharge || ultraCheapQuarter || scheduledNow || cheapNowActive || scheduledBlockPreparation;`)
+    .replace(
+      `const preflightWindowActive = scheduledBlockPreparation || scheduledNow || forceFull || deadlineCharge;`,
+      `const preflightWindowActive = scheduledBlockPreparation || scheduledNow || cheapNowActive || forceFull || deadlineCharge;`)
+    .replace(
+      `    } else if (scheduledNow && audiSoc < departureSoc) {
+        targetCurrent = maximumCurrent;
+        controlMode = 'departure-plan';
+        reason = 'Vertrekplanning: goedkoop kwartier tot ' + departureSoc + '%';`,
+      `    } else if (cheapNowActive && audiSoc < departureSoc) {
+        targetCurrent = maximumCurrent;
+        controlMode = 'cheap-now';
+        reason = 'Huidig blok goedkoper dan nachtplanning · maximaal veilig vermogen';
+    } else if (scheduledNow && audiSoc < departureSoc) {
+        targetCurrent = maximumCurrent;
+        controlMode = 'departure-plan';
+        reason = 'Vertrekplanning: goedkoop kwartier tot ' + departureSoc + '%';`)
+    .replace(
+      `    scheduledNow,
+    plannerScheduledNow,`,
+      `    scheduledNow,
+    cheapNowActive,
+    cheapNowCandidateAccepted,
+    cheapNowBlockStart:cheapNowBlockStartMs > 0 ? new Date(cheapNowBlockStartMs).toISOString() : null,
+    cheapNowBlockEnd:cheapNowBlockEndMs > now ? new Date(cheapNowBlockEndMs).toISOString() : null,
+    cheapNowAveragePrice:Number.isFinite(cheapNowAveragePrice) ? cheapNowAveragePrice : null,
+    plannedReferencePrice:Number.isFinite(plannedReferencePrice) ? plannedReferencePrice : null,
+    plannerScheduledNow,`);
+}
+
+const fifteenMinuteCheapNowMarker = 'const cheapNowMinimumDurationMs = 15 * 60 * 1000;';
+if (!regulator.func.includes(fifteenMinuteCheapNowMarker)) {
+  if (!regulator.func.includes('const cheapNowMinimumDurationMs = 30 * 60 * 1000;')) throw new Error('Voordelig-huidig EV-blokduur niet gevonden.');
+  regulator.func = regulator.func.replace('const cheapNowMinimumDurationMs = 30 * 60 * 1000;', fifteenMinuteCheapNowMarker);
 }
 
 // Laat de Easee-fase staan zolang er niet daadwerkelijk een andere fase nodig
