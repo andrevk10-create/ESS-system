@@ -166,7 +166,7 @@ const ids = {
   configBackupRead:'essconfig_bakread', configBackupWrite:'essconfig_bakwrite',
   climateDevice: 'essaudi_device001', vehicleDevice: 'essaudi_device002',
   climateDeviceGuard: 'essaudi_guard001', vehicleDeviceGuard: 'essaudi_guard002',
-  climateAction: 'essaudi_climate01', vehicleAction: 'essaudi_vehicle01',
+  climateAction: 'essaudi_climate01', climatePowerSupport: 'essaudi_power001', vehicleAction: 'essaudi_vehicle01',
   audiDefaultsInject: 'essaudi_defaults_inj', audiHaEvents: 'essaudi_ha_events', audiDefaults: 'essaudi_defaults1',
   audiRecoveryDelay: 'essaudi_recovery_delay', audiRecoveryNotification: 'essaudi_recovery_note',
   loadsControl: 'essloads_control1', compressorAction: 'essloads_comp001',
@@ -902,11 +902,26 @@ return msg;`,
 });
 flows.push({
   id: ids.climateAction, type: 'api-call-service', z: FLOW_ID,
-  name: 'Start EV klimaat op 21 graden', server: 'ess00000000000b', version: 7,
+  name: 'Start EV klimaat', server: 'ess00000000000b', version: 7,
   debugenabled: false, action: 'audiconnect.start_climate_control', floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
-  data: '{"device_id": payload.deviceId, "temp_c": payload.tempC, "glass_heating": false}', dataType: 'jsonata', mergeContext: '', mustacheAltTags: false,
+  data: '{"device_id": payload.deviceId}', dataType: 'jsonata', mergeContext: '', mustacheAltTags: false,
   outputProperties: [], queue: 'none', blockInputOverrides: true, domain: 'audiconnect', service: 'start_climate_control',
-  x: 1590, y: 210, wires: [[]]
+  x: 1580, y: 210, wires: [[ids.climatePowerSupport]]
+});
+flows.push({
+  id: ids.climatePowerSupport, type: 'function', z: FLOW_ID, name: 'Geef tijdelijk minimale EV-klimaatstroom vrij',
+  func: `const now = Date.now();
+const durationMinutes = 30;
+const support = {
+    requestedAt:now,
+    expiresAt:now + durationMinutes * 60 * 1000,
+    minimumCurrentA:6,
+    source:'audi-climate'
+};
+flow.set('ess_audi_climate_power_support', support);
+flow.set('ess_audi_climate_status', { available:true, pending:true, active:false, status:'Klimaat gestart · minimale netvoeding wordt gecontroleerd', updatedAt:new Date(now).toISOString() });
+return { topic:'ess/audi/climate-power-support', payload:support };`,
+  outputs: 1, timeout: 0, noerr: 0, initialize: '', finalize: '', libs: [], x: 1860, y: 210, wires: [['ess00000000000d']]
 });
 flows.push({
   id: ids.vehicleDevice, type: 'api-render-template', z: FLOW_ID,
@@ -2314,8 +2329,8 @@ ${overviewActionsMarker}`);
         flow.set('ess_audi_climate_status', { available: true, status: 'Opdracht al verzonden · even wachten', updatedAt: new Date(now).toISOString() });
     } else {
         flow.set('ess_audi_last_climate_at', now);
-        flow.set('ess_audi_climate_status', { available: true, active: true, status: 'Klimaat gestart op 21 °C', updatedAt: new Date(now).toISOString() });
-        climateMessage = { payload: { tempC: 21 } };
+        flow.set('ess_audi_climate_status', { available: true, pending: true, active: false, status: 'Klimaatopdracht verzonden · wacht op Audi', updatedAt: new Date(now).toISOString() });
+        climateMessage = { payload: {} };
     }
 } else if (msg.topic === 'ess/audi/vehicle-action' && ['lock','unlock'].includes(String(msg.payload))) {
     const now = Date.now();
@@ -2340,6 +2355,11 @@ ${overviewActionsMarker}`);
     'return [{ payload: { changed: true, enabled, settings } }, persistTime, climateMessage, vehicleActionMessage];');
 }
 const audiDeviceTemplateMarker = '// Gebruik uitsluitend de werkelijk lokaal gekoppelde Audi-entiteit.';
+// Audi Connect API-level 1 ondersteunt bij sommige voertuigen alleen de kale
+// startopdracht. Houd dit ook bij bestaande, reeds gemarkeerde flows actueel.
+audiControl.func = audiControl.func
+  .replace("status: 'Klimaat gestart op 21 °C'", "status: 'Klimaatopdracht verzonden · wacht op Audi'")
+  .replace('climateMessage = { payload: { tempC: 21 } };', 'climateMessage = { payload: {} };');
 if (!audiControl.func.includes(audiDeviceTemplateMarker)) {
   audiControl.func = audiControl.func.replace(
     'let vehicleActionMessage = null;',
@@ -2368,7 +2388,7 @@ audiControl.func = audiControl.func
     `if (msg.topic === 'ess/audi/climate-start' && msg.payload === true) {
     const now = Date.now();
     const lastCommandAt = Number(flow.get('ess_audi_last_climate_at')) || 0;
-    const request = audiDeviceMessage({ tempC:21 });
+    const request = audiDeviceMessage({});
     if (!request) {
         flow.set('ess_audi_climate_status', { available:false, active:false, status:'Audi-entiteit niet gekoppeld', updatedAt:new Date(now).toISOString() });
     } else if (now - lastCommandAt < 60000) {
@@ -4186,6 +4206,101 @@ const reportedEVSoc`);
     chargerCurrentA:chargerCurrent,`);
 }
 
+// Een expliciete klimaatstart mag een aangesloten Audi tijdelijk met de
+// minimale Easee-stroom voeden. De normale laadplanning houdt voorrang, alle
+// P1- en fasebeveiligingen blijven gelden en een bekende uit-status beëindigt
+// de ondersteuning na een korte cloud-update-respijt.
+const audiClimatePowerSupportMarker = '// Tijdelijke minimale netvoeding tijdens Audi-klimaat.';
+if (!regulator.func.includes(audiClimatePowerSupportMarker)) {
+  regulator.func = regulator.func.replace(
+    `const chargerStatus = state('sensor.ev_charger_status');
+// Direct laden vervalt bij ontkoppelen.`,
+    `const chargerStatus = state('sensor.ev_charger_status');
+${audiClimatePowerSupportMarker}
+function currentAudiClimateState() {
+    const direct = String(state('sensor.ev_climate_state') || '').toLowerCase();
+    if (direct && !['unknown','unavailable'].includes(direct)) return direct;
+    const configuredSoc = String((essRuntimeConfig.entities || {})['sensor.ev_state_of_charge'] || '');
+    const stem = configuredSoc.replace(/^sensor\./, '').replace(/_(?:state_of_charge|soc)$/, '');
+    if (!stem) return '';
+    for (const suffix of ['_climatisation_state','_climatization_state','_climate_state']) {
+        const item = rawStates && rawStates['sensor.' + stem + suffix];
+        const value = item ? String(item.state || '').toLowerCase() : '';
+        if (value && !['unknown','unavailable'].includes(value)) return value;
+    }
+    return '';
+}
+let climatePowerSupport = flow.get('ess_audi_climate_power_support') || {};
+const climatePowerSupportRequestedAt = Number(climatePowerSupport.requestedAt) || 0;
+const climatePowerSupportExpiresAt = Number(climatePowerSupport.expiresAt) || 0;
+const audiClimateState = currentAudiClimateState();
+const audiClimateStateKnown = Boolean(audiClimateState);
+const audiClimateReportedActive = audiClimateStateKnown && !['off','inactive','stopped','false','0'].includes(audiClimateState);
+const audiClimateReportedStopped = audiClimateStateKnown
+    && !audiClimateReportedActive
+    && now - climatePowerSupportRequestedAt >= 5 * 60 * 1000;
+let climatePowerSupportActive = climatePowerSupportExpiresAt > now
+    && chargerStatus !== 'disconnected'
+    && !audiClimateReportedStopped;
+if (!climatePowerSupportActive && climatePowerSupportRequestedAt > 0) {
+    flow.set('ess_audi_climate_power_support', null);
+    climatePowerSupport = {};
+}
+// Direct laden vervalt bij ontkoppelen.`);
+
+  regulator.func = regulator.func.replace(
+    `const chargerReadyForControl = controllableStatuses.includes(chargerStatus) || directChargeResumeCompleted;`,
+    `const climatePowerSupportResumeCompleted = climatePowerSupportActive && chargerStatus === 'completed';
+const chargerReadyForControl = controllableStatuses.includes(chargerStatus) || directChargeResumeCompleted || climatePowerSupportResumeCompleted;`);
+  regulator.func = regulator.func.replace(
+    `const preflightWindowActive = scheduledBlockPreparation || scheduledNow || forceFull || deadlineCharge;`,
+    `const preflightWindowActive = scheduledBlockPreparation || scheduledNow || forceFull || deadlineCharge || climatePowerSupportActive;`);
+  regulator.func = regulator.func.replace(
+    `if (!enabled) preflightIssues.push('slim laden staat uit');`,
+    `if (!enabled && !climatePowerSupportActive) preflightIssues.push('slim laden staat uit');`);
+  regulator.func = regulator.func.replace(
+    `if (audiSoc === null) preflightIssues.push('EV-SOC ontbreekt');`,
+    `if (audiSoc === null && !climatePowerSupportActive) preflightIssues.push('EV-SOC ontbreekt');`);
+  regulator.func = regulator.func.replace(
+    `if (!enabled) {
+    reason = 'Uit';`,
+    `if (!enabled && !climatePowerSupportActive) {
+    reason = 'Uit';`);
+  regulator.func = regulator.func.replace(
+    `} else if (audiSoc === null) {
+    reason = 'Veilige stop: EV-SOC niet beschikbaar';`,
+    `} else if (audiSoc === null && !climatePowerSupportActive) {
+    reason = 'Veilige stop: EV-SOC niet beschikbaar';`);
+  regulator.func = regulator.func.replace(
+    `} else if (audiSoc >= vehicleTargetSoc && !forceFull) {`,
+    `} else if (audiSoc >= vehicleTargetSoc && !forceFull && !climatePowerSupportActive) {`);
+  regulator.func = regulator.func.replace(
+    `    }
+
+    if (targetCurrent > 0) {`,
+    `    }
+
+    if (climatePowerSupportActive && targetCurrent < minimumCurrent) {
+        targetCurrent = minimumCurrent;
+        controlMode = 'climate-support';
+        reason = 'Minimale netvoeding voor Audi-klimaat';
+    }
+
+    if (targetCurrent > 0) {`);
+  regulator.func = regulator.func.replace(
+    `    forceFull,
+    directChargeResumeCompleted,`,
+    `    forceFull,
+    climatePowerSupportActive,
+    climatePowerSupportUntil:climatePowerSupportExpiresAt > now ? new Date(climatePowerSupportExpiresAt).toISOString() : null,
+    audiClimateState:audiClimateState || null,
+    directChargeResumeCompleted,
+    climatePowerSupportResumeCompleted,`);
+  regulator.func = regulator.func.replace(
+    `fill: !enabled ? 'grey' :`,
+    `fill: !enabled && !climatePowerSupportActive ? 'grey' :`);
+}
+
 const audiInitialAttemptMarker = '// Tel ook de eerste geplande start mee, niet alleen herstelpogingen.';
 if (!regulator.func.includes(audiInitialAttemptMarker)) {
   regulator.func = regulator.func.replace(
@@ -4222,6 +4337,8 @@ const currentA = currentEntity && Number.isFinite(Number(currentEntity.state)) ?
 const forceFull = flow.get('ess_audi_force_full') === true;
 const blockedStatuses = ['disconnected', 'error'];
 const now = Date.now();
+const climatePowerSupport = flow.get('ess_audi_climate_power_support') || {};
+const climatePowerSupportActive = Number(climatePowerSupport.expiresAt) > now;
 let recovery = flow.get('ess_audi_start_recovery') || {};
 let reliability = flow.get('ess_audi_charge_reliability') || {};
 const todayKey = new Date(now).toLocaleDateString('sv-SE');
@@ -4233,7 +4350,7 @@ if (status === 'charging' && ((powerW !== null && powerW >= 1000) || (currentA !
     node.status({ fill:'green', shape:'dot', text:'Laden bevestigd' });
     return [null, null, null];
 }
-if (blockedStatuses.includes(status) || status === 'completed' && !forceFull) {
+if (blockedStatuses.includes(status) || status === 'completed' && !forceFull && !climatePowerSupportActive) {
     flow.set('ess_audi_start_recovery', { stage:'blocked', attempts:0, chargerId, status, updatedAt:new Date(now).toISOString() });
     node.status({ fill:'grey', shape:'ring', text:'Niet laadgereed: ' + status });
     return [null, null, null];

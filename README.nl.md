@@ -129,6 +129,17 @@ Het importvak accepteert ook een deelconfiguratie, bijvoorbeeld alleen een `enti
 
 Een ander merk omvormer of laadpunt kan dezelfde dashboardrollen gebruiken, maar heeft voor schrijfopdrachten een kleine merkadapter nodig. Zonder passende adapter horen de bijbehorende automatische schrijfmodules uit te blijven.
 
+### Compatibiliteit voor Audi-klimaatstart
+
+Klimaatstart via Audi Connect API-level 1 verschilt per model. Sommige voertuigen weigeren het verzoekpakket van Audi Connect 2.3.1 en accepteren alleen een kale startopdracht zonder temperatuur-, stoel-, raam- of modusopties. Het dashboard stuurt daarom bewust alleen het Home Assistant-`device_id`. Logt Home Assistant desondanks `Unable to start climate control of vehicle`, controleer en installeer dan vanuit de repositorymap de meegeleverde, beperkt werkende compatibiliteitsfix:
+
+```text
+python3 scripts/patch-audiconnect-climate.py --check
+python3 scripts/patch-audiconnect-climate.py
+```
+
+Herstart Home Assistant daarna. Het script maakt `audi_services.py.before-smart-ess-climate-fix`, weigert onbekende broncode-indelingen en wijzigt uitsluitend de API-level-1-klimaatstart. Een HACS-update kan de aangepaste integratie vervangen; voer na een Audi Connect-update opnieuw `--check` uit. Deze workaround is gebaseerd op het onafhankelijk gereproduceerde [Audi Connect-issue #771](https://github.com/audiconnect/audi_connect_ha/issues/771) en moet onder toezicht worden getest, omdat Audi zijn niet-openbare cloud-API zonder aankondiging kan wijzigen.
+
 ## Praktisch getest met
 
 De referentie-installatie waarop de functies daadwerkelijk zijn ontwikkeld en beproefd bevat:

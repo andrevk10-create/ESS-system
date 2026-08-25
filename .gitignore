@@ -1,6 +1,8 @@
 # Node-RED runtime en lokale afhankelijkheden
 node_modules/
 .npm/
+__pycache__/
+*.py[cod]
 *.backup
 *.backup.*
 

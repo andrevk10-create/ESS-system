@@ -630,7 +630,7 @@ flowValues.ess_system_config = {
 };
 const climateResult = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/audi/climate-start', payload: true });
 assert.strictEqual(climateResult.length, 4, 'EV-bediening moet aparte uitgangen voor instellingen, tijd, klimaat en voertuigactie hebben');
-assert.strictEqual(climateResult[2].payload.tempC, 21, 'EV-klimaat moet op 21 graden starten');
+assert.deepStrictEqual(climateResult[2].payload, {}, 'EV-klimaat moet als kale startopdracht zonder niet-ondersteunde opties worden verstuurd');
 assert.strictEqual(climateResult[2].payload.vin, undefined, 'De lokale EV Connect-versie accepteert geen VIN in de actie');
 assert.strictEqual(climateResult[2].template, "{{ device_id('device_tracker.test_vehicle') or '' }}", 'Klimaatknop moet het werkelijk gekoppelde Audi-apparaat opzoeken');
 assert(!climateResult[2].template.includes('device_tracker.ev_position'), 'Klimaatknop mag geen interne dashboardalias naar Home Assistant sturen');
@@ -875,7 +875,7 @@ assert(Math.abs(flowValues.ess_audi_control_status.allInPrice - 0.19135) < 0.000
 assert.strictEqual(flowValues.ess_audi_control_status.departureSoc, 70, 'Vertrekplanning moet 70% als gegarandeerd niveau gebruiken');
 assert.strictEqual(flowValues.ess_audi_control_status.daySoc, undefined, 'Regelstatus mag geen dagdoel meer bevatten');
 assert.strictEqual(flowValues.ess_audi_control_status.targetSoc, 70, 'Gepland laden moet tot het vertrekdoel van 70% begrensd zijn');
-assert(flowValues.ess_audi_control_status.scheduledSlots >= 4, 'De planning moet genoeg kwartieren kiezen voor de benodigde vertrekenergie');
+assert(flowValues.ess_audi_control_status.plannedGridEnergyKwh + 0.05 >= flowValues.ess_audi_control_status.gridDepartureEnergyNeeded, 'De planning moet genoeg energie kiezen voor het berekende vertrektekort');
 assert(flowValues.ess_audi_control_status.departureScheduledSlots > 0, 'Vertrekdoel moet eigen laadkwartieren krijgen');
 assert.strictEqual(flowValues.ess_audi_control_status.dayScheduledSlots, undefined, 'Dagkwartieren moeten uit de planning zijn verwijderd');
 assert.strictEqual(flowValues.ess_audi_control_status.plannedChargePowerKw, 11, 'De laadklok moet het werkelijke maximale laadvermogen tonen');
@@ -1165,6 +1165,7 @@ const vehicleDevice = flows.find((node) => node.id === 'essaudi_device002');
 const climateDeviceGuard = flows.find((node) => node.id === 'essaudi_guard001');
 const vehicleDeviceGuard = flows.find((node) => node.id === 'essaudi_guard002');
 const climateAction = flows.find((node) => node.id === 'essaudi_climate01');
+const climatePowerSupport = flows.find((node) => node.id === 'essaudi_power001');
 const vehicleAction = flows.find((node) => node.id === 'essaudi_vehicle01');
 assert(!flows.some((node) => node.id === 'ess000000000011'), 'Uitgebreide EV-instellingen horen niet meer op het vereenvoudigde dashboard');
 assert.strictEqual(departureAction.action, 'input_datetime.set_datetime');
@@ -1180,6 +1181,8 @@ assert.deepStrictEqual(audiControl.wires[3], [vehicleDevice.id], 'Voertuigopdrac
 assert.deepStrictEqual(climateDevice.wires, [[climateDeviceGuard.id]], 'Klimaatopdracht moet een ontbrekend Audi-apparaat veilig blokkeren');
 assert.deepStrictEqual(vehicleDevice.wires, [[vehicleDeviceGuard.id]], 'Voertuigopdracht moet een ontbrekend Audi-apparaat veilig blokkeren');
 assert.deepStrictEqual(climateDeviceGuard.wires, [[climateAction.id]]);
+assert.deepStrictEqual(climateAction.wires, [[climatePowerSupport.id]], 'Na een geslaagde klimaatopdracht moet de tijdelijke netvoeding worden geactiveerd');
+assert.deepStrictEqual(climatePowerSupport.wires, [[audiRegulator.id]], 'De tijdelijke klimaatvoeding moet de EV-regelaar direct opnieuw uitvoeren');
 assert.deepStrictEqual(vehicleDeviceGuard.wires, [[vehicleAction.id]]);
 const runClimateDeviceGuard = new Function('flow', 'node', 'msg', climateDeviceGuard.func);
 const runVehicleDeviceGuard = new Function('flow', 'node', 'msg', vehicleDeviceGuard.func);
@@ -1189,6 +1192,7 @@ assert(runClimateDeviceGuard(flowContext, { status:() => undefined }, { payload:
 assert.strictEqual(climateAction.action, 'audiconnect.start_climate_control');
 assert.strictEqual(vehicleAction.action, 'audiconnect.execute_vehicle_action');
 assert(climateAction.data.includes('"device_id": payload.deviceId'), 'EV-klimaatactie moet het door v2.3.1 vereiste device_id versturen');
+assert(!climateAction.data.includes('temp_c') && !climateAction.data.includes('glass_heating') && !climateAction.data.includes('seat'), 'API-level-1 klimaatstart mag geen niet-ondersteunde opties bevatten');
 assert(vehicleAction.data.includes('"device_id": payload.deviceId'), 'EV-voertuigactie moet het door v2.3.1 vereiste device_id versturen');
 assert(!climateAction.data.includes('vin') && !vehicleAction.data.includes('vin'), 'EV Connect v2.3.1 accepteert geen VIN-veld in deze acties');
 assert.strictEqual(climateAction.blockInputOverrides, true, 'Klimaatopdracht mag geen dashboardoverschrijving van de vaste service toestaan');
@@ -1197,6 +1201,36 @@ assert.strictEqual(currentAction.blockInputOverrides, true, 'Dashboardbericht ma
 assert.strictEqual(commandAction.blockInputOverrides, true, 'Dashboardbericht mag de vaste Easee-opdracht niet overschrijven');
 assert.strictEqual(phaseAction.blockInputOverrides, true, 'Dashboardbericht mag de vaste Easee-faseactie niet overschrijven');
 assert(!JSON.stringify(flows).includes('EMF87EUS'), 'Persoonlijk Easee-apparaat-ID mag niet in Git worden opgeslagen');
+
+const runClimatePowerSupport = new Function('flow', 'node', 'msg', climatePowerSupport.func);
+const climateSupportTrigger = runClimatePowerSupport(flowContext, { status: () => undefined }, {});
+const climateSupportLease = flowValues.ess_audi_climate_power_support;
+assert.strictEqual(climateSupportLease.minimumCurrentA, 6, 'Audi-klimaat moet minimaal 6 A netvoeding reserveren');
+assert(climateSupportLease.expiresAt - climateSupportLease.requestedAt === 30 * 60 * 1000, 'De tijdelijke Audi-klimaatvoeding moet na dertig minuten verlopen');
+assert.strictEqual(climateSupportTrigger.topic, 'ess/audi/climate-power-support', 'Klimaatstart moet de EV-regelaar direct activeren');
+
+flowValues.ess_audi_smart_enabled = false;
+flowValues.ess_audi_force_full = false;
+flowValues.ess_nordpool_forecast = [];
+flowValues.ess_audi_control_status = { controlled:false, requestedActive:false, targetCurrent:0, pendingPhaseMode:0, lastPhaseChangeAt:0 };
+states['sensor.p1_meter_vermogen'] = state(0);
+states['sensor.ev_charger_power'] = state(0);
+states['sensor.ev_charger_current'] = state(0);
+states['sensor.ev_charger_status'] = state('awaiting_authorization', { id:'TEST-CHARGER', state_outputPhase:10, config_phaseMode:1 });
+states['sensor.ev_climate_state'] = state('off');
+regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(flowValues.ess_audi_control_status.climatePowerSupportActive, true, 'Netvoeding moet tijdens de cloud-update-respijt direct actief worden');
+assert.strictEqual(flowValues.ess_audi_control_status.controlMode, 'climate-support', 'Audi-klimaat moet een herkenbare tijdelijke regelmodus gebruiken');
+assert.strictEqual(flowValues.ess_audi_control_status.targetCurrent, 6, 'Audi-klimaat moet bij stilstaande lading precies de minimale 6 A vrijgeven');
+assert.strictEqual(regulatorOutput[1].payload.command, 'start', 'Audi-klimaat moet de aangesloten Easee zo nodig starten');
+
+flowValues.ess_audi_climate_power_support = { requestedAt:Date.now() - 6 * 60 * 1000, expiresAt:Date.now() + 24 * 60 * 1000, minimumCurrentA:6 };
+flowValues.ess_audi_control_status = { ...flowValues.ess_audi_control_status, controlled:false, requestedActive:false, targetCurrent:0 };
+regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(flowValues.ess_audi_control_status.climatePowerSupportActive, false, 'Een bevestigde uit-status moet de tijdelijke voeding na de respijt stoppen');
+assert.strictEqual(flowValues.ess_audi_climate_power_support, null, 'Een beëindigde klimaatvoeding mag niet blijven hangen');
+flowValues.ess_audi_smart_enabled = true;
+states['sensor.ev_climate_state'] = state('off', { friendly_name:'EV-klimaatstatus' });
 
 const loadsControl = flows.find((node) => node.id === 'essloads_control1');
 const compressorAction = flows.find((node) => node.id === 'essloads_comp001');
