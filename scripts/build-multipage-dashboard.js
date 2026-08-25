@@ -3809,6 +3809,31 @@ if (forceFull && chargerStatus === 'disconnected') {
 const chargerOnline`);
 }
 
+// Een door de planning gestopte Easee kan 'completed' blijven melden. Dat is
+// voor automatisch laden een eindstatus, maar een expliciete Direct naar 100%
+// opdracht moet de bestaande aansluiting opnieuw mogen starten zolang de EV
+// zijn eigen doel-SOC nog niet heeft bereikt.
+const resumeCompletedDirectChargeMarker = 'const directChargeResumeCompleted = forceFull';
+if (!regulator.func.includes(resumeCompletedDirectChargeMarker)) {
+  regulator.func = regulator.func.replace(
+    `const controllableStatuses = ['awaiting_start', 'awaiting_authorization', 'ready_to_charge', 'charging'];`,
+    `const controllableStatuses = ['awaiting_start', 'awaiting_authorization', 'ready_to_charge', 'charging'];
+const directChargeResumeCompleted = forceFull
+    && chargerStatus === 'completed'
+    && audiSoc !== null
+    && audiSoc < vehicleTargetSoc;
+const chargerReadyForControl = controllableStatuses.includes(chargerStatus) || directChargeResumeCompleted;`);
+  regulator.func = regulator.func
+    .split('if (!controllableStatuses.includes(chargerStatus))')
+    .join('if (!chargerReadyForControl)')
+    .replace(
+      `    forceFull,
+    vehicleTargetSoc,`,
+      `    forceFull,
+    directChargeResumeCompleted,
+    vehicleTargetSoc,`);
+}
+
 // Handmatig direct laden moet direct reageren. De automatische regeling houdt
 // een rustige start, maar loopt daarna met vier ampère per minuut op.
 const steeperEVRampMarker = 'const currentRampStepA = 4;';
@@ -4001,7 +4026,8 @@ const currentEntity = states && states['sensor.ev_charger_current'];
 const status = statusEntity ? String(statusEntity.state) : '';
 const powerW = powerEntity && Number.isFinite(Number(powerEntity.state)) ? Number(powerEntity.state) * 1000 : null;
 const currentA = currentEntity && Number.isFinite(Number(currentEntity.state)) ? Number(currentEntity.state) : null;
-const blockedStatuses = ['disconnected', 'completed', 'error'];
+const forceFull = flow.get('ess_audi_force_full') === true;
+const blockedStatuses = ['disconnected', 'error'];
 const now = Date.now();
 let recovery = flow.get('ess_audi_start_recovery') || {};
 let reliability = flow.get('ess_audi_charge_reliability') || {};
@@ -4014,7 +4040,7 @@ if (status === 'charging' && ((powerW !== null && powerW >= 1000) || (currentA !
     node.status({ fill:'green', shape:'dot', text:'Laden bevestigd' });
     return [null, null, null];
 }
-if (blockedStatuses.includes(status)) {
+if (blockedStatuses.includes(status) || status === 'completed' && !forceFull) {
     flow.set('ess_audi_start_recovery', { stage:'blocked', attempts:0, chargerId, status, updatedAt:new Date(now).toISOString() });
     node.status({ fill:'grey', shape:'ring', text:'Niet laadgereed: ' + status });
     return [null, null, null];

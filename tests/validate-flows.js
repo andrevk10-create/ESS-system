@@ -932,7 +932,21 @@ assert.strictEqual(regulatorOutput[1].payload.command, 'stop', 'Terugschakelen n
 flowValues.ess_audi_force_full = true;
 states['sensor.ev_state_of_charge'] = state(85);
 states['sensor.ev_target_state_of_charge'] = state(100);
+flowValues.ess_audi_control_status = { ...flowValues.ess_audi_control_status, controlled:false, requestedActive:false, targetCurrent:0, controlMode:'none', pendingPhaseMode:0 };
+states['sensor.ev_charger_status'] = state('completed', { id: 'TEST-CHARGER', state_outputPhase: 30, config_phaseMode: 3 });
+states['sensor.ev_charger_power'] = state(0);
+states['sensor.ev_charger_current'] = state(0);
+regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(flowValues.ess_audi_control_status.directChargeResumeCompleted, true, 'Direct naar 100% moet een door een eerdere stop achtergebleven completed-status herkennen');
+assert.strictEqual(flowValues.ess_audi_control_status.controlMode, 'force-full', 'Direct naar 100% moet vanuit completed opnieuw regelbaar zijn');
+assert.strictEqual(regulatorOutput[1].payload.command, 'start', 'Direct naar 100% moet Easee vanuit completed opnieuw starten');
+flowValues.ess_audi_start_recovery = { stage:'blocked', attempts:0, chargerId:'TEST-CHARGER', status:'completed' };
+const completedDirectRetry = runStartRetry(globalContext, flowContext, { status: () => undefined }, { payload:{ chargerId:'TEST-CHARGER', current:25 } });
+assert.strictEqual(completedDirectRetry[0].payload.command, 'start', 'De startbewaking moet completed tijdens een expliciete directe opdracht opnieuw proberen');
+flowValues.ess_audi_start_recovery = { stage:'idle', attempts:0, chargerId:'TEST-CHARGER' };
+
 states['sensor.ev_charger_status'] = state('charging', { id: 'TEST-CHARGER', state_outputPhase: 30, config_phaseMode: 3 });
+delete states['sensor.ev_charger_current'];
 states['sensor.p1_meter_vermogen'] = state(0);
 states['sensor.ev_charger_power'] = state(2.3);
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
