@@ -831,6 +831,26 @@ const audiPlannedBlock = flowValues.ess_audi_control_status.selectedSlots;
 assert(new Date(audiPlannedBlock.at(-1).end).getTime() - Math.max(Date.now(), new Date(audiPlannedBlock[0].start).getTime()) >= 30 * 60 * 1000 - 1000, 'Een gepland EV-laadblok moet minimaal dertig minuten duren');
 assert(audiPlannedBlock.slice(1).every((slot, index) => new Date(slot.start).getTime() === new Date(audiPlannedBlock[index].end).getTime()), 'Geplande EV-kwartieren moeten één aaneengesloten laadblok vormen');
 assert(!Number.isNaN(new Date(flowValues.ess_audi_control_status.departureAt).getTime()), 'De laadklok mist de absolute vertrektijd');
+assert(new Date(flowValues.ess_audi_control_status.activeDepartureBlockEnd).getTime() > Date.now(), 'Een gestart vertreklaadblok moet een vaste eindtijd krijgen');
+
+const almostFinishedQuarterEnd = Date.now() + 1000;
+flowValues.ess_nordpool_forecast = Array.from({ length: 48 }, (_, index) => ({
+    start: new Date(index === 0 ? currentQuarterStart : almostFinishedQuarterEnd + (index - 1) * 900000).toISOString(),
+    end: new Date(index === 0 ? almostFinishedQuarterEnd : almostFinishedQuarterEnd + index * 900000).toISOString(),
+    marketPrice: 0.05 + index / 1000,
+    allInPrice: 0.19135 + index / 1000
+}));
+regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(flowValues.ess_audi_control_status.plannerScheduledNow, false, 'De regressietest moet het bijna afgelopen, te kleine kwartier uit het nieuwe plan filteren');
+assert.strictEqual(flowValues.ess_audi_control_status.scheduledNow, true, 'Een reeds gestart laadblok mag in de laatste seconden van een kwartier niet wegvallen');
+assert(flowValues.ess_audi_control_status.targetCurrent >= 6, 'De laadstroom moet over de kwartiergrens actief blijven');
+assert(!regulatorOutput[1] || regulatorOutput[1].payload.command !== 'stop', 'De Easee mag op de kwartiergrens geen stopopdracht ontvangen');
+flowValues.ess_nordpool_forecast = plannedPrices.map((allInPrice, index) => ({
+    start: new Date(currentQuarterStart + index * 900000).toISOString(),
+    end: new Date(currentQuarterStart + (index + 1) * 900000).toISOString(),
+    marketPrice: (allInPrice - 0.13085) / 1.21,
+    allInPrice
+}));
 
 states['sensor.energy_production_today_remaining'] = state(6.8, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production remaining today' });
 states['sensor.energy_production_today_remaining_2'] = state(8.2, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production remaining today' });

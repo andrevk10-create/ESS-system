@@ -3464,6 +3464,88 @@ if (!regulator.func.includes(contiguousEVBlockMarker)) {
       "const departurePlan = planCheapestSlots(forecast, departure, gridDepartureEnergyNeeded, new Set(), previous.controlMode === 'departure-plan' && Number(previous.targetCurrent) >= 6);");
 }
 
+// Een lopend vertreklaadblok mag op de laatste regelcyclus van een kwartier
+// niet verdwijnen. In die laatste seconden is minder dan 0,01 kWh over en
+// filtert de planner het huidige kwartier terecht uit als nieuw planvak. Zonder
+// vergrendeling gaf dat echter iedere vijftien minuten eerst stop en daarna
+// opnieuw start. Bewaar daarom de eindtijd van het eenmaal gestarte blok.
+const stableEVActiveBlockMarker = 'const plannerScheduledNow = departurePlan.selected.some';
+if (!regulator.func.includes(stableEVActiveBlockMarker)) {
+  regulator.func = regulator.func.replace(
+    `const scheduledNow = departurePlan.selected.some((slot) => now >= slot.start && now < slot.end);
+const nextScheduled = selectedSlots.find((slot) => slot.end > now) || null;`,
+    `const plannerScheduledNow = departurePlan.selected.some((slot) => now >= slot.start && now < slot.end);
+function activeDepartureBlock(slots) {
+    const ordered = (Array.isArray(slots) ? slots : []).slice().sort((a, b) => a.start - b.start);
+    const currentIndex = ordered.findIndex((slot) => now >= slot.start && now < slot.end);
+    if (currentIndex < 0) return null;
+    let firstIndex = currentIndex;
+    let lastIndex = currentIndex;
+    while (firstIndex > 0 && Math.abs(ordered[firstIndex - 1].end - ordered[firstIndex].start) <= 1000) firstIndex -= 1;
+    while (lastIndex + 1 < ordered.length && Math.abs(ordered[lastIndex].end - ordered[lastIndex + 1].start) <= 1000) lastIndex += 1;
+    return { start:ordered[firstIndex].start, end:ordered[lastIndex].end };
+}
+const plannedActiveDepartureBlock = plannerScheduledNow ? activeDepartureBlock(selectedSlots) : null;
+const previousActiveDepartureBlockStart = new Date(previous.activeDepartureBlockStart || 0).getTime();
+const previousActiveDepartureBlockEnd = new Date(previous.activeDepartureBlockEnd || 0).getTime();
+const previousDepartureBlockActive = previous.controlled === true
+    && previous.controlMode === 'departure-plan'
+    && Number(previous.targetCurrent) >= 6
+    && Number.isFinite(previousActiveDepartureBlockEnd)
+    && now < previousActiveDepartureBlockEnd
+    && audiSoc !== null
+    && audiSoc < departureSoc;
+const currentForecastSlot = (Array.isArray(forecast) ? forecast : []).map((slot) => ({
+    start:new Date(slot.start).getTime(),
+    end:new Date(slot.end).getTime()
+})).find((slot) => now >= slot.start && now < slot.end) || null;
+const departureBlockHandoverActive = previousDepartureBlockActive
+    && currentForecastSlot
+    && currentForecastSlot.end - now > 0
+    && currentForecastSlot.end - now <= 15000;
+let activeDepartureBlockStartMs = departureBlockHandoverActive ? previousActiveDepartureBlockStart : 0;
+let activeDepartureBlockEndMs = departureBlockHandoverActive ? previousActiveDepartureBlockEnd : 0;
+if (plannedActiveDepartureBlock) {
+    activeDepartureBlockStartMs = previousDepartureBlockActive && Number.isFinite(previousActiveDepartureBlockStart)
+        ? Math.min(previousActiveDepartureBlockStart, plannedActiveDepartureBlock.start)
+        : plannedActiveDepartureBlock.start;
+    activeDepartureBlockEndMs = previousDepartureBlockActive
+        ? Math.max(previousActiveDepartureBlockEnd, plannedActiveDepartureBlock.end)
+        : plannedActiveDepartureBlock.end;
+}
+const scheduledNow = plannerScheduledNow || departureBlockHandoverActive;
+const nextScheduled = selectedSlots.find((slot) => slot.end > now) || null;`);
+
+  regulator.func = regulator.func.replace(
+    `    scheduledNow,
+    nextScheduledStart:`,
+    `    scheduledNow,
+    plannerScheduledNow,
+    activeDepartureBlockStart:activeDepartureBlockStartMs > 0 ? new Date(activeDepartureBlockStartMs).toISOString() : null,
+    activeDepartureBlockEnd:activeDepartureBlockEndMs > now ? new Date(activeDepartureBlockEndMs).toISOString() : null,
+    nextScheduledStart:`);
+}
+
+const stableEVQuarterHandoverMarker = 'const departureBlockHandoverActive = previousDepartureBlockActive';
+if (!regulator.func.includes(stableEVQuarterHandoverMarker)) {
+  const previousFullBlockLatch = `let activeDepartureBlockStartMs = previousDepartureBlockActive ? previousActiveDepartureBlockStart : 0;
+let activeDepartureBlockEndMs = previousDepartureBlockActive ? previousActiveDepartureBlockEnd : 0;`;
+  const quarterBoundaryLatch = `const currentForecastSlot = (Array.isArray(forecast) ? forecast : []).map((slot) => ({
+    start:new Date(slot.start).getTime(),
+    end:new Date(slot.end).getTime()
+})).find((slot) => now >= slot.start && now < slot.end) || null;
+const departureBlockHandoverActive = previousDepartureBlockActive
+    && currentForecastSlot
+    && currentForecastSlot.end - now > 0
+    && currentForecastSlot.end - now <= 15000;
+let activeDepartureBlockStartMs = departureBlockHandoverActive ? previousActiveDepartureBlockStart : 0;
+let activeDepartureBlockEndMs = departureBlockHandoverActive ? previousActiveDepartureBlockEnd : 0;`;
+  if (!regulator.func.includes(previousFullBlockLatch)) throw new Error('Oude EV-laadblokvergrendeling niet gevonden.');
+  regulator.func = regulator.func
+    .replace(previousFullBlockLatch, quarterBoundaryLatch)
+    .replace('const scheduledNow = plannerScheduledNow || previousDepartureBlockActive;', 'const scheduledNow = plannerScheduledNow || departureBlockHandoverActive;');
+}
+
 // Laat de Easee-fase staan zolang er niet daadwerkelijk een andere fase nodig
 // is. Voor gepland netladen wordt eenmaal naar drie fasen voorbereid; voor
 // zonneladen alleen naar één fase als drie fasen niet kunnen starten, of naar
