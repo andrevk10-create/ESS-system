@@ -105,11 +105,13 @@ assert(detailTemplates.battery.format.includes("ess/wit/audi-buffer-mode") && de
 assert(detailTemplates.battery.format.includes('WIT slim netladen') && detailTemplates.battery.format.includes('witChargeTimeline.cells'), 'Accupagina mist de WIT-netlaadplanning voor 24 uur');
 assert(detailTemplates.battery.format.includes('GEWENST SOC') && detailTemplates.battery.format.includes('VERWACHT ZONNELADEN') && detailTemplates.battery.format.includes('NOG VIA NET'), 'WIT-netlaadplanning mist doel-SOC of energieberekening');
 assert(detailTemplates.battery.format.includes("ess/wit/grid-charge-mode") && detailTemplates.battery.format.includes('setWitGridChargeTargetSoc'), 'WIT-netladen moet veilig handmatig en automatisch bediend kunnen worden');
-for (const label of ['VERGRENDELING', 'SOC', 'VANDAAG GELADEN', 'HUIDIG VERMOGEN', 'AANSLUITING', 'TEMPERATUUR']) {
+for (const label of ['VERGRENDELING', 'SOC', 'VANDAAG GELADEN', 'HUIDIG VERMOGEN', 'AANSLUITING', 'KLIMAAT']) {
     assert(detailTemplates.ev.format.includes(label), `Autopagina mist ${label}`);
 }
 assert(detailTemplates.ev.format.includes('toggleEVLock'), 'Autopagina mist de vergrendelknop');
 assert(detailTemplates.ev.format.includes('startClimate'), 'Autopagina mist de klimaatknop');
+assert(detailTemplates.ev.format.includes('Klimaat starten'), 'Autopagina moet de klimaatknop als aan-uitactie tonen');
+assert(!detailTemplates.ev.format.includes('TEMPERATUUR'), 'Autopagina mag zonder echte Audi-sensor geen interieurtemperatuur suggereren');
 assert(detailTemplates.ev.format.includes('MAX SOC OP ZON') && detailTemplates.ev.format.includes('ess/audi/solar-soc'), 'Laadplanning mist de afzonderlijke maximale zonne-SOC');
 assert(detailTemplates.ev.format.includes('<select') && detailTemplates.ev.format.includes('socSetting'), 'SOC-instellingen moeten compacte keuzelijsten gebruiken');
 assert(!detailTemplates.ev.format.includes('type="number"'), 'SOC-instellingen mogen geen onhandige numerieke invoervelden gebruiken');
@@ -197,7 +199,7 @@ const states = {
     'device_tracker.ev_position': state('home', { vehicle_id: 'test-vehicle' }),
     'sensor.ev_target_state_of_charge': state(80),
     'lock.ev': state('locked', { friendly_name: 'EV-vergrendeling' }),
-    'sensor.ev_temperature': state(19.5, { friendly_name: 'EV-temperatuur', unit_of_measurement: '°C' }),
+    'sensor.ev_climate_state': state('off', { friendly_name: 'EV-klimaatstatus' }),
     'sensor.nord_pool_nl_huidige_prijs': state(0.2),
     'sensor.energy_production_today': state(10, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production today' }),
     'sensor.energy_production_today_2': state(12, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production today' }),
@@ -290,7 +292,7 @@ const discoveryStates = {
     'binary_sensor.primary_charger_online': state('on', { friendly_name:'Primary online' }),
     'sensor.test_vehicle_state_of_charge': state(64, { friendly_name:'Vehicle state of charge', unit_of_measurement:'%', device_class:'battery' }),
     'sensor.test_vehicle_target_state_of_charge': state(80, { friendly_name:'Vehicle target state of charge', unit_of_measurement:'%' }),
-    'sensor.test_vehicle_temperature': state(18, { friendly_name:'Vehicle temperature', device_class:'temperature' }),
+    'sensor.test_vehicle_climatisation_state': state('off', { friendly_name:'Vehicle climatisation state' }),
     'lock.test_vehicle': state('locked', { friendly_name:'Vehicle lock' }),
     'device_tracker.test_vehicle': state('home', { friendly_name:'Vehicle position' }),
     'light.living_area': state('on', { friendly_name:'Living room group', is_hue_group:true }),
@@ -338,6 +340,7 @@ assert.strictEqual(discoveryResult[1], null, 'Automatische koppeling mag het voo
 assert.strictEqual(discovered.entities['sensor.ev_charger_status'], 'sensor.primary_charger_status');
 assert.strictEqual(discovered.entities['sensor.ev_charger_power'], 'sensor.primary_charger_power');
 assert.strictEqual(discovered.entities['sensor.ev_state_of_charge'], 'sensor.test_vehicle_state_of_charge');
+assert.strictEqual(discovered.entities['sensor.ev_climate_state'], 'sensor.test_vehicle_climatisation_state');
 assert.strictEqual(discovered.entities['lock.ev'], 'lock.test_vehicle');
 assert.strictEqual(discovered.entities['light.zone_1'], 'light.kitchen_area');
 assert.strictEqual(discovered.entities['climate.cooling_zone_1'], 'climate.office_cooling');
@@ -447,7 +450,19 @@ assert.strictEqual(dashboard.battery.state, 'Ontladen');
 assert.strictEqual(dashboard.ev[0].power, 1200, 'EV kW-naar-W-conversie klopt niet');
 assert.strictEqual(dashboard.ev[0].soc, 61, 'EV-SOC moet in het laadpuntenmodel beschikbaar zijn');
 assert.strictEqual(dashboard.ev[0].locked, 'Op slot', 'EV-vergrendeling moet begrijpelijk worden weergegeven');
-assert.strictEqual(dashboard.ev[0].temperature, '19.5 °C', 'EV-temperatuur moet met eenheid beschikbaar zijn');
+assert.strictEqual(dashboard.ev[0].temperature, undefined, 'Dashboard mag zonder echte Audi-sensor geen interieurtemperatuur tonen');
+assert.strictEqual(dashboard.audiClimate.status, 'Uit', 'Werkelijke Audi-klimaatstatus moet op het dashboard worden getoond');
+delete states['sensor.ev_climate_state'];
+states['sensor.test_vehicle_state_of_charge'] = state(61);
+states['sensor.test_vehicle_climatisation_state'] = state('heating');
+flowValues.ess_system_config = { entities:{ 'sensor.ev_state_of_charge':'sensor.test_vehicle_state_of_charge' } };
+dashboard = null;
+runMapper(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(dashboard.audiClimate.status, 'Aan', 'Bestaande lokale profielen moeten de Audi-klimaatstatus via de gekoppelde SOC-entiteit terugvinden');
+delete flowValues.ess_system_config;
+delete states['sensor.test_vehicle_state_of_charge'];
+delete states['sensor.test_vehicle_climatisation_state'];
+states['sensor.ev_climate_state'] = state('off', { friendly_name: 'EV-klimaatstatus' });
 assert.strictEqual(dashboard.ev[0].today, 8.4, 'EV-dagenergie moet uit de Easee-dagsensor komen');
 assert.strictEqual(dashboard.ev[1].power, 2300, 'EV 2 kW-naar-W-conversie klopt niet');
 assert.strictEqual(dashboard.ev[1].today, 3.2, 'EV 2-dagenergie moet uit de Easee-dagsensor komen');
@@ -604,13 +619,25 @@ assert.strictEqual(flowValues.ess_audi_settings.desiredSoc, undefined, 'Het oude
 assert.strictEqual(flowValues.ess_audi_settings.cheapPriceLimit, undefined, 'De vaste goedkope-prijsgrens moet zijn verwijderd');
 const timeResult = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/audi/departure-time', payload: '07:15' });
 assert.strictEqual(timeResult[1].payload.time, '07:15:00', 'Vertrektijd moet naar de Home Assistant-helper worden geschreven');
+flowValues.ess_system_config = {
+    ...(flowValues.ess_system_config || {}),
+    entities: {
+        ...((flowValues.ess_system_config || {}).entities || {}),
+        'device_tracker.ev_position':'device_tracker.test_vehicle',
+        'lock.ev':'lock.test_vehicle',
+        'sensor.ev_state_of_charge':'sensor.test_vehicle_state_of_charge'
+    }
+};
 const climateResult = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/audi/climate-start', payload: true });
 assert.strictEqual(climateResult.length, 4, 'EV-bediening moet aparte uitgangen voor instellingen, tijd, klimaat en voertuigactie hebben');
 assert.strictEqual(climateResult[2].payload.tempC, 21, 'EV-klimaat moet op 21 graden starten');
 assert.strictEqual(climateResult[2].payload.vin, undefined, 'De lokale EV Connect-versie accepteert geen VIN in de actie');
+assert.strictEqual(climateResult[2].template, "{{ device_id('device_tracker.test_vehicle') or '' }}", 'Klimaatknop moet het werkelijk gekoppelde Audi-apparaat opzoeken');
+assert(!climateResult[2].template.includes('device_tracker.ev_position'), 'Klimaatknop mag geen interne dashboardalias naar Home Assistant sturen');
 const lockResult = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/audi/vehicle-action', payload: 'lock' });
 assert.strictEqual(lockResult[3].payload.action, 'lock', 'EV-vergrendelopdracht ontbreekt');
 assert.strictEqual(lockResult[3].payload.vin, undefined, 'Vergrendelopdracht mag geen VIN naar EV Connect sturen');
+assert.strictEqual(lockResult[3].template, "{{ device_id('device_tracker.test_vehicle') or '' }}", 'Vergrendelknop moet hetzelfde werkelijk gekoppelde Audi-apparaat gebruiken');
 runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/audi/force-full', payload: true });
 assert.strictEqual(flowValues.ess_audi_force_full, true, 'Direct laden tot 100% moet als tijdelijke modus worden opgeslagen');
 assert.strictEqual(flowValues.ess_audi_smart_enabled, true, 'Direct laden moet de beveiligde EV-regelaar vrijgeven');
@@ -1135,6 +1162,8 @@ const phaseAction = flows.find((node) => node.id === 'ess000000000017');
 const departureAction = flows.find((node) => node.id === 'ess000000000012');
 const climateDevice = flows.find((node) => node.id === 'essaudi_device001');
 const vehicleDevice = flows.find((node) => node.id === 'essaudi_device002');
+const climateDeviceGuard = flows.find((node) => node.id === 'essaudi_guard001');
+const vehicleDeviceGuard = flows.find((node) => node.id === 'essaudi_guard002');
 const climateAction = flows.find((node) => node.id === 'essaudi_climate01');
 const vehicleAction = flows.find((node) => node.id === 'essaudi_vehicle01');
 assert(!flows.some((node) => node.id === 'ess000000000011'), 'Uitgebreide EV-instellingen horen niet meer op het vereenvoudigde dashboard');
@@ -1144,9 +1173,19 @@ assert.strictEqual(commandAction.action, 'easee.action_command');
 assert.strictEqual(phaseAction.action, 'easee.set_charger_phase_mode');
 assert.strictEqual(climateDevice.type, 'api-render-template');
 assert.strictEqual(vehicleDevice.type, 'api-render-template');
-assert(climateDevice.template.includes("device_id('device_tracker.ev_position')"), 'Home Assistant moet het EV-device-ID tijdens runtime opzoeken');
+assert.strictEqual(climateDevice.template, "{{ '' }}", 'Het actuele Audi-opzoeksjabloon moet uitsluitend uit de beveiligde bediening komen');
+assert.strictEqual(vehicleDevice.template, "{{ '' }}", 'Het actuele Audi-opzoeksjabloon moet uitsluitend uit de beveiligde bediening komen');
 assert.deepStrictEqual(audiControl.wires[2], [climateDevice.id], 'Klimaatopdracht moet eerst het actuele EV-device-ID ophalen');
 assert.deepStrictEqual(audiControl.wires[3], [vehicleDevice.id], 'Voertuigopdracht moet eerst het actuele EV-device-ID ophalen');
+assert.deepStrictEqual(climateDevice.wires, [[climateDeviceGuard.id]], 'Klimaatopdracht moet een ontbrekend Audi-apparaat veilig blokkeren');
+assert.deepStrictEqual(vehicleDevice.wires, [[vehicleDeviceGuard.id]], 'Voertuigopdracht moet een ontbrekend Audi-apparaat veilig blokkeren');
+assert.deepStrictEqual(climateDeviceGuard.wires, [[climateAction.id]]);
+assert.deepStrictEqual(vehicleDeviceGuard.wires, [[vehicleAction.id]]);
+const runClimateDeviceGuard = new Function('flow', 'node', 'msg', climateDeviceGuard.func);
+const runVehicleDeviceGuard = new Function('flow', 'node', 'msg', vehicleDeviceGuard.func);
+assert.strictEqual(runClimateDeviceGuard(flowContext, { status:() => undefined }, { payload:{ deviceId:'' } }), null, 'Klimaatopdracht zonder geldig Audi-apparaat moet worden gestopt');
+assert.strictEqual(runVehicleDeviceGuard(flowContext, { status:() => undefined }, { payload:{ deviceId:'' } }), null, 'Slotopdracht zonder geldig Audi-apparaat moet worden gestopt');
+assert(runClimateDeviceGuard(flowContext, { status:() => undefined }, { payload:{ deviceId:'0123456789abcdef0123456789abcdef' } }), 'Geldig Audi-apparaat moet naar de klimaatactie gaan');
 assert.strictEqual(climateAction.action, 'audiconnect.start_climate_control');
 assert.strictEqual(vehicleAction.action, 'audiconnect.execute_vehicle_action');
 assert(climateAction.data.includes('"device_id": payload.deviceId'), 'EV-klimaatactie moet het door v2.3.1 vereiste device_id versturen');

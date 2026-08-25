@@ -71,7 +71,7 @@ const DEFAULT_SYSTEM_CONFIG = {
     'sensor.ev_target_state_of_charge':'sensor.ev_target_state_of_charge',
     'device_tracker.ev_position':'device_tracker.ev_position',
     'lock.ev':'lock.ev',
-    'sensor.ev_temperature':'sensor.ev_temperature',
+    'sensor.ev_climate_state':'sensor.ev_climate_state',
     'sensor.ev_charger_2_status':'sensor.ev_charger_2_status',
     'sensor.ev_charger_2_power':'sensor.ev_charger_2_power',
     'sensor.ev_charger_2_energy_today':'sensor.ev_charger_2_energy_today',
@@ -165,6 +165,7 @@ const ids = {
   configRestore: 'essconfig_restore', configFileWrite: 'essconfig_filewrite', configReadDelay:'essconfig_readdelay', configRetryDelay:'essconfig_retrydelay',
   configBackupRead:'essconfig_bakread', configBackupWrite:'essconfig_bakwrite',
   climateDevice: 'essaudi_device001', vehicleDevice: 'essaudi_device002',
+  climateDeviceGuard: 'essaudi_guard001', vehicleDeviceGuard: 'essaudi_guard002',
   climateAction: 'essaudi_climate01', vehicleAction: 'essaudi_vehicle01',
   audiDefaultsInject: 'essaudi_defaults_inj', audiHaEvents: 'essaudi_ha_events', audiDefaults: 'essaudi_defaults1',
   audiRecoveryDelay: 'essaudi_recovery_delay', audiRecoveryNotification: 'essaudi_recovery_note',
@@ -342,7 +343,7 @@ const overview = wrap(`
     <article class="metric tone-battery"><span>THUISACCU</span><b>{{soc}}</b><small>{{d.battery&&d.battery.state||'Niet beschikbaar'}} · {{power(d.battery&&d.battery.power)}}</small></article>
   </section>
   <section class="quick-actions" aria-label="EV-snelbediening" v-if="modules.ev!==false">
-    <button class="quick-action" @click="startClimate"><div><div class="nav-icon" style="color:var(--blue);background:var(--blue-soft)"><v-icon icon="mdi-car-defrost-front" size="22"></v-icon></div><span><b>EV klimaat · 21 °C</b><small>{{d.audiClimate&&d.audiClimate.status||'Start de klimaatbeheersing'}}</small></span></div><v-icon icon="mdi-play" size="22"></v-icon></button>
+    <button class="quick-action" @click="startClimate"><div><div class="nav-icon" style="color:var(--blue);background:var(--blue-soft)"><v-icon icon="mdi-car-defrost-front" size="22"></v-icon></div><span><b>EV klimaat starten</b><small>{{d.audiClimate&&d.audiClimate.status||'Start de klimaatbeheersing'}}</small></span></div><v-icon icon="mdi-play" size="22"></v-icon></button>
     <button class="quick-action force" :class="{active:d.audiSmart&&d.audiSmart.forceFull}" @click="toggleForceFull"><div><div class="nav-icon" style="color:var(--violet);background:var(--violet-soft)"><v-icon icon="mdi-battery-charging-100" size="22"></v-icon></div><span><b>{{d.audiSmart&&d.audiSmart.forceFull?'Direct laden stoppen':'EV direct naar 100%'}}</b><small>{{d.audiSmart&&d.audiSmart.forceFull?(d.audiSmart.status||'Direct laden actief'):'Met Easee- en fasebeveiliging'}}</small></span></div><v-icon :icon="d.audiSmart&&d.audiSmart.forceFull?'mdi-stop':'mdi-flash'" size="22"></v-icon></button>
   </section>
   <a class="charge-strip" href="./autos" v-if="modules.ev!==false"><div><span>EV-LAADREGELING</span><b>{{d.audiSmart&&d.audiSmart.status||'Uit'}}</b></div><div><span>VERTREKDOEL</span><b>{{d.audiSmart&&d.audiSmart.departureSoc||'—'}}% · {{d.audiSmart&&d.audiSmart.departureTime||'—'}}</b></div><div><span>VOLGEND LAADMOMENT</span><b>{{planText}}</b></div><div class="nav-icon" style="color:var(--violet);background:var(--violet-soft)"><v-icon icon="mdi-calendar-clock" size="20"></v-icon></div></a>
@@ -389,7 +390,7 @@ const battery = wrap(`
 const ev = wrap(`
 <div class="mp-shell">${header('mdi-car-electric','Auto’s & laden')}
   <section class="panel-grid">
-    <article class="panel span-7"><div class="panel-head"><b>Elektrische auto</b><span>{{(d.ev&&d.ev[0]&&d.ev[0].status)||'Niet beschikbaar'}}</span></div><div class="vehicle" v-if="d.ev&&d.ev[0]"><div class="vehicle-main"><div><span>VERGRENDELING</span><b>{{d.ev[0].locked||'—'}}</b></div><div><span>SOC</span><b>{{d.ev[0].soc==null?'—':Math.round(Number(d.ev[0].soc))+'%'}}</b></div><div><span>VANDAAG GELADEN</span><b>{{energy(d.ev[0].today)}}</b></div><div><span>HUIDIG VERMOGEN</span><b>{{power(d.ev[0].power)}}</b></div><div><span>AANSLUITING</span><b>{{d.ev[0].status||'—'}}</b></div><div><span>TEMPERATUUR</span><b>{{d.ev[0].temperature||'—'}}</b></div></div><div class="quick-actions"><button class="quick-action" @click="toggleEVLock"><div><div class="nav-icon"><v-icon icon="mdi-car-door-lock" size="21"></v-icon></div><span><b>{{String(d.ev[0].locked||'').toLowerCase().includes('op slot')?'Ontgrendelen':'Vergrendelen'}}</b><small>{{d.ev[0].locked||'Status onbekend'}}</small></span></div></button><button class="quick-action" @click="startClimate"><div><div class="nav-icon" style="color:var(--blue);background:var(--blue-soft)"><v-icon icon="mdi-car-defrost-front" size="21"></v-icon></div><span><b>Klimaat · 21 °C</b><small>{{d.audiClimate&&d.audiClimate.status||'Gereed'}}</small></span></div></button></div></div></article>
+    <article class="panel span-7"><div class="panel-head"><b>Elektrische auto</b><span>{{(d.ev&&d.ev[0]&&d.ev[0].status)||'Niet beschikbaar'}}</span></div><div class="vehicle" v-if="d.ev&&d.ev[0]"><div class="vehicle-main"><div><span>VERGRENDELING</span><b>{{d.ev[0].locked||'—'}}</b></div><div><span>SOC</span><b>{{d.ev[0].soc==null?'—':Math.round(Number(d.ev[0].soc))+'%'}}</b></div><div><span>VANDAAG GELADEN</span><b>{{energy(d.ev[0].today)}}</b></div><div><span>HUIDIG VERMOGEN</span><b>{{power(d.ev[0].power)}}</b></div><div><span>AANSLUITING</span><b>{{d.ev[0].status||'—'}}</b></div><div><span>KLIMAAT</span><b>{{d.audiClimate&&d.audiClimate.status||'Niet beschikbaar'}}</b></div></div><div class="quick-actions"><button class="quick-action" @click="toggleEVLock"><div><div class="nav-icon"><v-icon icon="mdi-car-door-lock" size="21"></v-icon></div><span><b>{{String(d.ev[0].locked||'').toLowerCase().includes('op slot')?'Ontgrendelen':'Vergrendelen'}}</b><small>{{d.ev[0].locked||'Status onbekend'}}</small></span></div></button><button class="quick-action" @click="startClimate"><div><div class="nav-icon" style="color:var(--blue);background:var(--blue-soft)"><v-icon icon="mdi-car-defrost-front" size="21"></v-icon></div><span><b>Klimaat starten</b><small>{{d.audiClimate&&d.audiClimate.status||'Gereed'}}</small></span></div></button></div></div></article>
     <article class="panel span-5"><div class="panel-head"><b>Laadbediening</b><span>{{d.audiSmart&&d.audiSmart.status||'Uit'}}</span></div><div class="charge-status"><div><span>DOELSTROOM</span><b>{{d.audiSmart&&d.audiSmart.targetCurrent||0}} A</b></div><div><span>FASEN</span><b>{{d.audiSmart&&d.audiSmart.phaseMode||1}}</b></div><div><span>MODUS</span><b>{{modeLabel(d.audiSmart&&d.audiSmart.controlMode)}}</b></div></div><div class="charge-actions"><button class="quick-action" :class="{active:d.audiSmart&&d.audiSmart.enabled}" @click="toggleEV"><div><div class="nav-icon" style="color:var(--violet);background:var(--violet-soft)"><v-icon icon="mdi-ev-station" size="21"></v-icon></div><span><b>ESS slim laden</b><small>{{d.audiSmart&&d.audiSmart.enabled?'AAN':'UIT'}}</small></span></div><v-icon :icon="d.audiSmart&&d.audiSmart.enabled?'mdi-toggle-switch':'mdi-toggle-switch-off-outline'" size="25"></v-icon></button><button class="quick-action force" :class="{active:d.audiSmart&&d.audiSmart.forceFull}" @click="toggleForceFull"><div><div class="nav-icon" style="color:var(--sun);background:var(--sun-soft)"><v-icon icon="mdi-battery-charging-100" size="21"></v-icon></div><span><b>{{d.audiSmart&&d.audiSmart.forceFull?'Direct laden stoppen':'Direct naar 100%'}}</b><small>Met Easee- en fasebeveiliging</small></span></div><v-icon :icon="d.audiSmart&&d.audiSmart.forceFull?'mdi-stop':'mdi-flash'" size="23"></v-icon></button></div></article>
     <article class="panel span-12"><div class="panel-head"><b>Laadplanning</b><span>All-in {{price(d.audiSmart&&d.audiSmart.allInPrice)}}/kWh</span></div><div class="plan-grid"><label class="setting soc-setting"><span>SOC BIJ VERTREK</span><select :value="d.audiSmart&&d.audiSmart.departureSoc||80" @change="socSetting('ess/audi/departure-soc',$event)" aria-label="SOC bij vertrek"><option v-for="value in [20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]" :key="'departure-'+value" :value="value">{{value}}%</option></select></label><label class="setting"><span>VERTREKTIJD</span><input type="time" :value="d.audiSmart&&d.audiSmart.departureTime||'06:00'" @change="timeSetting($event)"></label><div class="plan-card next-charge"><span>VOLGEND LAADMOMENT</span><b>{{planText}}</b><small>{{d.audiSmart&&d.audiSmart.scheduledSlots||0}} van {{d.audiSmart&&d.audiSmart.requiredSlots||0}} kwartieren gepland</small></div><div class="plan-card energy-needed"><span>NOG NODIG</span><b>{{energy(d.audiSmart&&d.audiSmart.departureEnergyNeeded)}}</b><small>{{energy(d.audiSmart&&d.audiSmart.solarEnergyReservedKwh)}} uit verwachte zon</small></div></div><div class="plan-clock"><div class="plan-clock-summary"><div><span>GEPLAND VERMOGEN</span><b>{{Number(d.audiSmart&&d.audiSmart.plannedChargePowerKw||0).toLocaleString('nl-NL',{maximumFractionDigits:1})}} kW</b></div><div><span>GEPLANDE ENERGIE</span><b>{{energy(d.audiSmart&&d.audiSmart.plannedGridEnergyKwh)}}</b></div><div><span>VERWACHTE LAADKOSTEN</span><b>{{money(d.audiSmart&&d.audiSmart.plannedGridCost)}}</b></div></div><div class="plan-clock-scroll"><div class="plan-clock-face"><div class="plan-clock-cells" :style="{gridTemplateColumns:'repeat('+planTimeline.cells.length+',minmax(5px,1fr))'}"><i class="plan-clock-cell" v-for="cell in planTimeline.cells" :key="cell.key" :class="{scheduled:cell.scheduled,current:cell.current}" :title="cell.title"></i></div><span class="plan-clock-label" v-for="label in planTimeline.labels" :key="label.key" :style="{left:label.left+'%'}">{{label.text}}</span></div></div><div class="plan-clock-legend"><span><i></i>Gepland laden</span><span><i class="now"></i>Actief kwartier</span></div></div></article>
     <article class="panel span-12" v-if="d.ev&&d.ev[1]"><div class="panel-head"><b>EV 2</b><span>{{d.ev[1].status||'Niet beschikbaar'}}</span></div><div class="metric-grid" style="margin:0"><div class="metric tone-ev"><span>VERMOGEN</span><b>{{power(d.ev[1].power)}}</b><small>Easee Rechts</small></div><div class="metric"><span>VANDAAG GELADEN</span><b>{{energy(d.ev[1].today)}}</b><small>{{d.ev[1].status||'—'}}</small></div></div></article>
@@ -692,11 +693,11 @@ function discoverEntities(input) {
         const stem = vehicleSoc.id.replace(/^sensor\./, '').replace(/_(?:state_of_charge|soc)$/, '');
         const stemEntries = entries.filter((entry) => entry.id.replace(/^[^.]+\./, '').startsWith(stem));
         const targetSoc = choose(candidates('sensor', (entry) => /(?:target|doel).*(?:state.of.charge|soc)|(?:state.of.charge|soc).*(?:target|doel)/.test(entry.text)), (entry) => (entry.id.includes(stem)?6:0)+8, 8);
-        const vehicleTemp = choose(stemEntries.filter(tempSensor), () => 8, 8);
+        const vehicleClimateState = choose(stemEntries.filter((entry) => entry.domain === 'sensor' && /(?:climatisation|climatization|climate).*(?:state|status)|(?:state|status).*(?:climatisation|climatization|climate)/.test(entry.text)), () => 8, 8);
         const vehicleLock = choose(stemEntries.filter((entry) => entry.domain === 'lock'), () => 8, 8);
         const vehicleTracker = choose(stemEntries.filter((entry) => entry.domain === 'device_tracker'), () => 8, 8);
         if (targetSoc) assign('sensor.ev_target_state_of_charge', targetSoc.id, 'vehicle-target-soc');
-        if (vehicleTemp) assign('sensor.ev_temperature', vehicleTemp.id, 'vehicle-sibling');
+        if (vehicleClimateState) assign('sensor.ev_climate_state', vehicleClimateState.id, 'vehicle-climate-state');
         if (vehicleLock) assign('lock.ev', vehicleLock.id, 'vehicle-sibling');
         if (vehicleTracker) assign('device_tracker.ev_position', vehicleTracker.id, 'vehicle-sibling');
     }
@@ -883,9 +884,21 @@ flows.push({
 flows.push({
   id: ids.climateDevice, type: 'api-render-template', z: FLOW_ID,
   name: 'Vind gekoppelde EV voor klimaat', server: 'ess00000000000b', version: 0,
-  template: "{{ device_id('device_tracker.ev_position') or '' }}",
+  template: "{{ '' }}",
   resultsLocation: 'payload.deviceId', resultsLocationType: 'msg', templateLocation: '', templateLocationType: 'none',
-  x: 1170, y: 210, wires: [[ids.climateAction]]
+  x: 1100, y: 210, wires: [[ids.climateDeviceGuard]]
+});
+flows.push({
+  id: ids.climateDeviceGuard, type: 'function', z: FLOW_ID, name: 'Controleer Audi-apparaat voor klimaat',
+  func: `const deviceId = String(msg && msg.payload && msg.payload.deviceId || '').trim();
+if (!/^[a-z0-9_-]{8,128}$/i.test(deviceId)) {
+    flow.set('ess_audi_climate_status', { available:false, active:false, status:'Audi-apparaat niet gevonden', updatedAt:new Date().toISOString() });
+    node.status({ fill:'red', shape:'ring', text:'Audi-apparaat ontbreekt' });
+    return null;
+}
+flow.set('ess_audi_climate_status', { available:true, pending:true, active:false, status:'Klimaatopdracht verzonden · wacht op Audi', updatedAt:new Date().toISOString() });
+return msg;`,
+  outputs: 1, timeout: 0, noerr: 0, initialize: '', finalize: '', libs: [], x: 1330, y: 210, wires: [[ids.climateAction]]
 });
 flows.push({
   id: ids.climateAction, type: 'api-call-service', z: FLOW_ID,
@@ -893,14 +906,25 @@ flows.push({
   debugenabled: false, action: 'audiconnect.start_climate_control', floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
   data: '{"device_id": payload.deviceId, "temp_c": payload.tempC, "glass_heating": false}', dataType: 'jsonata', mergeContext: '', mustacheAltTags: false,
   outputProperties: [], queue: 'none', blockInputOverrides: true, domain: 'audiconnect', service: 'start_climate_control',
-  x: 1420, y: 210, wires: [[]]
+  x: 1590, y: 210, wires: [[]]
 });
 flows.push({
   id: ids.vehicleDevice, type: 'api-render-template', z: FLOW_ID,
   name: 'Vind gekoppelde EV voor slot', server: 'ess00000000000b', version: 0,
-  template: "{{ device_id('device_tracker.ev_position') or '' }}",
+  template: "{{ '' }}",
   resultsLocation: 'payload.deviceId', resultsLocationType: 'msg', templateLocation: '', templateLocationType: 'none',
-  x: 1170, y: 250, wires: [[ids.vehicleAction]]
+  x: 1100, y: 250, wires: [[ids.vehicleDeviceGuard]]
+});
+flows.push({
+  id: ids.vehicleDeviceGuard, type: 'function', z: FLOW_ID, name: 'Controleer Audi-apparaat voor slot',
+  func: `const deviceId = String(msg && msg.payload && msg.payload.deviceId || '').trim();
+if (!/^[a-z0-9_-]{8,128}$/i.test(deviceId)) {
+    flow.set('ess_audi_vehicle_status', { available:false, pending:false, status:'Audi-apparaat niet gevonden', updatedAt:new Date().toISOString() });
+    node.status({ fill:'red', shape:'ring', text:'Audi-apparaat ontbreekt' });
+    return null;
+}
+return msg;`,
+  outputs: 1, timeout: 0, noerr: 0, initialize: '', finalize: '', libs: [], x: 1330, y: 250, wires: [[ids.vehicleAction]]
 });
 flows.push({
   id: ids.vehicleAction, type: 'api-call-service', z: FLOW_ID,
@@ -908,7 +932,7 @@ flows.push({
   debugenabled: false, action: 'audiconnect.execute_vehicle_action', floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
   data: '{"device_id": payload.deviceId, "action": payload.action}', dataType: 'jsonata', mergeContext: '', mustacheAltTags: false,
   outputProperties: [], queue: 'none', blockInputOverrides: true, domain: 'audiconnect', service: 'execute_vehicle_action',
-  x: 1420, y: 250, wires: [[]]
+  x: 1590, y: 250, wires: [[]]
 });
 
 flows.push({
@@ -2315,6 +2339,27 @@ ${overviewActionsMarker}`);
     'return [{ payload: { changed: true, enabled, settings } }, persistTime];',
     'return [{ payload: { changed: true, enabled, settings } }, persistTime, climateMessage, vehicleActionMessage];');
 }
+const audiDeviceTemplateMarker = '// Gebruik uitsluitend de werkelijk lokaal gekoppelde Audi-entiteit.';
+if (!audiControl.func.includes(audiDeviceTemplateMarker)) {
+  audiControl.func = audiControl.func.replace(
+    'let vehicleActionMessage = null;',
+    `let vehicleActionMessage = null;
+
+${audiDeviceTemplateMarker}
+function audiDeviceMessage(payload) {
+    const config = flow.get('ess_system_config') || ${systemConfigJson};
+    const entities = config && config.entities || {};
+    const candidates = [
+        entities['device_tracker.ev_position'],
+        entities['lock.ev'],
+        entities['sensor.ev_state_of_charge']
+    ];
+    const entityId = candidates.map((value) => String(value || '').trim().toLowerCase())
+        .find((value) => /^(?:device_tracker|lock|sensor)\.[a-z0-9_]+$/.test(value));
+    if (!entityId) return null;
+    return { template:"{{ device_id('"+entityId+"') or '' }}", payload };
+}`);
+}
 audiControl.func = audiControl.func
   .replace(/function findEVDeviceId\(\) \{[\s\S]*?\n\}/, '')
   .replace(/function normaliseEVVin\(value\) \{[\s\S]*?return null;\n\}\n?/, '')
@@ -2323,23 +2368,29 @@ audiControl.func = audiControl.func
     `if (msg.topic === 'ess/audi/climate-start' && msg.payload === true) {
     const now = Date.now();
     const lastCommandAt = Number(flow.get('ess_audi_last_climate_at')) || 0;
-    if (now - lastCommandAt < 60000) {
+    const request = audiDeviceMessage({ tempC:21 });
+    if (!request) {
+        flow.set('ess_audi_climate_status', { available:false, active:false, status:'Audi-entiteit niet gekoppeld', updatedAt:new Date(now).toISOString() });
+    } else if (now - lastCommandAt < 60000) {
         flow.set('ess_audi_climate_status', { available: true, status: 'Opdracht al verzonden · even wachten', updatedAt: new Date(now).toISOString() });
     } else {
         flow.set('ess_audi_last_climate_at', now);
-        flow.set('ess_audi_climate_status', { available: true, active: true, status: 'Klimaat gestart op 21 °C', updatedAt: new Date(now).toISOString() });
-        climateMessage = { payload: { tempC: 21 } };
+        flow.set('ess_audi_climate_status', { available:true, pending:true, active:false, status:'Klimaatopdracht voorbereiden', updatedAt:new Date(now).toISOString() });
+        climateMessage = request;
     }
 } else if (msg.topic === 'ess/audi/vehicle-action' && ['lock','unlock'].includes(String(msg.payload))) {
     const now = Date.now();
     const lastCommandAt = Number(flow.get('ess_audi_last_vehicle_action_at')) || 0;
-    if (now - lastCommandAt < 15000) {
+    const action = String(msg.payload);
+    const request = audiDeviceMessage({ action });
+    if (!request) {
+        flow.set('ess_audi_vehicle_status', { available:false, pending:false, status:'Audi-entiteit niet gekoppeld', updatedAt:new Date(now).toISOString() });
+    } else if (now - lastCommandAt < 15000) {
         flow.set('ess_audi_vehicle_status', { available: true, status: 'Opdracht al verzonden · even wachten', updatedAt: new Date(now).toISOString() });
     } else {
-        const action = String(msg.payload);
         flow.set('ess_audi_last_vehicle_action_at', now);
         flow.set('ess_audi_vehicle_status', { available: true, pending: true, status: action === 'lock' ? 'Vergrendelen aangevraagd' : 'Ontgrendelen aangevraagd', updatedAt: new Date(now).toISOString() });
-        vehicleActionMessage = { payload: { action } };
+        vehicleActionMessage = request;
     }
     } else if (msg.topic === 'ess/audi/force-full'`);
 audiControl.func = audiControl.func.replace(
@@ -2787,6 +2838,36 @@ if (!mapper.func.includes("const audiForceFull = flow.get('ess_audi_force_full')
     '    audiClimate: audiClimateStatus,\n    ev: [');
 }
 
+const audiClimateLiveMarker = '// Werkelijke Audi-klimaatstatus uit Home Assistant.';
+if (!mapper.func.includes(audiClimateLiveMarker)) {
+  mapper.func = mapper.func.replace(
+    "const audiClimateStatus = flow.get('ess_audi_climate_status') || { available: false, active: false, status: 'Klimaat beschikbaar na koppeling' };",
+    `${audiClimateLiveMarker}
+function audiClimateEntity() {
+    const direct = entity('sensor.ev_climate_state');
+    if (direct && !['unknown','unavailable',''].includes(String(direct.state).toLowerCase())) return direct;
+    const configuredSoc = String((essRuntimeConfig.entities || {})['sensor.ev_state_of_charge'] || '');
+    const stem = configuredSoc.replace(/^sensor\./, '').replace(/_(?:state_of_charge|soc)$/, '');
+    if (!stem) return null;
+    for (const suffix of ['_climatisation_state','_climatization_state','_climate_state']) {
+        const candidate = rawStates && rawStates['sensor.' + stem + suffix];
+        if (candidate && !['unknown','unavailable',''].includes(String(candidate.state).toLowerCase())) return candidate;
+    }
+    return null;
+}
+const audiClimateLive = audiClimateEntity();
+const audiClimateValue = audiClimateLive ? String(audiClimateLive.state).toLowerCase() : '';
+const audiClimateActive = Boolean(audiClimateLive) && !['off','inactive','stopped','false','0'].includes(audiClimateValue);
+const audiClimateCommand = flow.get('ess_audi_climate_status') || {};
+const audiClimateCommandAge = Date.now() - new Date(audiClimateCommand.updatedAt || 0).getTime();
+const audiClimatePending = audiClimateCommand.pending === true && audiClimateCommandAge < 2 * 60 * 1000 && !audiClimateActive;
+const audiClimateStatus = audiClimatePending
+    ? audiClimateCommand
+    : audiClimateLive
+        ? { available:true, active:audiClimateActive, pending:false, status:audiClimateActive ? 'Aan' : 'Uit', updatedAt:audiClimateLive.last_updated || audiClimateLive.last_changed || null }
+        : { available:false, active:false, pending:false, status:'Klimaatstatus niet beschikbaar' };`);
+}
+
 if (!mapper.func.includes('departureSoc: Number.isFinite(Number(audiControlStatus.departureSoc))')) {
   mapper.func = mapper.func.replace(
     '        phaseMode: Number(audiControlStatus.phaseMode) === 3 ? 3 : 1',
@@ -2907,19 +2988,22 @@ function audiLockLabel(reading) {
     "const audiSoc = value('sensor.ev_state_of_charge');",
     `const audiSoc = value('sensor.ev_state_of_charge');
 const audiLockReading = audiDashboardReading('lock.ev');
-const audiTemperatureReading = audiDashboardReading('sensor.ev_temperature');
 const audiVehicleCommand = flow.get('ess_audi_vehicle_status') || {};
 const audiVehicleCommandAge = Date.now() - new Date(audiVehicleCommand.updatedAt || 0).getTime();
 const audiLockState = audiVehicleCommand.pending === true && audiVehicleCommandAge < 2 * 60 * 1000
     ? audiVehicleCommand.status
     : audiLockLabel(audiLockReading);
-const audiTemperature = audiTemperatureReading
-    ? String(audiTemperatureReading.value) + (audiTemperatureReading.unit ? ' ' + audiTemperatureReading.unit : '')
-    : 'Niet beschikbaar';`);
+`);
   mapper.func = mapper.func.replace(
     "{ name: 'EV', power: audiPower, today: audiTodayEnergy, soc: audiSoc, status: chargeStatus('sensor.ev_charger_status') }",
-    "{ name: 'EV', power: audiPower, today: audiTodayEnergy, soc: audiSoc, locked: audiLockState, temperature: audiTemperature, status: chargeStatus('sensor.ev_charger_status') }");
+    "{ name: 'EV', power: audiPower, today: audiTodayEnergy, soc: audiSoc, locked: audiLockState, status: chargeStatus('sensor.ev_charger_status') }");
 }
+
+// Verwijder de vroegere temperatuurweergave ook uit reeds gegenereerde flows.
+mapper.func = mapper.func
+  .replace("const audiTemperatureReading = audiDashboardReading('sensor.ev_temperature');\n", '')
+  .replace(/const audiTemperature = audiTemperatureReading[\s\S]*?: 'Niet beschikbaar';\n/, '')
+  .replace('temperature: audiTemperature, ', '');
 
 if (!mapper.func.includes("const gridImportToday = value('sensor.growatt_wit_grid_grid_import_energy_today')")
     && !mapper.func.includes('// Exacte netdagtotalen vanaf de HomeWizard P1-hoofdmeter.')) {
