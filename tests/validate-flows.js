@@ -622,6 +622,10 @@ flowValues.ess_audi_settings.departureTime = String(safeDeparture.getHours()).pa
 
 const audiRegulator = flows.find((node) => node.id === 'ess00000000000d');
 assert(audiRegulator, 'EV-zonnestroomregelaar ontbreekt');
+assert.deepStrictEqual(nordPoolParser.wires, [[audiRegulator.id]], 'Nieuwe dagprijzen moeten de EV-strategie direct opnieuw laten berekenen');
+const dashboardRefresh = flows.find((node) => node.id === 'ess000000000002');
+assert.strictEqual(dashboardRefresh.repeat, '5', 'Aansluiten van de EV moet binnen vijf seconden in een nieuwe laadstrategie worden verwerkt');
+assert(dashboardRefresh.wires.flat().includes(audiRegulator.id), 'De periodieke regelcyclus moet de EV-planner na aansluiten activeren');
 assert(audiRegulator.func.includes('const minimumCurrent = 6;'), 'Minimale EV-laadstroom moet 6 A zijn');
 assert(audiRegulator.func.includes('Direct laden vervalt bij ontkoppelen'), 'Direct naar 100% moet bij ontkoppelen automatisch vervallen');
 assert(audiRegulator.initialize.includes("flow.set('ess_audi_smart_enabled', true)"), 'ESS slim laden moet na een Home Assistant/Node-RED-herstart automatisch aan staan');
@@ -829,7 +833,7 @@ assert(Math.abs(flowValues.ess_audi_control_status.plannedGridCost - expectedPla
 assert(flowValues.ess_audi_control_status.selectedSlots.every((slot) => slot.powerKw === 10 && slot.energyKwh > 0), 'Ieder laadvlak moet vermogen en geplande energie bevatten');
 const audiPlannedBlock = flowValues.ess_audi_control_status.selectedSlots;
 assert(new Date(audiPlannedBlock.at(-1).end).getTime() - Math.max(Date.now(), new Date(audiPlannedBlock[0].start).getTime()) >= 15 * 60 * 1000 - 1000, 'Een gepland EV-laadblok moet minimaal vijftien minuten duren');
-assert(audiPlannedBlock.slice(1).every((slot, index) => new Date(slot.start).getTime() === new Date(audiPlannedBlock[index].end).getTime()), 'Geplande EV-kwartieren moeten één aaneengesloten laadblok vormen');
+assert.strictEqual(new Set(audiPlannedBlock.map((slot) => slot.start)).size, audiPlannedBlock.length, 'Een gepland EV-kwartier mag maar eenmaal worden geselecteerd');
 assert(!Number.isNaN(new Date(flowValues.ess_audi_control_status.departureAt).getTime()), 'De laadklok mist de absolute vertrektijd');
 assert(new Date(flowValues.ess_audi_control_status.activeDepartureBlockEnd).getTime() > Date.now(), 'Een gestart vertreklaadblok moet een vaste eindtijd krijgen');
 
@@ -906,10 +910,23 @@ regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => und
 assert.strictEqual(flowValues.ess_audi_control_status.targetCurrent, 0, 'Een duur huidig kwartier mag niet starten als goedkopere blokken voldoende zijn');
 assert.strictEqual(flowValues.ess_audi_control_status.scheduledNow, false, 'Het dure huidige kwartier mag niet in de planning staan');
 
-flowValues.ess_audi_control_status = { ...flowValues.ess_audi_control_status, controlled: true, targetCurrent: 6, controlMode: 'departure-plan', pendingPhaseMode: 0 };
+flowValues.ess_audi_control_status = {
+    ...flowValues.ess_audi_control_status,
+    controlled:true,
+    targetCurrent:6,
+    controlMode:'departure-plan',
+    pendingPhaseMode:0,
+    selectedSlots:[{
+        start:new Date(currentQuarterStart).toISOString(),
+        end:new Date(currentQuarterStart + 900000).toISOString(),
+        allInPrice:0.5,
+        energyKwh:2.5,
+        powerKw:10
+    }]
+};
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
-assert(flowValues.ess_audi_control_status.targetCurrent >= 6, 'Een eenmaal gestart EV-laadblok mag niet voor een iets goedkoper kwartier worden onderbroken');
-assert.strictEqual(flowValues.ess_audi_control_status.scheduledNow, true, 'Een actief aaneengesloten laadblok moet tijdens herplanning behouden blijven');
+assert(flowValues.ess_audi_control_status.targetCurrent >= 6, 'Een eenmaal gestart geselecteerd kwartier mag niet halverwege worden onderbroken');
+assert.strictEqual(flowValues.ess_audi_control_status.scheduledNow, true, 'Een actief geselecteerd kwartier moet tijdens herplanning tot zijn eindtijd behouden blijven');
 
 states['sensor.ev_state_of_charge'] = state(20);
 flowValues.ess_audi_soc_estimator = {};
@@ -921,16 +938,16 @@ flowValues.ess_nordpool_forecast = Array.from({ length:48 }, (_, index) => ({
     allInPrice:index < 4 ? 0.20 : index < 24 ? 0.60 : 0.30
 }));
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
-assert.strictEqual(flowValues.ess_audi_control_status.scheduledNow, false, 'Het volledige lange laadblok vanaf nu moet duurder zijn dan de latere planning');
-assert.strictEqual(flowValues.ess_audi_control_status.cheapNowActive, true, 'Een huidig halfuur dat goedkoper is dan alle geplande kwartieren moet als voordelig blok worden benut');
-assert.strictEqual(flowValues.ess_audi_control_status.controlMode, 'cheap-now', 'Een voordelig huidig blok moet een herkenbare regelmodus gebruiken');
-assert.strictEqual(flowValues.ess_audi_control_status.requestedTargetCurrent, flowValues.ess_audi_control_status.safeCurrentLimit, 'Een voordelig huidig blok moet het maximaal veilige laadvermogen aanvragen');
-assert(new Date(flowValues.ess_audi_control_status.cheapNowBlockEnd).getTime() - Date.now() >= 15 * 60 * 1000 - 1000, 'Een voordelig huidig laadblok moet minimaal vijftien minuten vaststaan');
-assert(flowValues.ess_audi_control_status.cheapNowAveragePrice + 0.005 < flowValues.ess_audi_control_status.plannedReferencePrice, 'Het huidige blok moet aantoonbaar goedkoper zijn dan de latere planning');
-const fixedCheapNowBlockEnd = flowValues.ess_audi_control_status.cheapNowBlockEnd;
+assert.strictEqual(flowValues.ess_audi_control_status.scheduledNow, true, 'Het goedkope huidige kwartier moet rechtstreeks door de gewone vertrekplanning worden geselecteerd');
+assert.strictEqual(flowValues.ess_audi_control_status.controlMode, 'departure-plan', 'Er mag geen aparte regelmodus voor een goedkoop huidig kwartier nodig zijn');
+assert.strictEqual(flowValues.ess_audi_control_status.requestedTargetCurrent, flowValues.ess_audi_control_status.safeCurrentLimit, 'Een geselecteerd goedkoop kwartier moet het maximaal veilige laadvermogen aanvragen');
+assert(flowValues.ess_audi_control_status.selectedSlots.some((slot) => new Date(slot.start).getTime() === currentQuarterStart), 'De uniforme planning moet het huidige goedkope kwartier bevatten');
+assert(flowValues.ess_audi_control_status.selectedSlots.some((slot) => new Date(slot.start).getTime() === currentQuarterStart + 900000), 'De uniforme planning moet ook het direct volgende goedkope kwartier bevatten');
+assert(flowValues.ess_audi_control_status.selectedSlots.some((slot) => new Date(slot.start).getTime() >= currentQuarterStart + 24 * 900000), 'De uniforme planning moet zo nodig ook goedkope latere kwartieren bevatten');
+assert(!flowValues.ess_audi_control_status.selectedSlots.some((slot) => slot.allInPrice === 0.60), 'Dure tussenliggende kwartieren mogen worden overgeslagen');
+assert.strictEqual(flowValues.ess_audi_control_status.cheapNowActive, undefined, 'De tijdelijke aparte goedkoper-nu regeling moet volledig verwijderd zijn');
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
-assert.strictEqual(flowValues.ess_audi_control_status.cheapNowBlockEnd, fixedCheapNowBlockEnd, 'Een gestart voordelig blok mag bij herplanning niet steeds opschuiven');
-assert(!regulatorOutput[1] || regulatorOutput[1].payload.command !== 'stop', 'Een voordelig blok mag niet op de volgende regelcyclus worden onderbroken');
+assert(!regulatorOutput[1] || regulatorOutput[1].payload.command !== 'stop', 'Een geselecteerd kwartier mag niet op de volgende regelcyclus worden onderbroken');
 flowValues.ess_nordpool_forecast = plannedPrices.map((allInPrice, index) => ({
     start: new Date(currentQuarterStart + index * 900000).toISOString(),
     end: new Date(currentQuarterStart + (index + 1) * 900000).toISOString(),
