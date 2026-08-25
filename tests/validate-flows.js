@@ -76,6 +76,7 @@ assert(configControl.func.includes("msg.filename || ''") && configControl.func.i
 assert(configControl.func.includes('parseStoredConfig') && configControl.func.includes('Buffer.from(payload)'), 'Configuratieherstel moet ook een Node-RED Buffer als JSON kunnen lezen');
 assert(configControl.func.includes('ess_system_config_status') && configControl.func.includes('missing'), 'Configuratiecontroller moet entiteiten valideren en status publiceren');
 assert(configControl.func.includes('siteName') && configControl.func.includes('modules') && configControl.func.includes('specs') && configControl.func.includes('entities'), 'Configuratiecontroller mist een configuratieonderdeel');
+assert(configControl.func.includes('sourceVersion < 2') && configControl.initialize.includes('evGridChargePowerKw = 11'), 'De oude EV-netlaadstandaard moet na een update veilig naar 11 kW migreren');
 assert(configControl.func.includes('discoverEntities') && configControl.func.includes('chargerStatusCandidates') && configControl.func.includes('nasCpu'), 'Configuratiecontroller mist veilige apparaatherkenning');
 assert(configControl.func.includes("ess_wit_grid_charge_mode', 'off") && configControl.func.includes("ess_audi_smart_enabled', false"), 'Uitgeschakelde modules moeten actieve automatische regeling veilig beëindigen');
 for (const [name, template] of Object.entries(detailTemplates)) {
@@ -359,6 +360,30 @@ new Function('global', 'flow', 'node', 'msg', configControl.func)(
 );
 assert.strictEqual(discoveredValues.ess_system_config.siteName, 'Buffer hersteltest', 'Lokale configuratie moet ook zonder behouden onderwerp of bestandsnaam uit een Buffer worden hersteld');
 assert.strictEqual(discoveredValues.ess_system_config.entities['sensor.ev_charger_power'], 'sensor.primary_charger_power', 'Bufferherstel mag opgeslagen entiteitskoppelingen niet wissen');
+
+const migrationValues = {};
+const migrationFlow = {
+    get:(key) => migrationValues[key],
+    set:(key, value) => { migrationValues[key] = value; }
+};
+const oldDefaultConfig = { ...discovered, version:1, specs:{ ...discovered.specs, evGridChargePowerKw:10 } };
+const migratedResult = new Function('global', 'flow', 'node', 'msg', configControl.func)(
+    discoveryGlobal,
+    migrationFlow,
+    { status:() => undefined, warn:() => undefined },
+    { topic:'ess/config/restore', payload:JSON.stringify(oldDefaultConfig) }
+);
+assert.strictEqual(migrationValues.ess_system_config.version, 2, 'Een lokaal versie 1-profiel moet naar configuratieversie 2 migreren');
+assert.strictEqual(migrationValues.ess_system_config.specs.evGridChargePowerKw, 11, 'De oude standaard van 10 kW moet naar het werkelijke 11 kW-laadvermogen migreren');
+assert(migratedResult[1] && JSON.parse(migratedResult[1].payload).specs.evGridChargePowerKw === 11, 'De gemigreerde waarde moet ook in de lokale back-up worden opgeslagen');
+const customPowerConfig = { ...discovered, version:1, specs:{ ...discovered.specs, evGridChargePowerKw:7.4 } };
+new Function('global', 'flow', 'node', 'msg', configControl.func)(
+    discoveryGlobal,
+    migrationFlow,
+    { status:() => undefined, warn:() => undefined },
+    { topic:'ess/config/restore', payload:JSON.stringify(customPowerConfig) }
+);
+assert.strictEqual(migrationValues.ess_system_config.specs.evGridChargePowerKw, 7.4, 'Een expliciet aangepast laadvermogen mag tijdens de migratie niet worden overschreven');
 
 let dashboard = null;
 const mapperTodaySlotStart = new Date();
@@ -826,11 +851,13 @@ assert.strictEqual(flowValues.ess_audi_control_status.targetSoc, 70, 'Gepland la
 assert(flowValues.ess_audi_control_status.scheduledSlots >= 4, 'De planning moet genoeg kwartieren kiezen voor de benodigde vertrekenergie');
 assert(flowValues.ess_audi_control_status.departureScheduledSlots > 0, 'Vertrekdoel moet eigen laadkwartieren krijgen');
 assert.strictEqual(flowValues.ess_audi_control_status.dayScheduledSlots, undefined, 'Dagkwartieren moeten uit de planning zijn verwijderd');
-assert.strictEqual(flowValues.ess_audi_control_status.plannedChargePowerKw, 10, 'De laadklok moet het geplande laadvermogen tonen');
+assert.strictEqual(flowValues.ess_audi_control_status.plannedChargePowerKw, 11, 'De laadklok moet het werkelijke maximale laadvermogen tonen');
 assert(flowValues.ess_audi_control_status.plannedGridEnergyKwh > 0, 'De laadklok moet de totale geplande energie berekenen');
 const expectedPlannedCost = flowValues.ess_audi_control_status.selectedSlots.reduce((sum, slot) => sum + slot.energyKwh * slot.allInPrice, 0);
 assert(Math.abs(flowValues.ess_audi_control_status.plannedGridCost - expectedPlannedCost) < 0.00001, 'De totale laadprijs moet per gepland kwartier uit energie maal all-in prijs worden berekend');
-assert(flowValues.ess_audi_control_status.selectedSlots.every((slot) => slot.powerKw === 10 && slot.energyKwh > 0), 'Ieder laadvlak moet vermogen en geplande energie bevatten');
+assert(flowValues.ess_audi_control_status.selectedSlots.every((slot) => slot.powerKw === 11 && slot.energyKwh > 0), 'Ieder laadvlak moet vermogen en geplande energie bevatten');
+const fullPlannedQuarter = flowValues.ess_audi_control_status.selectedSlots.find((slot) => new Date(slot.end).getTime() - Math.max(Date.now(), new Date(slot.start).getTime()) >= 15 * 60 * 1000 - 1000);
+assert(fullPlannedQuarter && Math.abs(fullPlannedQuarter.energyKwh - 2.75) < 0.001, 'Een volledig gepland kwartier op 11 kW moet 2,75 kWh bevatten');
 const audiPlannedBlock = flowValues.ess_audi_control_status.selectedSlots;
 assert(new Date(audiPlannedBlock.at(-1).end).getTime() - Math.max(Date.now(), new Date(audiPlannedBlock[0].start).getTime()) >= 15 * 60 * 1000 - 1000, 'Een gepland EV-laadblok moet minimaal vijftien minuten duren');
 assert.strictEqual(new Set(audiPlannedBlock.map((slot) => slot.start)).size, audiPlannedBlock.length, 'Een gepland EV-kwartier mag maar eenmaal worden geselecteerd');

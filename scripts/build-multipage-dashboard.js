@@ -24,7 +24,7 @@ const MAPPER_ID = 'ess00000000000a';
 const CONTROL_ID = 'ess00000000000c';
 
 const DEFAULT_SYSTEM_CONFIG = {
-  version: 1,
+  version: 2,
   siteName: 'Smart ESS',
   modules: {
     energy: true,
@@ -45,7 +45,7 @@ const DEFAULT_SYSTEM_CONFIG = {
     maximumBatteryPowerKw: 8,
     evBatteryCapacityKwh: 86,
     evMaximumCurrentA: 25,
-    evGridChargePowerKw: 10,
+    evGridChargePowerKw: 11,
     gridImportBufferW: 200
   },
   entities: {
@@ -534,12 +534,18 @@ const ranges = {
 function normalize(input) {
     const source = input && typeof input === 'object' ? input : {};
     const config = clone(defaults);
+    const sourceVersion = Number(source.version) || 1;
     config.siteName = String(source.siteName || defaults.siteName).replace(/[<>]/g, '').trim().slice(0, 60) || defaults.siteName;
     for (const key of Object.keys(config.modules)) config.modules[key] = source.modules && typeof source.modules[key] === 'boolean' ? source.modules[key] : defaults.modules[key];
     for (const [key, fallback] of Object.entries(config.specs)) {
         const value = Number(source.specs && source.specs[key]);
         const [minimum, maximum] = ranges[key];
         config.specs[key] = Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
+    }
+    // Versie 1 gebruikte 10 kW als vaste standaard voor een 11 kW-EV.
+    // Alleen die oude standaard wordt gemigreerd; expliciete andere waarden blijven behouden.
+    if (sourceVersion < 2 && Number(source.specs && source.specs.evGridChargePowerKw) === 10) {
+        config.specs.evGridChargePowerKw = defaults.specs.evGridChargePowerKw;
     }
     for (const canonical of Object.keys(config.entities)) {
         const value = String(source.entities && source.entities[canonical] || '').trim().toLowerCase();
@@ -802,7 +808,11 @@ if (msg.topic === 'ess/config/reset' && msg.payload === true) {
     config = result.config;
     discovery = result.discovery;
 } else if (msg.topic === 'ess/config/restore' || [${JSON.stringify(SYSTEM_CONFIG_PATH)}, ${JSON.stringify(SYSTEM_CONFIG_BACKUP_PATH)}].includes(String(msg.filename || '')) || looksLikeStoredConfig) {
-    try { config = normalize(looksLikeStoredConfig ? storedCandidate : parseStoredConfig(msg.payload)); }
+    try {
+        const restored = looksLikeStoredConfig ? storedCandidate : parseStoredConfig(msg.payload);
+        persist = (Number(restored && restored.version) || 1) < defaults.version;
+        config = normalize(restored);
+    }
     catch (error) { node.warn('Lokale ESS-configuratie kon niet worden gelezen: '+error.message); config = normalize(config); }
 } else {
     config = normalize(config);
@@ -823,7 +833,15 @@ const refresh = { payload:Date.now(), topic:'ess/config/updated' };
 const write = persist ? { payload:JSON.stringify(config, null, 2) } : null;
 return [refresh, write];`,
   outputs:2, timeout:0, noerr:0,
-  initialize:`if (!flow.get('ess_system_config')) flow.set('ess_system_config', ${systemConfigJson});`, finalize:'', libs:[],
+  initialize:`const current = flow.get('ess_system_config');
+if (!current) {
+    flow.set('ess_system_config', ${systemConfigJson});
+} else if ((Number(current.version) || 1) < 2) {
+    const migrated = JSON.parse(JSON.stringify(current));
+    migrated.version = 2;
+    if (Number((migrated.specs || {}).evGridChargePowerKw) === 10) migrated.specs.evGridChargePowerKw = 11;
+    flow.set('ess_system_config', migrated);
+}`, finalize:'', libs:[],
   x:520, y:740, wires:[[MAPPER_ID, CONTROL_ID, 'ess00000000000d', ids.witExportControl, ids.witEVControl, ids.witGridChargeControl],[ids.configFileWrite, ids.configBackupWrite]]
 });
 flows.push({
@@ -4421,10 +4439,17 @@ for (const [canonicalId, configuredId] of Object.entries(essRuntimeConfig.entiti
     if (configuredId && rawStates[configuredId]) states[canonicalId] = rawStates[configuredId];
 }`;
 for (const item of flows) {
-  if (item.type !== 'function' || typeof item.func !== 'string' || item.func.includes(configAliasMarker)) continue;
+  if (item.type !== 'function' || typeof item.func !== 'string') continue;
+  if (!item.func.includes(configAliasMarker)) {
+    item.func = item.func
+      .replace('const states = ha && ha.homeAssistant && ha.homeAssistant.states;', configAliasCode)
+      .replace('const states = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};', configAliasCodeWithFallback);
+  }
+
+  // Werk ook reeds configureerbare functies bij wanneer de publieke
+  // standaardconfiguratie een nieuwe versie krijgt.
   item.func = item.func
-    .replace('const states = ha && ha.homeAssistant && ha.homeAssistant.states;', configAliasCode)
-    .replace('const states = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};', configAliasCodeWithFallback);
+    .replace(/const essRuntimeConfig = flow\.get\('ess_system_config'\) \|\| \{[^\r\n]*?\};/g, `const essRuntimeConfig = flow.get('ess_system_config') || ${systemConfigJson};`);
 
   // Centrale installatiegrenzen vervangen de vroegere vaste waarden. Iedere
   // waarde behoudt een veilige standaard wanneer een lokaal profiel ontbreekt.
@@ -4435,18 +4460,25 @@ for (const item of flows) {
     .replace('const maximumBatteryPowerW = 8000;', "const maximumBatteryPowerW = (Number((flow.get('ess_system_config') || {}).specs?.maximumBatteryPowerKw) || 8) * 1000;")
     .replace('const gridImportBufferW = 200;', "const gridImportBufferW = Number((flow.get('ess_system_config') || {}).specs?.gridImportBufferW) || 200;")
     .replace('const maximumCurrent = 25;', "const maximumCurrent = Number((flow.get('ess_system_config') || {}).specs?.evMaximumCurrentA) || 25;")
-    .replace('const netChargePowerKw = 10;', "const netChargePowerKw = Number((flow.get('ess_system_config') || {}).specs?.evGridChargePowerKw) || 10;");
+    .replace('const netChargePowerKw = 10;', "const netChargePowerKw = Number((flow.get('ess_system_config') || {}).specs?.evGridChargePowerKw) || 11;")
+    .replace("const netChargePowerKw = Number((flow.get('ess_system_config') || {}).specs?.evGridChargePowerKw) || 10;", "const netChargePowerKw = Number((flow.get('ess_system_config') || {}).specs?.evGridChargePowerKw) || 11;");
 }
 
 const dashboardMapper = flows.find((item) => item.id === MAPPER_ID);
-if (dashboardMapper && !dashboardMapper.func.includes('dashboard.configuration =')) {
-  dashboardMapper.func = dashboardMapper.func.replace(
-    "flow.set('ess_dashboard_live', dashboard);",
-    `dashboard.configuration = {
+const dashboardConfigurationCode = `dashboard.configuration = {
     config:flow.get('ess_system_config') || ${systemConfigJson},
     status:flow.get('ess_system_config_status') || { valid:false, missing:['Configuratie nog niet gecontroleerd'] }
-};
-flow.set('ess_dashboard_live', dashboard);`);
+};`;
+if (dashboardMapper) {
+  if (dashboardMapper.func.includes('dashboard.configuration =')) {
+    dashboardMapper.func = dashboardMapper.func.replace(
+      /dashboard\.configuration = \{[\s\S]*?\n\};\nflow\.set\('ess_dashboard_live', dashboard\);/,
+      `${dashboardConfigurationCode}\nflow.set('ess_dashboard_live', dashboard);`);
+  } else {
+    dashboardMapper.func = dashboardMapper.func.replace(
+      "flow.set('ess_dashboard_live', dashboard);",
+      `${dashboardConfigurationCode}\nflow.set('ess_dashboard_live', dashboard);`);
+  }
 }
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
