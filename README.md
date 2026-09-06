@@ -118,6 +118,10 @@ The measurement layer is role-based: local entity IDs are assigned on the **Conf
 
 The import field also accepts a partial configuration, such as an `entities` object by itself. Imported values are merged into the currently open local profile; modules, limits, and mappings that were not included remain unchanged.
 
+Dashboard diagnostics use the same health checks for the overview and active warnings. Unconfigured climate slots are distinguished from configured but unavailable zones; heating-only installations do not require an air conditioner. Automatic mapping can propose offline climate entities when their capabilities are known, but cannot restore an expired integration login (for example Tado).
+
+With NAS enabled and its CPU/status entities already mapped, the display can fill missing physical-memory percentage, selected-disk temperature and selected-volume usage percentage from unambiguous sibling sensors. This read-only fallback also recovers after Home Assistant reconnects; it does not change saved mappings or control devices. Explicit custom selections are preserved even when temporarily missing. Multiple candidate NAS devices, disks or metrics require manual review. Use **Automatisch koppelen**, review, then **Opslaan** to store discovered mappings in the local backup.
+
 | Component | Current adapter | Notes |
 | --- | --- | --- |
 | Grid metering | Home Assistant P1 sensors | Total power and all three phases are configurable. |

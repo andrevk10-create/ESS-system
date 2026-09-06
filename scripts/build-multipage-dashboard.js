@@ -584,7 +584,9 @@ function validate(config, discovery) {
     );
     if (config.modules.ev) required.push('sensor.ev_charger_status','sensor.ev_state_of_charge');
     if (config.modules.lighting) required.push('light.zone_1');
-    if (config.modules.climate) required.push('climate.cooling_zone_1');
+    const climateRoles = Object.keys(config.entities).filter(role => role.startsWith('climate.') || role.startsWith('water_heater.'));
+    const selectedClimateRoles = climateRoles.filter(role => config.entities[role] && (config.entities[role] !== role || states[role]));
+    if (config.modules.climate) required.push(...(selectedClimateRoles.length ? selectedClimateRoles : ['climate.cooling_zone_1 of climate.heating_zone_1 of water_heater.domestic_hot_water']));
     if (config.modules.nas) required.push('sensor.nas_cpu_gebruik_totaal');
     const missing = required.filter((canonical) => {
         const actual = config.entities[canonical];
@@ -606,6 +608,8 @@ function validate(config, discovery) {
     return { valid:uniqueMissing.length === 0, missing:uniqueMissing, unavailable:[...new Set(unavailable)], checkedAt:new Date().toISOString(), configuredEntities:Object.values(config.entities).filter(Boolean).length, discovery:discovery || null };
 }
 
+${require('./lib/dashboard-diagnostics').resolveNasMappings.toString()}
+
 function discoverEntities(input) {
     const config = normalize(input);
     const simplify = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -625,6 +629,7 @@ function discoverEntities(input) {
         if (!actual || !present(actual)) return false;
         const current = config.entities[role];
         if (present(current)) { kept.add(role); used.add(current); return false; }
+        if (current && current !== role && (role.startsWith('climate.') || role.startsWith('water_heater.') || role.includes('.nas_'))) return false;
         if (!allowShared && used.has(actual)) return false;
         config.entities[role] = actual;
         used.add(actual);
@@ -715,22 +720,31 @@ function discoverEntities(input) {
     if (lightRanked.length > 8) warnings.push('Meer dan acht lichtzones gevonden; controleer de selectie.');
 
     // Klimaat: capabilities bepalen de hoofdindeling; namen dienen alleen als extra aanwijzing.
-    const climateEntries = candidates('climate');
+    // Offline zones still have identity/capabilities and can be proposed, but
+    // remain visibly unavailable. Never mistake discovery for restored access.
+    const climateEntries = entries.filter(entry => entry.domain === 'climate');
     const modes = (entry) => (entry.attributes.hvac_modes || []).map(simplify);
-    const heatPump = choose(climateEntries, (entry) => (/(?:warmtepomp|heat.?pump)/.test(entry.text)?10:0)+(modes(entry).includes('heat')?2:0), 10);
+    const heatPump = byId.get(config.entities['climate.heat_pump']) || choose(climateEntries, (entry) => (/(?:warmtepomp|heat.?pump)/.test(entry.text)?10:0)+(modes(entry).includes('heat')?2:0), 10);
     if (heatPump) assign('climate.heat_pump', heatPump.id, 'heat-pump');
     const cooling = ranked(climateEntries.filter((entry) => !heatPump || entry.id !== heatPump.id), (entry) => (modes(entry).includes('cool')?7:0)+(/(?:airco|cooling|koel)/.test(entry.text)?6:0), 7).map((item) => item.entry);
-    for (let index=0; index<Math.min(4, cooling.length); index+=1) {
+    for (let index=0; index<4; index+=1) {
         const role = 'climate.cooling_zone_'+(index+1);
-        if (assign(role, cooling[index].id, 'cooling-zone')) {
-            const climateStem = cooling[index].id.replace(/^climate\./, '');
+        if (config.entities[role] && (config.entities[role] !== role || present(role))) continue;
+        const candidate = cooling.find(entry => !used.has(entry.id));
+        if (candidate && assign(role, candidate.id, 'cooling-zone')) {
+            const climateStem = candidate.id.replace(/^climate\./, '');
             const temperature = choose(entries.filter((entry) => tempSensor(entry) && (entry.id.includes(climateStem) || climateStem.includes(entry.id.replace(/^sensor\./, '').replace(/_(?:temperature|temperatuur).*$/, '')))), () => 8, 8);
             if (temperature) assign('sensor.cooling_zone_'+(index+1)+'_temperature', temperature.id, 'cooling-temperature');
         }
     }
     const coolingIds = new Set(cooling.map((entry) => entry.id));
     const heating = ranked(climateEntries.filter((entry) => (!heatPump || entry.id !== heatPump.id) && !coolingIds.has(entry.id)), (entry) => (modes(entry).includes('heat')||modes(entry).includes('auto')?5:0)+(/(?:tado|verwarm|heating|radiator|thermost)/.test(entry.text)?6:0), 5).map((item) => item.entry);
-    for (let index=0; index<Math.min(3, heating.length); index+=1) assign('climate.heating_zone_'+(index+1), heating[index].id, 'heating-zone');
+    for (let index=0; index<3; index+=1) {
+        const role = 'climate.heating_zone_'+(index+1);
+        if (config.entities[role] && (config.entities[role] !== role || present(role))) continue;
+        const candidate = heating.find(entry => !used.has(entry.id));
+        if (candidate) assign(role, candidate.id, 'heating-zone');
+    }
     const waterHeater = candidates('water_heater')[0];
     if (waterHeater) assign('water_heater.domestic_hot_water', waterHeater.id, 'water-heater');
     const weather = candidates('weather')[0];
@@ -758,35 +772,10 @@ function discoverEntities(input) {
     const siteSolarToday = choose(candidates('sensor', (entry) => /(?:total|totaal).*(?:energy|energie).*(?:today|vandaag)|(?:energy|energie).*(?:today|vandaag).*(?:total|totaal)/.test(entry.text) && /(?:pv|solar|zonne)/.test(entry.text) && !/^sensor\.ess_/.test(entry.id)), () => 8, 8);
     if (siteSolarToday) assign('sensor.site_solar_energy_today', siteSolarToday.id, 'site-solar-today');
 
-    // NAS: eerst de apparaatstam uit een expliciete NAS/DSM/Synology CPU-meting afleiden.
-    const nasCpu = choose(candidates('sensor', (entry) => /(?:nas|synology|dsm)/.test(entry.text) && /(?:cpu|processor)/.test(entry.text)), (entry) => (/(?:nas|synology|dsm)/.test(entry.text)?8:0)+(/(?:cpu|processor)/.test(entry.text)?7:0)+(/(?:total|totaal|usage|gebruik)/.test(entry.text)?2:0), 15);
-    if (nasCpu) {
-        assign('sensor.nas_cpu_gebruik_totaal', nasCpu.id, 'nas-cpu');
-        const raw = nasCpu.id.replace(/^sensor\./, '');
-        const marker = raw.search(/_(?:cpu|processor)/);
-        const prefix = marker > 0 ? raw.slice(0, marker) : raw.split('_')[0];
-        const nasEntries = entries.filter((entry) => entry.id.replace(/^[^.]+\./, '').startsWith(prefix+'_') || entry.id.replace(/^[^.]+\./, '') === prefix);
-        const nasRules = [
-            ['sensor.nas_geheugengebruik_fysiek','sensor',/(?:memory|geheugen).*(?:physical|fysiek|usage|gebruik)|(?:physical|fysiek).*(?:memory|geheugen)/],
-            ['sensor.nas_temperatuur','sensor',/(?:system|systeem).*(?:temperature|temperatuur)|^(?=.*(?:temperature|temperatuur))(?!.*(?:drive|disk|schijf)).*$/],
-            ['sensor.nas_download_doorvoer','sensor',/(?:download|receive|ontvang).*(?:throughput|doorvoer|rate|speed)?/],
-            ['sensor.nas_upload_doorvoer','sensor',/(?:upload|send|verzend).*(?:throughput|doorvoer|rate|speed)?/],
-            ['sensor.nas_drive_2_status','sensor',/(?:drive|disk|schijf).*(?:status|health|gezondheid)/],
-            ['sensor.nas_drive_2_temperatuur','sensor',/(?:drive|disk|schijf).*(?:temperature|temperatuur)/],
-            ['sensor.nas_volume_1_status','sensor',/(?:volume).*(?:status|health|gezondheid)/],
-            ['sensor.nas_volume_1_gebruikte_ruimte','sensor',/(?:volume).*(?:used|gebruikte).*(?:space|ruimte)/],
-            ['sensor.nas_volume_1_volume_gebruikt','sensor',/(?:volume).*(?:used|gebruikt|percentage|percent)/],
-            ['binary_sensor.nas_beveiligingsstatus','binary_sensor',/(?:security|beveilig).*(?:status)?/],
-            ['update.nas_dsm_update','update',/(?:dsm|system|systeem|firmware|update)/],
-            ['select.nas_fan_speed_mode','select',/(?:fan|ventilator).*(?:speed|snelheid|mode|modus)/]
-        ];
-        for (const [role, domain, pattern] of nasRules) {
-            const options = nasEntries.filter((entry) => entry.domain === domain && pattern.test(entry.text));
-            if (options.length === 1) assign(role, options[0].id, 'nas-sibling');
-        }
-        const securityEntries = nasEntries.filter((entry) => entry.domain === 'binary_sensor' && /(?:drive|disk|schijf).*(?:sector|life|levensduur)/.test(entry.text));
-        if (securityEntries[0]) assign('binary_sensor.nas_drive_2_maximum_slechte_sectoren_overschreden', securityEntries[0].id, 'nas-drive-warning');
-        if (securityEntries[1]) assign('binary_sensor.nas_drive_2_onder_de_minimale_resterende_levensduur', securityEntries[1].id, 'nas-drive-warning');
+    // Hergebruik ook een al gekoppelde CPU; een gebruikte entiteit blijft het
+    // anker voor ontbrekende NAS-metingen. Alleen ondubbelzinnige matches.
+    for (const [role, actual] of Object.entries(resolveNasMappings(states, config.entities))) {
+        assign(role, actual, 'nas-sibling');
     }
 
     return { config, discovery:{ matched:matches.length, kept:kept.size, unmatched:0, warnings } };
@@ -4698,5 +4687,7 @@ if (dashboardMapper) {
       `${dashboardConfigurationCode}\nflow.set('ess_dashboard_live', dashboard);`);
   }
 }
+
+require('./lib/dashboard-diagnostics').apply(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

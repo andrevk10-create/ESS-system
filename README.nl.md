@@ -120,6 +120,10 @@ De automatische koppeling gebruikt exacte entiteiten, apparaatkenmerken, domeine
 
 Het importvak accepteert ook een deelconfiguratie, bijvoorbeeld alleen een `entities`-object. Die waarden worden samengevoegd met het geopende lokale profiel; niet-genoemde modules, grenzen en koppelingen blijven behouden.
 
+Overzicht en actieve meldingen gebruiken dezelfde gezondheidschecks. Ongebruikte klimaatzones worden onderscheiden van gekoppelde maar onbereikbare zones; een installatie met alleen verwarming hoeft geen airco te koppelen. Automatisch koppelen kan offline klimaatzones voorstellen als hun mogelijkheden bekend zijn, maar herstelt geen verlopen integratie-aanmelding (bijvoorbeeld Tado).
+
+Als NAS aan staat en de CPU-/statusentiteiten al gekoppeld zijn, kan het dashboard ontbrekende percentages voor fysiek geheugen en volumegebruik en de temperatuur van de gekozen schijf aanvullen uit eenduidige sensoren van hetzelfde apparaat. Deze alleen-lezenaanvulling herstelt ook na opnieuw verbinden met Home Assistant; opgeslagen koppelingen en apparaten worden niet gewijzigd. Expliciete eigen keuzes blijven behouden, ook als ze tijdelijk ontbreken. Meerdere mogelijke NAS-apparaten, schijven of metingen vragen om handmatige controle. Gebruik **Automatisch koppelen**, controleer het voorstel en kies **Opslaan** om gevonden koppelingen in de lokale back-up te bewaren.
+
 | Onderdeel | Huidige adapter | Opmerking |
 | --- | --- | --- |
 | Netmeting | Home Assistant P1-sensoren | Totaal en drie fasen zijn configureerbaar. |

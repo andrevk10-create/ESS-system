@@ -4,7 +4,7 @@
   "description": "Configureerbaar Smart ESS-dashboard en regelsysteem voor Home Assistant en Node-RED",
   "private": true,
   "scripts": {
-    "test": "node tests/validate-flows.js && node tests/wit-regression.js && node scripts/validate-privacy.js"
+    "test": "node tests/validate-flows.js && node tests/wit-regression.js && node tests/dashboard-diagnostics.js && node scripts/validate-privacy.js"
   },
   "devDependencies": {
     "jsonata": "2.1.0"
