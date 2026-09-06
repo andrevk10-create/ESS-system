@@ -31,7 +31,7 @@ for (const node of flows) {
 const ui = flows.find((node) => node.type === 'ui-template');
 assert(ui, 'Dashboard ui-template ontbreekt');
 assert(ui.format.includes("config.siteName||'Smart ESS'"), 'Configureerbare neutrale dashboardnaam ontbreekt');
-assert.strictEqual(ui.height, '13', 'Beknopt overzicht moet de beschikbare tablethoogte vullen');
+assert.strictEqual(ui.height, '0', 'Beknopt overzicht moet meegroeien met de inhoud zonder interne scrollbalk');
 for (const route of ['energie', 'accu', 'autos', 'verbruikers', 'verlichting', 'klimaat', 'systeem', 'configuratie']) {
     assert(ui.format.includes(`href="./${route}"`), `Overzicht mist een klikbare link naar ${route}`);
 }
@@ -149,7 +149,7 @@ assert(detailTemplates.system.format.includes('d.nas&&d.nas.volume') && detailTe
 assert(!detailTemplates.system.format.includes('button.nas_restart') && !detailTemplates.system.format.includes('button.nas_shutdown'), 'NAS-overzicht mag geen risicovolle herstart- of uitschakknop bevatten');
 assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 4, 'Autopagina moet twee voertuigknoppen en twee laadknoppen tonen');
 for (const template of Object.values(detailTemplates)) {
-    assert.strictEqual(template.height, '13', 'Iedere detailpagina moet de beschikbare tablethoogte vullen');
+    assert.strictEqual(template.height, '0', 'Iedere detailpagina moet meegroeien met de inhoud');
     assert(!template.format.includes('Aanvullende systeemdiagnose') && !template.format.includes('Aanvullende verbruikssensoren') && !template.format.includes('Extra zonnesensoren'), 'Detailpagina bevat nog onnodige sensorinventarisatie');
 }
 
@@ -1832,7 +1832,7 @@ const dashboardPage = flows.find((node) => node.id === 'ess000000000006');
 assert(dashboardUi.format.includes('Samsung Galaxy Tab A8'), 'Tab A8-stijlen ontbreken op het hoofddashboard');
 assert(dashboardUi.format.includes('min-height:44px'), 'Dashboardbediening moet een ruim aanraakdoel hebben');
 assert(dashboardUi.format.includes('min-height:calc(100dvh - 12px)'), 'Dashboard moet zonder standaardbalk de beschikbare schermhoogte vullen');
-assert.strictEqual(dashboardUi.height, '13', 'Het hoofddashboard moet schermvullend zijn op de tablet');
+assert.strictEqual(dashboardUi.height, '0', 'Het hoofddashboard moet meegroeien met de inhoud zonder interne scroll');
 assert(dashboardPage.breakpoints.some((breakpoint) => breakpoint.name === 'Tab A8' && breakpoint.cols === '12'), 'De Tab A8 moet een raster van twaalf kolommen gebruiken');
 const dashboardBase = flows.find((node) => node.id === 'ess000000000007');
 assert.strictEqual(dashboardBase.headerContent, 'none', 'De standaard paginatitel moet verborgen zijn');

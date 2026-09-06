@@ -20,6 +20,8 @@ De repository bevat uitsluitend neutrale standaardwaarden. Namen, adressen, IP-a
 - **Systeem** met datakwaliteit, waarschuwingen en optionele NAS-status.
 - **Configuratie** voor modules, installatiegrenzen en Home Assistant-entiteitskoppelingen.
 
+Alle negen pagina’s hebben leesbare tekst, consistente bediening, desktopnavigatie en een mobiele onderbalk. De laadplannen van auto en thuisaccu staan samen met de kwartierprijzen in één alleen-lezen tijdlijn. Technische details zijn inklapbaar, actieve verbruikers staan bovenaan, ongebruikte zones blijven verborgen en ontbrekende metingen worden niet als nul weergegeven. Configuratie heeft gegroepeerde koppelingen, een zoekfunctie, een filter voor ontbrekende/offline entiteiten en een melding voor niet-opgeslagen wijzigingen. Zie [dashboard en lokale voorbeeldweergave](docs/dashboard-interface.md).
+
 ### Energieregeling
 
 - P1-hoofdmeter als bron voor totaal netvermogen, drie fasen en officiële import/export.

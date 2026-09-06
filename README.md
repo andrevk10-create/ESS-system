@@ -20,6 +20,8 @@ This repository contains neutral defaults only. Names, addresses, IP addresses, 
 - **System** with data quality, warnings, and optional NAS status.
 - **Configuration** for modules, installation limits, and Home Assistant entity mappings.
 
+All nine pages share readable typography, consistent controls, desktop navigation and a mobile bottom bar. EV charging, battery charging and quarter-hour prices appear in one read-only timeline. Optional technical details are collapsible; active loads appear first, unused zones stay hidden and missing measurements remain distinct from zero. Configuration includes grouped entity search, a missing/offline filter and an unsaved-changes indicator. See [dashboard interface and local preview](docs/dashboard-interface.md).
+
 ### Energy control
 
 - P1 main meter as the source for total grid power, all three phases, and official import/export values.
