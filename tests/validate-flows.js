@@ -403,7 +403,7 @@ mapperTomorrowSlotStart.setDate(mapperTomorrowSlotStart.getDate() + 1);
 const mapperSlotEnd = (start) => new Date(start.getTime() + 15 * 60 * 1000).toISOString();
 const flowValues = {
     ess_wit_export_mode:'auto',
-    ess_house_consumption_learning:{ forecastKwh:21 },
+    ess_house_consumption_learning:{ schemaVersion:2, forecastKwh:21 },
     ess_audi_control_status:{ selectedSlots:[
         { start:mapperTodaySlotStart.toISOString(), end:mapperSlotEnd(mapperTodaySlotStart), energy:9 },
         { start:mapperTomorrowSlotStart.toISOString(), end:mapperSlotEnd(mapperTomorrowSlotStart), energy:4 }
@@ -1728,6 +1728,7 @@ const historyTomorrowSlotStart = new Date(historyNow.getFullYear(), historyNow.g
 const historyTomorrowSlotEnd = new Date(historyTomorrowSlotStart.getTime() + 15 * 60 * 1000);
 flowValues.ess_solar_forecast_audit = { tomorrowDate:historyTodayKey, tomorrowForecastKwh:30 };
 flowValues.ess_house_consumption_learning = {
+    schemaVersion:2,
     recentDays:[{ date:historyDayKey(historyTwoDaysAgo), kwh:18 }],
     currentDate:historyDayKey(historyYesterday),
     currentValueKwh:22,

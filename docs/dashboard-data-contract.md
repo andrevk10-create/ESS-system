@@ -107,7 +107,11 @@ geleerde normale woningvraag
 + geplande WIT-netlaadenergie van morgen
 ```
 
-Werkelijk EV-laden wordt uit de leerbasis gehaald om dubbeltelling te voorkomen. Alleen dagen met voldoende geldige meetdekking tellen mee; tot die tijd wordt een conservatieve profielreserve gebruikt.
+Werkelijk laden op beide gekoppelde laadpunten wordt uit de leerbasis gehaald, met herkenning van W en kW en zonder dubbele aftrek bij dezelfde meter. Een ontbrekende, verouderde of tegenstrijdige laadmeting maakt het meetmoment ongeldig. Een recente niet-ladenstatus mag nul bevestigen wanneer een stilstaande vermogensmeter niet vernieuwt. De P1-reservebron van de laadregelaar wordt nooit als afzonderlijk gemeten laadvermogen afgetrokken, omdat die ook woningvraag kan bevatten.
+
+Alleen actuele volledige woningbalansen en dagen met minimaal 18 uur geldige meetdekking tellen mee. Meetgaten worden niet overbrugd. De verwachting is de mediaan van maximaal zeven recente afgeronde dagen, omgerekend naar 24 uur. Tot voldoende geldige dagen zijn verzameld geldt de startreserve van het profiel: Eco 14 kWh, Normaal 10 kWh en EV voorrang 6 kWh.
+
+Modelversie 2 leert opnieuw vanaf de update: oudere leerdagen en gedeeltelijke dagtotalen worden niet hergebruikt, omdat daar laadenergie in kan zitten. Ook herstel vanuit Home Assistant en de WIT-regelaars controleren deze versie. De sensor `sensor.ess_woningverbruik_basis_verwacht_morgen` publiceert `model_version`, `sample_valid`, `sample_reason`, `excluded_ev_power_w`, `charger_measurements`, `recent_days` en `coverage_hours` voor controle. Bestaande Recorder-historie wordt niet gewist.
 
 ## EV-planning
 

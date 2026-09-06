@@ -3,6 +3,7 @@ const jsonata = require('jsonata');
 const flows = require('../flows.json');
 const { witSolarWindow, witHouseReserve, witBatteryLimit, witFresh } = require('../scripts/lib/wit-runtime');
 const { witHealthModel } = require('../scripts/lib/wit-dashboard');
+require('./house-learning');
 const get = id => flows.find(n => n.id === id);
 const date = (day, hour) => new Date(2026, 8, day, hour).getTime();
 const reading = (state, unit = 'kWh', at = date(6, 20), entity_id) => ({ state:String(state), entity_id,
@@ -35,7 +36,8 @@ async function main() {
     window = witSolarWindow(solar(date(7, 12), 40, 20), {}, date(7, 12), null, true);
     assert.equal(window.inputKwh, 30, 'Rolling window includes remaining today and only part of tomorrow');
     assert.equal(witSolarWindow(solar(date(7, 12), 40, 20), {}, date(7, 12), null, false).inputKwh, 40, 'Daytime EV support may refill from remaining today plus tomorrow');
-    assert.equal(witHouseReserve({forecastKwh:29, recentDays:[{kwh:29}]}, 10), 29);
+    assert.equal(witHouseReserve({schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]}, 10), 29);
+    assert.equal(witHouseReserve({forecastKwh:29, recentDays:[{kwh:29}]}, 10), 10, 'Old EV-contaminated reserves must not survive deploy');
     assert.equal(witHouseReserve({forecastKwh:29, recentDays:[]}, 10), 10);
     assert(witFresh({...reading(0, 'W', now - 3600000), last_reported:new Date(now).toISOString()}, now, 120000));
 
@@ -82,7 +84,7 @@ async function main() {
     };
     let f = fixture();
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'No net charge when sun covers target');
-    f.values.ess_house_consumption_learning = {forecastKwh:29, recentDays:[{kwh:29}]};
+    f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]};
     assert(f.run('esswitgrid_ctrl1')[0], 'Learned full household reserve must increase needed net energy');
     assert(f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh > 0);
 
@@ -149,7 +151,7 @@ async function main() {
     f.s['select.growatt_mode_vpp'].state = 'unknown';
     assert(f.run('esswitaudi_ctrl1')[0], 'An unknown optimistic mode after HA startup must not block a new timed session');
     f.values.ess_wit_audi_discharge_status = {};
-    f.values.ess_house_consumption_learning = {forecastKwh:40, recentDays:[{kwh:40}]};
+    f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:40, recentDays:[{kwh:40}]};
     assert.equal(f.run('esswitaudi_ctrl1'), null, 'No surplus after house and refill means no extra discharge');
     f.values.ess_house_consumption_learning = {};
     f.values.ess_system_config = caps;

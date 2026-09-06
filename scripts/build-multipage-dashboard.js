@@ -4689,5 +4689,6 @@ if (dashboardMapper) {
 }
 
 require('./lib/dashboard-diagnostics').apply(flows);
+require('./lib/harden-house-learning')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

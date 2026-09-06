@@ -102,8 +102,9 @@ function witSolarWindow(states, config, now, audit, rolling) {
 
 function witHouseReserve(learning, fallback) {
     const learned = learning && witNumber(learning.forecastKwh);
-    // Only a completed-day model may override the bootstrap reserve.
-    return learned !== null && learned !== undefined && Array.isArray(learning.recentDays) && learning.recentDays.length
+    // Version 1 could include EV energy. Only clean completed days may override
+    // the bootstrap reserve, including before the first history tick on deploy.
+    return learning && learning.schemaVersion === 2 && learned !== null && learned !== undefined && Array.isArray(learning.recentDays) && learning.recentDays.length
         ? Math.max(fallback, Math.min(200, learned)) : fallback;
 }
 
