@@ -43,12 +43,18 @@ const DEFAULT_SYSTEM_CONFIG = {
     batteryCapacityKwh: 30,
     inverterRatedPowerKw: 18,
     maximumBatteryPowerKw: 8,
+    maximumBatteryChargePowerKw: 12,
     evBatteryCapacityKwh: 86,
     evMaximumCurrentA: 25,
     evGridChargePowerKw: 11,
     gridImportBufferW: 200
   },
   entities: {
+    'sensor.battery_charge_power_limit':'',
+    'sensor.growatt_battery_battery_voltage':'',
+    'sensor.battery_charge_current_limit':'',
+    'sensor.battery_discharge_power_limit':'',
+    'sensor.battery_discharge_current_limit':'',
     'sensor.p1_meter_vermogen':'sensor.p1_meter_vermogen',
     'sensor.p1_meter_vermogen_fase_1':'sensor.p1_meter_vermogen_fase_1',
     'sensor.p1_meter_vermogen_fase_2':'sensor.p1_meter_vermogen_fase_2',
@@ -530,7 +536,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const entityPattern = /^(?:sensor|binary_sensor|select|number|switch|light|climate|water_heater|weather|sun|device_tracker|lock|update|input_number|input_boolean|input_select)\.[a-z0-9_]+$/;
 const ranges = {
     phases:[1,3], voltage:[100,260], mainFuseA:[6,100], batteryCapacityKwh:[1,500], inverterRatedPowerKw:[1,500],
-    maximumBatteryPowerKw:[0.1,500], evBatteryCapacityKwh:[1,500], evMaximumCurrentA:[6,80], evGridChargePowerKw:[1,100], gridImportBufferW:[0,5000]
+    maximumBatteryPowerKw:[0.1,500], maximumBatteryChargePowerKw:[0.1,500], evBatteryCapacityKwh:[1,500], evMaximumCurrentA:[6,80], evGridChargePowerKw:[1,100], gridImportBufferW:[0,5000]
 };
 function normalize(input) {
     const source = input && typeof input === 'object' ? input : {};
@@ -4610,6 +4616,9 @@ if (!mapper.func.includes('const configuredZoneName = configuredFriendlyName(ent
   mapper.func = mapper.func.replace('    return { key, name, entityId, available, active, brightness, status:', '    return { key, name:configuredZoneName, entityId, available, active, brightness, status:');
 }
 
+require('./lib/harden-wit')(flows);
+require('./lib/wit-dashboard')(flows);
+
 // Houd generieke Growatt-rollen compatibel met oudere WIT-prefixen.
 for (let index = 0; index < flows.length; index += 1) {
   const serialized = JSON.stringify(flows[index])
@@ -4651,6 +4660,14 @@ for (const item of flows) {
   // standaardconfiguratie een nieuwe versie krijgt.
   item.func = item.func
     .replace(/const essRuntimeConfig = flow\.get\('ess_system_config'\) \|\| \{[^\r\n]*?\};/g, `const essRuntimeConfig = flow.get('ess_system_config') || ${systemConfigJson};`);
+
+  // Een ontbrekende lokale WIT-koppeling mag niet terugvallen op een ander apparaat.
+  if ([ids.witGridChargeControl, ids.witEVControl, ids.witExportControl].includes(item.id)) {
+    item.func = item.func.replace(
+      'if (configuredId && rawStates[configuredId]) states[canonicalId] = rawStates[configuredId];',
+      'if (configuredId && rawStates[configuredId]) states[canonicalId] = rawStates[configuredId]; else delete states[canonicalId];'
+    );
+  }
 
   // Centrale installatiegrenzen vervangen de vroegere vaste waarden. Iedere
   // waarde behoudt een veilige standaard wanneer een lokaal profiel ontbreekt.

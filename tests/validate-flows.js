@@ -1,6 +1,13 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+// Structural assertions only. tests/wit-regression.js evaluates the full
+// JSONata expression with canonical, remapped, missing and invalid targets.
+function witActionLiteral(action, key) {
+    const match = action.data.match(new RegExp('"' + key + '":\\s*("[^"\\n]*"|[0-9.]+)'));
+    assert(match, 'Expected a fixed WIT action value');
+    return JSON.parse(match[1]);
+}
 
 const root = path.resolve(__dirname, '..');
 const flows = JSON.parse(fs.readFileSync(path.join(root, 'flows.json'), 'utf8'));
@@ -1332,13 +1339,13 @@ assert(witEVBufferModeControl, 'Bediening voor het reserveprofiel van de EV-accu
 assert.deepStrictEqual(detailTemplates.battery.wires, [[witExportModeControl.id,witEVBufferModeControl.id,witGridChargeSettingsControl.id]], 'Alleen de drie beveiligde WIT-bedienfuncties mogen dashboardopdrachten ontvangen');
 assert.deepStrictEqual(witExportModeControl.wires, [[witExportControl.id]], 'Een handmatige moduswijziging moet direct worden toegepast');
 assert.deepStrictEqual(witExportControl.wires, [[witExportAuthorityAction.id],[witExportRateAction.id],[witExportToggleAction.id]], 'WIT-regelaar moet per cyclus hoogstens één Growatt-opdracht geven');
-assert.deepStrictEqual(witExportAuthorityAction.entityId, ['select.growatt_grid_control_authority']);
-assert.strictEqual(JSON.parse(witExportAuthorityAction.data).option, 'Enabled', 'De VPP-hoofdtoestemming moet vóór de exportbegrenzing worden ingeschakeld');
+assert.strictEqual(witExportAuthorityAction.essCanonicalTarget, 'select.growatt_grid_control_authority');
+assert.strictEqual(witActionLiteral(witExportAuthorityAction, 'option'), 'Enabled', 'De VPP-hoofdtoestemming moet vóór de exportbegrenzing worden ingeschakeld');
 assert.deepStrictEqual(witExportAuthorityAction.wires, [[]], 'Growatt-opdrachten moeten door de minuutcyclus worden gescheiden');
 assert.deepStrictEqual(witExportRateAction.wires, [[]], 'Growatt-opdrachten moeten door de minuutcyclus worden gescheiden');
-assert.deepStrictEqual(witExportRateAction.entityId, ['number.growatt_grid_vpp_export_limit_power_rate']);
-assert.strictEqual(JSON.parse(witExportRateAction.data).value, 1, '1% van de 18 kW-WIT moet circa 180 W terugleverbuffer geven');
-assert.deepStrictEqual(witExportToggleAction.entityId, ['select.growatt_grid_vpp_export_limit_enable']);
+assert.strictEqual(witExportRateAction.essCanonicalTarget, 'number.growatt_grid_vpp_export_limit_power_rate');
+assert.strictEqual(witActionLiteral(witExportRateAction, 'value'), 1, '1% van de 18 kW-WIT moet circa 180 W terugleverbuffer geven');
+assert.strictEqual(witExportToggleAction.essCanonicalTarget, 'select.growatt_grid_vpp_export_limit_enable');
 assert.strictEqual(witExportAuthorityAction.blockInputOverrides, true, 'De Growatt-hoofdtoestemming mag niet vanuit een bericht worden overschreven');
 assert.strictEqual(witExportRateAction.blockInputOverrides, true, 'De WIT-exportgrens mag niet vanuit een bericht worden overschreven');
 assert.strictEqual(witExportToggleAction.blockInputOverrides, true, 'De WIT-exportschakelaar mag niet vanuit een bericht worden overschreven');
@@ -1444,20 +1451,21 @@ assert(!witEVControl.func.includes("fresh('sensor.ev_charger_power', 30000)"), '
 assert(witEVControl.func.includes("chargerPowerSource =") && witEVControl.func.includes("? 'p1'"), 'De snelle P1-meting moet als veilige reservebron voor EV-laadvermogen beschikbaar zijn');
 assert.strictEqual(witEVControl.outputs, 5);
 assert.deepStrictEqual(witEVControl.wires, [[witEVDurationAction.id],[witRemoteLivePowerAction.id],[witRemoteRenewAction.id],[witEVStopAction.id],[witExportToggleAction.id]]);
-assert.deepStrictEqual(witEVDurationAction.entityId, ['number.growatt_grid_remote_power_control_charging_time']);
-assert.deepStrictEqual(witEVRateAction.entityId, ['number.growatt_vpp_power_rate']);
-assert.deepStrictEqual(witEVModeAction.entityId, ['select.growatt_mode_vpp']);
-assert.deepStrictEqual(witEVStopAction.entityId, ['select.growatt_grid_remote_power_control_enable']);
+assert.strictEqual(witEVDurationAction.essCanonicalTarget, 'number.growatt_grid_remote_power_control_charging_time');
+assert.strictEqual(witEVRateAction.essCanonicalTarget, 'number.growatt_vpp_power_rate');
+assert.strictEqual(witEVModeAction.essCanonicalTarget, 'select.growatt_mode_vpp');
+assert.strictEqual(witEVStopAction.essCanonicalTarget, 'select.growatt_grid_remote_power_control_enable');
 assert.deepStrictEqual(witEVDurationAction.wires, [[witEVRateAction.id]], 'Eerst moet de veilige looptijd worden ingesteld');
 assert.deepStrictEqual(witEVRateAction.wires, [[witEVModeAction.id]], 'Daarna moet de lokale VPP-sterkte vóór de atomaire modus worden ingesteld');
-assert.strictEqual(JSON.parse(witEVModeAction.data).option, 'Discharge', 'De nieuwe atomaire Mode (VPP) moet voor extra ontlading worden gebruikt');
-assert.strictEqual(JSON.parse(witEVStopAction.data).option, 'Disabled', 'Een eigen tijdelijke ontlaadsessie moet expliciet kunnen stoppen');
+assert.strictEqual(witActionLiteral(witEVModeAction, 'option'), 'Discharge', 'De nieuwe atomaire Mode (VPP) moet voor extra ontlading worden gebruikt');
+assert.strictEqual(witActionLiteral(witEVStopAction, 'option'), 'Disabled', 'Een eigen tijdelijke ontlaadsessie moet expliciet kunnen stoppen');
 
 const runWitEVControl = new Function('global', 'flow', 'node', 'msg', witEVControl.func);
 const runWitEVBufferModeControl = new Function('global', 'flow', 'node', 'msg', witEVBufferModeControl.func);
 assert(witEVBufferModeControl.initialize.includes("ess_wit_audi_buffer_mode', 'normal"), 'Na een herstart moet Normaal het reserveprofiel zijn');
 assert.deepStrictEqual(witEVBufferModeControl.wires, [[witEVControl.id]], 'Een profielkeuze moet de EV-accubuffer direct opnieuw beoordelen');
 const witEVStates = {
+    'sun.sun': state('below_horizon', {next_rising:new Date(Date.now() + 24 * 3600000).toISOString()}),
     'sensor.growatt_battery_battery_soc': state(85),
     'sensor.growatt_battery_battery_power': state(-1000),
     'sensor.p1_meter_vermogen': state(4000),
@@ -1490,11 +1498,13 @@ const normalBudgetKwh = flowValues.ess_wit_audi_discharge_status.safeDischargeBu
 witEVStates['select.growatt_grid_remote_power_control_enable'] = state('Enabled');
 witEVStates['select.growatt_mode_vpp'] = state('Discharge', { options:['Hold','Charge','Discharge'] });
 witEVStates['number.growatt_battery_remote_charge_and_discharge_power'] = state(-21);
+witEVStates['sensor.growatt_battery_battery_power'] = state(-3780);
 witEVStates['sensor.p1_meter_vermogen'] = state(200);
 witEVOutput = runWitEVControl(witEVGlobalContext, flowContext, witNode, {});
 assert.strictEqual(witEVOutput[2].payload.option, 'Enabled', 'Een lopende ontlaadsessie moet alleen de korte veilige lease vernieuwen');
 assert.strictEqual(flowValues.ess_wit_audi_discharge_status.active, true, 'De EV-buffer mag pas actief melden nadat Discharge werkelijk is bevestigd');
 witEVStates['number.growatt_battery_remote_charge_and_discharge_power'] = state(-16);
+witEVStates['sensor.growatt_battery_battery_power'] = state(-2880);
 witEVStates['sensor.p1_meter_vermogen'] = state(1100);
 witEVOutput = runWitEVControl(witEVGlobalContext, flowContext, witNode, {});
 assert.strictEqual(witEVOutput[1].payload.value, -21, 'Een lopende ontlaadsessie moet via het EEPROM-veilige remote register worden bijgeregeld');
@@ -1580,19 +1590,19 @@ assert(witGridChargeSettingsControl.initialize.includes("ess_wit_grid_charge_mod
 assert(!witGridChargeControl.func.includes('departureTime') && !witGridChargeControl.func.includes('nextDeparture'), 'WIT-netladen mag geen vertrekdeadline vereisen');
 assert(witGridChargeControl.func.includes('planningHorizonMs = 24 * 60 * 60 * 1000'), 'WIT-netladen moet steeds 24 uur vooruitkijken');
 assert(witGridChargeControl.func.includes('chargeEfficiency = 0.90') && witGridChargeControl.func.includes('wearCostPerKwh'), 'Laadverlies en accuslijtage moeten in de prijsselectie meetellen');
-assert(witGridChargeControl.func.includes('installationChargeLimitW = 12000') && witGridChargeControl.func.includes('directBatteryLimitW'), 'WIT-netladen moet de installatie- en BMS-vermogensgrens respecteren');
+assert(witGridChargeControl.func.includes('specs?.maximumBatteryChargePowerKw') && witGridChargeControl.func.includes('directBatteryLimitW'), 'WIT-netladen moet de installatie- en BMS-vermogensgrens respecteren');
 assert(witGridChargeControl.func.includes('growattTelemetryFresh') && witGridChargeControl.func.includes('socUsable'), 'WIT-netladen moet een onveranderde SOC via actuele Growatt-telemetrie valideren');
 assert.strictEqual(witGridChargeControl.outputs, 5);
 assert.deepStrictEqual(witGridChargeControl.wires, [[witGridChargeDurationAction.id],[witGridChargeLivePowerAction.id],[witGridChargeRenewAction.id],[witEVStopAction.id],[witExportToggleAction.id]], 'De WIT-netlaadregelaar moet starten, bijregelen, vernieuwen, stoppen en exportbegrenzing afzonderlijk aansturen');
-assert.deepStrictEqual(witGridChargeDurationAction.entityId, ['number.growatt_grid_remote_power_control_charging_time']);
-assert.deepStrictEqual(witGridChargePowerAction.entityId, ['number.growatt_vpp_power_rate']);
-assert.deepStrictEqual(witGridChargeModeAction.entityId, ['select.growatt_mode_vpp']);
-assert.deepStrictEqual(witGridChargeLivePowerAction.entityId, ['number.growatt_battery_remote_charge_and_discharge_power']);
-assert.deepStrictEqual(witGridChargeRenewAction.entityId, ['select.growatt_grid_remote_power_control_enable']);
+assert.strictEqual(witGridChargeDurationAction.essCanonicalTarget, 'number.growatt_grid_remote_power_control_charging_time');
+assert.strictEqual(witGridChargePowerAction.essCanonicalTarget, 'number.growatt_vpp_power_rate');
+assert.strictEqual(witGridChargeModeAction.essCanonicalTarget, 'select.growatt_mode_vpp');
+assert.strictEqual(witGridChargeLivePowerAction.essCanonicalTarget, 'number.growatt_battery_remote_charge_and_discharge_power');
+assert.strictEqual(witGridChargeRenewAction.essCanonicalTarget, 'select.growatt_grid_remote_power_control_enable');
 assert.deepStrictEqual(witGridChargeDurationAction.wires, [[witGridChargePowerAction.id]], 'De veilige looptijd moet vóór de VPP-laadsterkte worden ingesteld');
 assert.deepStrictEqual(witGridChargePowerAction.wires, [[witGridChargeModeAction.id]], 'De VPP-laadsterkte moet vóór de atomaire Charge-opdracht worden ingesteld');
 assert.deepStrictEqual(witGridChargeModeAction.wires, [[]], 'De atomaire Charge-opdracht mag geen verborgen vervolgopdracht starten');
-assert.strictEqual(JSON.parse(witGridChargeModeAction.data).option, 'Charge');
+assert.strictEqual(witActionLiteral(witGridChargeModeAction, 'option'), 'Charge');
 const runWitGridChargeSettings = new Function('global', 'flow', 'node', 'msg', witGridChargeSettingsControl.func);
 const runWitGridCharge = new Function('global', 'flow', 'node', 'msg', witGridChargeControl.func);
 assert.strictEqual(runWitGridChargeSettings(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic:'ess/wit/grid-charge-mode', payload:'invalid' }), null, 'Onbekende WIT-netlaadstand moet worden geweigerd');
@@ -1610,6 +1620,8 @@ const priceSlots = [-0.20,0.20,0.30,0.40].map((allInPrice,index) => ({
     allInPrice
 }));
 const witGridStates = {
+    'sensor.growatt_solar_solar_total_power':state(0, { unit_of_measurement:'W' }),
+    'sun.sun': state('below_horizon', {next_rising:new Date(Date.now() + 24 * 3600000).toISOString()}),
     'sensor.growatt_battery_battery_soc': state(35),
     'sensor.growatt_battery_battery_power': state(0, { unit_of_measurement:'W' }),
     'sensor.p1_meter_vermogen_fase_1': state(-500, { unit_of_measurement:'W' }),
@@ -1656,7 +1668,11 @@ witGridStates['select.growatt_mode_vpp'] = state('Charge', { options:['Hold','Ch
 witGridStates['select.growatt_grid_remote_power_control_enable'] = state('Enabled', { options:['Disabled','Enabled'] });
 witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
 assert.strictEqual(witGridOutput[2].payload.option, 'Enabled', 'Een bevestigde eigen Charge-opdracht moet alleen de veilige lease vernieuwen');
-assert.strictEqual(flowValues.ess_wit_grid_charge_status.active, true, 'Dashboardstatus moet pas na echte Charge-bevestiging actief worden');
+assert.strictEqual(flowValues.ess_wit_grid_charge_status.active, false, 'Een Charge-opdracht zonder accuvermogen is nog niet actief');
+assert.strictEqual(flowValues.ess_wit_grid_charge_status.commandConfirmed, true);
+witGridStates['sensor.growatt_battery_battery_power'] = state(11880, { unit_of_measurement:'W' });
+runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
+assert.strictEqual(flowValues.ess_wit_grid_charge_status.active, true, 'Dashboardstatus moet pas na gemeten acculaadvermogen actief worden');
 
 witGridStates['number.growatt_battery_remote_charge_and_discharge_power'] = state(requestedChargePercent - 5, { unit_of_measurement:'%' });
 witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});

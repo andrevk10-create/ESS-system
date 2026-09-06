@@ -36,7 +36,7 @@ This repository contains neutral defaults only. Names, addresses, IP addresses, 
 - Automatic solar- and price-based charging within configurable current and grid-connection limits.
 - Separate guaranteed departure SOC and maximum SOC for solar charging.
 - Selection of the cheapest 15-minute slots before the configured departure time.
-- Minimum continuous charging blocks of 30 minutes.
+- Charging blocks of at least 15 minutes, without needless stop/start commands between adjacent planned quarters.
 - No automatic phase switching during normal charging; switching is allowed only when demonstrably required by the charging plan.
 - Immediate charging uses the maximum safely available power.
 - Start verification, confirmation of actual charging power, limited recovery attempts, and fault reporting.
@@ -57,7 +57,11 @@ This repository contains neutral defaults only. Names, addresses, IP addresses, 
 - Additional discharge during EV charging only when the forecast leaves enough energy to recharge the home battery.
 - **Eco**, **Normal**, and **EV priority** reserve profiles.
 - Short-lived commands and safe fallback when Home Assistant, Node-RED, or Modbus becomes unavailable.
+- Lease renewal after power changes, protected export handover, date-aware overnight solar forecasts and reuse of valid cached day-ahead prices.
+- Separate requested/measured battery power, learned household reserve and optional directional BMS power/current limits.
 - Historical sensors for requested and actual power, energy budget, cost, SOC, forecast, and decision reason.
+
+See [WIT control and diagnostics](docs/wit-control-and-diagnostics.md) for configuration, limitations and safe verification after deploying an update.
 
 ### Control and reliability
 

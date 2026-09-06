@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "siteName": "Smart ESS",
   "modules": {
     "energy": true,
@@ -18,12 +18,18 @@
     "batteryCapacityKwh": 20,
     "inverterRatedPowerKw": 15,
     "maximumBatteryPowerKw": 8,
+    "maximumBatteryChargePowerKw": 8,
     "evBatteryCapacityKwh": 75,
     "evMaximumCurrentA": 16,
     "evGridChargePowerKw": 7.4,
     "gridImportBufferW": 200
   },
   "entities": {
+    "sensor.battery_charge_power_limit": "",
+    "sensor.battery_charge_current_limit": "",
+    "sensor.battery_discharge_power_limit": "",
+    "sensor.battery_discharge_current_limit": "",
+    "sensor.growatt_battery_battery_voltage": "",
     "sensor.p1_meter_vermogen": "sensor.p1_meter_vermogen",
     "sensor.p1_meter_vermogen_fase_1": "sensor.p1_meter_vermogen_fase_1",
     "sensor.p1_meter_vermogen_fase_2": "sensor.p1_meter_vermogen_fase_2",

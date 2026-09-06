@@ -36,7 +36,7 @@ De repository bevat uitsluitend neutrale standaardwaarden. Namen, adressen, IP-a
 - Automatische zonne- en prijsregeling binnen configureerbare stroom- en aansluitgrenzen.
 - Afzonderlijk gegarandeerd vertrek-SOC en maximaal SOC voor zonneladen.
 - Selectie van de goedkoopste kwartieren vóór de ingestelde vertrektijd.
-- Minimaal aaneengesloten laadblokken van een half uur.
+- Laadblokken van minimaal een kwartier, zonder onnodige stop/start-opdrachten tussen aansluitende geplande kwartieren.
 - Geen automatische fasewissel tijdens normaal laden; alleen wanneer de planning dit aantoonbaar nodig heeft.
 - Direct laden gebruikt het maximaal veilig beschikbare vermogen.
 - Startcontrole, bevestiging van werkelijk laadvermogen, beperkte herstelpogingen en storingsmelding.
@@ -57,7 +57,11 @@ De repository bevat uitsluitend neutrale standaardwaarden. Namen, adressen, IP-a
 - Extra ontladen tijdens EV-laden alleen wanneer de prognose voldoende herlaadruimte laat.
 - Reserveprofielen **Eco**, **Normaal** en **EV voorrang**.
 - Korte opdrachten en veilige terugval wanneer Home Assistant, Node-RED of Modbus uitvalt.
+- Vernieuwing na vermogenswijzigingen, beveiligde overdracht van exportbegrenzing, juiste zonnedatum na middernacht en hergebruik van geldige bekende kwartierprijzen.
+- Afzonderlijk gevraagd/gemeten accuvermogen, geleerde woningreserve en optionele BMS-vermogens-/stroomgrenzen per richting.
 - Historische sensoren voor gevraagd/werkelijk vermogen, energiebudget, kosten, SOC, prognose en beslisreden.
+
+Zie [WIT-bediening en diagnose](docs/wit-control-and-diagnostics.md#nederlands) voor de instellingen, beperkingen en veilige controle na een update.
 
 ### Bediening en betrouwbaarheid
 
