@@ -2,17 +2,17 @@
 .ess-dashboard-widget{height:auto!important;max-height:none!important;overflow:visible!important;min-width:0}
 .nrdb-ui-group:has(.ess-dashboard-widget){background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
 .nrdb-ui-group:has(.ess-dashboard-widget)>.v-card-text{padding:0!important;overflow:visible!important}
-.ess-refresh.mp-shell{--ink:#172e35;--muted:#52666e;--line:#dce5e7;--paper:#fff;--teal:#13786f;--green:#18724d;--sun:#9a6400;--violet:#6844ad;max-width:1440px;min-height:0;padding:20px 24px 32px;gap:0;font:400 1rem/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:visible;isolation:isolate}
+.ess-refresh.mp-shell{--ink:#14252b;--muted:#607178;--line:#dce6e7;--paper:#fff;--teal:#0a7c72;--green:#2b8b57;--sun:#9a6400;--violet:#7356b6;max-width:1440px;min-height:0;padding:20px 24px 32px;gap:0;font:400 1rem/1.5 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:visible;isolation:isolate}
 .ess-refresh :is(button,input,select,textarea){font:inherit}
 .ess-refresh :is(button,a,input,select,textarea,summary):focus-visible{outline:3px solid #0c8179;outline-offset:3px}
 .ess-refresh :is(button,summary,select){cursor:pointer}
 .ess-refresh button:disabled{cursor:not-allowed}
-.ess-refresh :is(.mp-hero,.mp-page-head){min-height:68px;padding:12px 18px;border-radius:12px;background:#153f45;box-shadow:none;flex-direction:row;align-items:center}
-.ess-refresh :is(.mp-hero,.mp-page-head):after{display:none}
+.ess-refresh :is(.mp-hero,.mp-page-head){min-height:68px;padding:12px 18px;border-radius:22px;background:linear-gradient(125deg,#102d35,#174c50 62%,#14776d);box-shadow:0 10px 24px rgba(16,45,53,.13);flex-direction:row;align-items:center}
+.ess-refresh :is(.mp-hero,.mp-page-head):after{display:block;pointer-events:none}
 .ess-refresh :is(.mp-hero h1,.mp-page-head h1){font-size:clamp(1.3rem,2.4vw,1.8rem);letter-spacing:-.025em;line-height:1.2}
 .ess-refresh .mp-title{min-width:0;gap:10px}
 .ess-refresh :is(.mp-live,.mp-kicker){font-size:.8125rem;white-space:normal}
-.ess-refresh :is(.mp-icon,.mp-back){width:40px;min-width:40px;height:40px;min-height:40px;border:0;border-radius:8px}
+.ess-refresh :is(.mp-icon,.mp-back){width:40px;min-width:40px;height:40px;min-height:40px;border:0;border-radius:13px}
 .ess-refresh .ess-nav{position:sticky;top:0;z-index:8;display:flex;gap:4px;flex-wrap:wrap;margin:0 0 16px;padding:10px 0;background:#f5f8f9}
 .ess-refresh .ess-nav a,.ess-refresh .ess-more>summary{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 12px;color:#425b62;text-decoration:none;border-radius:8px;font-size:.875rem;font-weight:600;list-style:none}
 .ess-refresh .ess-nav a:hover{background:#e7efef}
@@ -21,7 +21,7 @@
 .ess-refresh .ess-more summary::-webkit-details-marker{display:none}
 .ess-refresh .ess-section-label{margin:18px 0 8px;color:var(--muted);font-size:.8125rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
 .ess-refresh .panel-grid{gap:16px;margin-top:0;align-items:start}
-.ess-refresh :is(.panel,.metric,.load-card,.light-card,.climate-card,.nas-card,.quick-action,.health-card){border:1px solid var(--line);border-radius:12px;box-shadow:none;min-width:0}
+.ess-refresh :is(.panel,.metric,.load-card,.light-card,.climate-card,.nas-card,.quick-action,.health-card){border:1px solid var(--line);border-radius:18px;box-shadow:0 5px 18px rgba(20,37,43,.045);min-width:0}
 .ess-refresh .panel{padding:20px}
 .ess-refresh :is(.panel-head,.climate-card-head,.light-card-head){gap:12px;align-items:start}
 .ess-refresh :is(.panel-head b,.light-card-head b,.climate-card-head b,.load-title b){font-size:1rem;line-height:1.4}
@@ -31,25 +31,25 @@
 .ess-refresh :is(.metric b,.plan-card b,.charge-strip b,.health-card b,.sensor b,.sensor strong,.nas-card b,.vehicle-grid b){white-space:normal;overflow:visible;overflow-wrap:anywhere;text-overflow:clip;line-height:1.3}
 .ess-refresh .metric-grid{gap:12px;margin:0;grid-template-columns:repeat(4,minmax(0,1fr))}
 .ess-refresh .metric{padding:16px;background:#fff}
-.ess-refresh .metric:before{width:3px}
+.ess-refresh .metric:before{width:4px}
 .ess-refresh .metric b{font-size:clamp(1.55rem,2.2vw,2.05rem);margin:6px 0;font-variant-numeric:tabular-nums}
 .ess-refresh .panel .metric{border:0;border-radius:0;padding:8px 12px;background:transparent}
 .ess-refresh .panel .metric:before{display:none}
 .ess-refresh :is(.charge-status b,.plan-card b,.plan-clock-summary b,.target-value b,.nas-card b){font-size:1.125rem;font-variant-numeric:tabular-nums}
 .ess-refresh :is(.big-value,.climate-now strong,.light-level strong,.load-reading strong){font-size:2rem;font-variant-numeric:tabular-nums}
-.ess-refresh :is(.charge-strip,.control-row,.notice,.privacy-note){border-radius:9px;box-shadow:none;font-size:.875rem}
-.ess-refresh .charge-strip{margin:16px 0;background:#f5f2fb;padding:14px 16px}
+.ess-refresh :is(.charge-strip,.control-row,.notice,.privacy-note){border-radius:14px;box-shadow:none;font-size:.875rem}
+.ess-refresh .charge-strip{margin:16px 0;background:var(--violet-soft);padding:14px 16px}
 .ess-refresh .charge-strip b{font-size:.9375rem}
 .ess-refresh .quick-actions{margin:16px 0;gap:12px}
 .ess-refresh .quick-action{min-height:64px;padding:12px 14px}
 .ess-refresh .quick-action b{font-size:.9375rem}
 .ess-refresh .quick-action small{font-size:.8125rem}
 .ess-refresh .nav-grid{display:none}
-.ess-refresh :is(.touch-button,.mini-toggle,.climate-power,.light-toggle,.target-control button){min-height:44px;min-width:44px;border-radius:8px;font-size:.875rem;box-shadow:none}
-.ess-refresh .touch-button{padding:10px 16px}
-.ess-refresh .touch-button.active{background:#dcefeb;border-color:#8abfb7;color:#125c53}
+.ess-refresh :is(.touch-button,.mini-toggle,.climate-power,.light-toggle,.target-control button){min-height:44px;min-width:44px;border-radius:14px;font-size:.875rem;box-shadow:none}
+.ess-refresh .touch-button{padding:10px 16px;border-radius:999px}
+.ess-refresh .touch-button.active{background:#e3f6eb;border-color:#75c79d;color:#23754a}
 .ess-refresh :is(.control-row,.wit-mode-control){flex-wrap:wrap;gap:12px}
-.ess-refresh .control-row{padding:14px;background:#f5f7f9}
+.ess-refresh .control-row{padding:14px;background:var(--violet-soft)}
 .ess-refresh .control-row b{font-size:.9375rem}
 .ess-refresh .control-row small{font-size:.8125rem;white-space:normal}
 .ess-refresh .battery-hero{grid-template-columns:140px minmax(0,1fr);gap:24px;align-items:center}
@@ -58,17 +58,13 @@
 .ess-refresh .battery-ring b{font-size:1.8rem}
 .ess-refresh .ess-battery-now{display:grid;gap:8px}
 .ess-refresh .ess-battery-now .subtle{font-size:.9375rem}
-.ess-refresh .vehicle{padding:12px;border:0;border-radius:8px;background:#f6f9f9}
+.ess-refresh .vehicle{padding:12px;border:1px solid #e3ebeb;border-radius:18px;background:linear-gradient(145deg,#f8fcfa,#fff)}
 .ess-refresh .vehicle-main{gap:10px}
 .ess-refresh .vehicle-main>div{padding:10px;min-width:0}
 .ess-refresh .vehicle-main span{font-size:.75rem;line-height:1.4;white-space:normal}
 .ess-refresh .vehicle-main b{font-size:1rem;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
 .ess-refresh .vehicle-main>div:nth-child(2) b,.ess-refresh .vehicle-main>div:nth-child(4) b{font-size:1.5rem;color:#174f49}
 .ess-refresh .ess-state{display:inline-flex;align-items:center;gap:6px;font-size:.875rem;color:var(--muted)}
-.ess-refresh .ess-status-summary{display:flex;align-items:start;justify-content:space-between;gap:16px;padding:14px 16px;margin:12px 0 16px;border:1px solid #d4e5df;background:#f3f8f5;border-radius:10px;font-size:.875rem}
-.ess-refresh .ess-status-summary.warn{background:#fff9ed;border-color:#e9c987}
-.ess-refresh .ess-status-summary.error{background:#fff3f2;border-color:#db9e99}
-.ess-refresh .ess-status-summary a{flex-shrink:0;color:inherit;text-underline-offset:3px;font-weight:600}
 .ess-refresh .ess-details{grid-column:1/-1}
 .ess-refresh .ess-details>summary{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:44px;list-style:none;font-size:.9375rem;font-weight:600}
 .ess-refresh .ess-details>summary:after{content:'+';font-size:1.3rem;color:var(--muted)}
@@ -78,7 +74,7 @@
 .ess-refresh .ess-details>summary small{font-weight:400;color:var(--muted);margin-left:auto}
 .ess-refresh .ess-details .panel{border:0;padding:12px 0;box-shadow:none}
 .ess-refresh :is(.plan-grid,.plan-clock-summary){gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
-.ess-refresh :is(.plan-card,.setting,.charge-status>div){padding:12px;border-radius:8px;background:#f5f7f9;border:0}
+.ess-refresh :is(.plan-card,.setting,.charge-status>div){padding:12px;border-radius:12px;background:#faf9fe;border:1px solid #e5e1f1}
 .ess-refresh :is(.setting select,.setting input,.config-field input,.config-field select){font-size:1rem;min-height:46px}
 .ess-refresh .plan-clock{margin-top:18px;padding:14px;background:#fff;border:1px solid var(--line)}
 .ess-refresh .plan-clock-summary{margin-bottom:16px}
@@ -104,10 +100,10 @@
 .ess-refresh .ess-slot-list li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.875rem}
 .ess-refresh .ess-slot-list ul{list-style:none;margin:0;padding:0}
 .ess-refresh .ess-flow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.ess-refresh .ess-flow-node{border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:6px;background:#f8fafb}
+.ess-refresh .ess-flow-node{border:1px solid var(--line);border-radius:17px;padding:14px;display:grid;gap:6px;background:linear-gradient(145deg,#fafcfc,#fff)}
 .ess-refresh .ess-flow-node b{font-size:1.6rem;font-variant-numeric:tabular-nums}
 .ess-refresh .ess-flow-node>span{font-size:.875rem}
-.ess-refresh .ess-flow-node.house{border-color:#97bcb5;background:#edf6f3}
+.ess-refresh .ess-flow-node.house{border-color:#b7ded2;background:linear-gradient(145deg,#eaf7f1,#f8fcfa)}
 .ess-refresh .ess-flow-node small{color:var(--muted)}
 .ess-refresh .ess-flow-direction{color:#16685e;font-weight:600}
 .ess-refresh .ess-flow-bus{grid-column:1/-1;display:flex;align-items:center;gap:14px;color:var(--muted);font-size:.8125rem}
@@ -134,7 +130,11 @@
 .ess-refresh .health-card b{font-size:.9375rem}
 .ess-refresh .health-card small{font-size:.8125rem}
 .ess-refresh .health-card.ok{background:#fff;border-color:var(--line)}
-.ess-refresh .alarm-item{font-size:.9375rem;padding:14px}
+.ess-refresh .ess-alerts .panel-head{margin-bottom:10px}
+.ess-refresh .alarm-list{gap:5px}
+.ess-refresh .alarm-item{font-size:.8125rem;line-height:1.45;padding:7px 10px;border-radius:10px;box-shadow:none}
+.ess-refresh .alarm-item>span{min-width:0;overflow-wrap:anywhere}
+.ess-refresh .alarm-item .v-icon{flex-shrink:0;margin-top:1px}
 .ess-refresh .nas-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
 .ess-refresh .nas-card{background:#f8fafb;padding:14px}
 .ess-refresh .config-map{max-height:none;overflow:visible;padding:0}
@@ -176,7 +176,7 @@
  .ess-refresh .metric{padding:12px}
  .ess-refresh .metric b{font-size:1.55rem}
  .ess-refresh .metric small{font-size:.75rem}
- .ess-refresh :is(.panel-head,.ess-status-summary){flex-wrap:wrap;gap:8px}
+ .ess-refresh .panel-head{flex-wrap:wrap;gap:8px}
  .ess-refresh :is(.quick-actions,.plan-grid,.load-grid,.light-grid,.climate-grid,.heat-pump-grid,.config-grid,.health-grid){grid-template-columns:minmax(0,1fr)}
  .ess-refresh .ess-flow-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .ess-refresh .ess-flow-node{padding:12px}

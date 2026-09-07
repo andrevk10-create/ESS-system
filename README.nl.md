@@ -10,14 +10,14 @@ De repository bevat uitsluitend neutrale standaardwaarden. Namen, adressen, IP-a
 
 ### Dashboard
 
-- **Overzicht** met actuele energiestromen, datakwaliteit, meldingen, EV-snelacties en navigatie.
+- **Overzicht** met actuele energiestromen, datakwaliteit, EV-snelacties en navigatie.
 - **Zon & net** met P1-import/export, fasebelasting, actuele productie, dagtotalen en verwachtingen voor vandaag en morgen.
 - **Accu & omvormer** met SOC, laad- en ontlaadvermogen, exportbegrenzing, reserveprofielen en slim netladen.
 - **EV & laden** met laadstatus, laadvermogen, vertrek-SOC, zonne-SOC, vertrektijd, prijsplanning en een kwartiertijdlijn.
 - **Verbruikers** met actuele vermogens en een beveiligde bediening voor een configureerbare flexibele last.
 - **Verlichting** met acht configureerbare lichtzones, aan/uit en dimniveau.
 - **Klimaat** met configureerbare koel-, verwarmings-, warmtepomp- en tapwaterzones.
-- **Systeem** met datakwaliteit, waarschuwingen en optionele NAS-status.
+- **Systeem** met datakwaliteit, compacte algemene alarmen (alleen hier getoond) en optionele NAS-status.
 - **Configuratie** voor modules, installatiegrenzen en Home Assistant-entiteitskoppelingen.
 
 Alle negen pagina’s hebben leesbare tekst, consistente bediening, desktopnavigatie en een mobiele onderbalk. De laadplannen van auto en thuisaccu staan samen met de kwartierprijzen in één alleen-lezen tijdlijn. Technische details zijn inklapbaar, actieve verbruikers staan bovenaan, ongebruikte zones blijven verborgen en ontbrekende metingen worden niet als nul weergegeven. Configuratie heeft gegroepeerde koppelingen, een zoekfunctie, een filter voor ontbrekende/offline entiteiten en een melding voor niet-opgeslagen wijzigingen. Zie [dashboard en lokale voorbeeldweergave](docs/dashboard-interface.md).

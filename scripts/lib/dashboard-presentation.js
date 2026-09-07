@@ -99,7 +99,6 @@ function navigation(route) {
     const link = ([,target,label,icon,module], mobile=false) => `<a href="./${target}"${target===route?' aria-current="page"':''}${module?` v-if="navigationModules.${module}!==false${module==='battery'?'||navigationModules.inverter!==false':''}"`:''} class="${!mobile&&pages.findIndex(page=>page[1]===target)>3?'ess-nav-secondary':''}"><v-icon icon="${icon}" size="20"></v-icon><span>${label}</span></a>`;
     return `<nav class="ess-nav" aria-label="Hoofdnavigatie">${pages.map(page=>link(page)).join('')}<details class="ess-more"><summary><v-icon icon="mdi-dots-horizontal" size="20"></v-icon><span>Meer</span></summary><div class="ess-more-menu">${pages.slice(4).map(page=>link(page,true)).join('')}</div></details></nav>`;
 }
-const alertSummary = `<aside class="ess-status-summary" :class="{warn:activeAlerts.length,error:activeAlerts.some(item=>item.level==='error')}" v-if="activeAlerts.length" role="status"><div><b>{{activeAlerts.length}} aandachtspunt{{activeAlerts.length===1?'':'en'}}</b><div>{{activeAlerts[0].text}}</div></div><a href="./systeem">Bekijken</a></aside>`;
 const timeline = `<section class="ess-timeline" aria-label="Gezamenlijke laadplanning"><h3>Komende 24 uur</h3><div class="ess-timeline-row" v-if="navigationModules.ev!==false"><span>Auto · gepland laden</span><div class="ess-timeline-track"><i v-for="cell in combinedPlan.cells" :key="'ev-'+cell.key" :class="{ev:cell.ev,now:cell.now}" :title="cell.time+(cell.ev?' · Auto gepland':' · Niet gepland')"></i></div></div><div class="ess-timeline-row" v-if="navigationModules.battery!==false"><span>Thuisaccu · gepland netladen</span><div class="ess-timeline-track"><i v-for="cell in combinedPlan.cells" :key="'wit-'+cell.key" :class="{wit:cell.wit,now:cell.now}" :title="cell.time+(cell.wit?' · Accu gepland':' · Niet gepland')"></i></div></div><div class="ess-timeline-row"><span>Stroomprijs · all-in per kWh</span><div class="ess-timeline-track ess-price-bars"><i v-for="cell in combinedPlan.cells" :key="'price-'+cell.key" :class="{missing:cell.rate===null,negative:cell.rate!==null&&cell.rate<0,now:cell.now}" :style="{height:cell.height+'%'}" :title="cell.time+' · '+priceLabel(cell.rate)"></i></div></div><div class="ess-timeline-axis"><span v-for="label in combinedPlan.labels" :key="label.key">{{label.text}}</span></div><p class="subtle">Groen: accu · paars: auto · omlijning: huidig kwartier. Planning is geen bevestiging van werkelijk laden.</p><details class="ess-slot-list"><summary>Laadblokken en kwartierprijzen</summary><p v-if="!combinedPlan.blocks.length" class="subtle">Geen laadblokken gepland.</p><ul><li v-for="(block,index) in combinedPlan.blocks" :key="index"><b>{{block.name}}</b><span>{{slotRange(block.start,block.end)}}</span></li></ul><details><summary>Alle kwartierprijzen</summary><ul><li v-for="cell in combinedPlan.cells" :key="cell.key"><span>{{cell.time}}</span><b>{{priceLabel(cell.rate)}}</b></li></ul></details></details></section>`;
 const empty = text => `<div class="ess-empty">${text} <a href="./configuratie">Naar Configuratie</a></div>`;
 
@@ -149,7 +148,9 @@ function apply(flows) {
         let template = node.format.slice('<template>'.length,templateEnd);
         let rest = node.format.slice(templateEnd);
         template = template.replace('class="mp-shell"',`class="mp-shell ess-refresh ess-page-${route}"`);
-        template = template.replace('</header>','</header>'+navigation(route)+(route!=='systeem'&&route!=='configuratie'?alertSummary:''));
+        // Global alarms belong on System only. Keep device status and local
+        // configuration feedback in place, without duplicating alert banners.
+        template = template.replace('</header>','</header>'+navigation(route));
         const computed = {...viewComputed};
         rest = rest.replace('computed:{','computed:{\n'+serializeMethods(computed)+',');
         rest = rest.replace('methods:{',`methods:{\nnumberOrNull:${numberOrNull.toString()},makePlanView:${planView.toString()},\n`+serializeMethods(viewMethods)+',');
@@ -216,7 +217,7 @@ function apply(flows) {
         }
         if (route==='systeem') {
             const alerts = panelsOf(template).find(panel=>panel.includes('<b>Actieve meldingen</b>'));
-            template = template.replace(alerts,'').replace('<section class="panel-grid">','<section class="panel-grid">'+alerts.replace('span-8','span-12'));
+            template = template.replace(alerts,'').replace('<section class="panel-grid">','<section class="panel-grid">'+alerts.replace('span-8','span-12 ess-alerts'));
             const nas = panelsOf(template).find(panel=>panel.includes('<b>Synology NAS'));
             template = template.replace(nas,details(nas,'NAS-details','Metingen en apparaatstatus').replace('<details class="panel ess-details">','<details class="panel ess-details" v-if="modules.nas!==false">'));
             template = replacePanel(template,'Bedrijfsmodus',panel=>details(panel,'Technische bedrijfsmodus'));

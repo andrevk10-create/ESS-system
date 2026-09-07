@@ -65,6 +65,8 @@ async function main() {
         assert.equal((node.format.match(/aria-label="Hoofdnavigatie"/g)||[]).length,1);
         assert(node.format.includes(`href="./${route}" aria-current="page"`));
         assert(node.format.includes('prefers-reduced-motion'));
+        assert(!node.format.includes('ess-status-summary'),'No repeated global alarm banners');
+        assert(node.format.includes('linear-gradient(125deg,#102d35,#174c50 62%,#14776d)'),'Keep the original gradient visual style');
         const component=componentFor(node);
         for(const scenario of ['normal','offline','empty']) {
             const model=demo(flows,scenario);
@@ -75,8 +77,17 @@ async function main() {
             app.config.warnHandler=message=>errors.push(message);
             app.config.errorHandler=error=>errors.push(error.message);
             const html=await renderToString(app);
+            const alarmClasses=Array.from(html.matchAll(/class="([^"]*)"/g),match=>match[1].split(/\s+/)).filter(classes=>classes.includes('alarm-item'));
             assert.deepEqual(errors,[],route+' '+scenario+' render');
             assert(html.includes('ess-refresh'),route+' renders its shell');
+            if(route==='systeem'&&scenario==='offline') {
+                assert(html.includes('class="panel span-12 ess-alerts"'));
+                assert(alarmClasses.some(classes=>classes.includes('error')),'System must retain actual error details');
+                assert(html.includes('WIT-regeling: P1-meetdata ontbreekt of is te oud'));
+            } else if(route!=='systeem') {
+                assert.equal(alarmClasses.length,0,'Global alarm lists belong only on System');
+                assert(!html.includes('aandachtspunten'),'No global alarm summary on working pages');
+            }
         }
         if(route!=='configuratie') {
             assert.equal(typeof component.mounted,'function');

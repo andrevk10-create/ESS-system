@@ -10,14 +10,14 @@ This repository contains neutral defaults only. Names, addresses, IP addresses, 
 
 ### Dashboard
 
-- **Overview** with live energy flows, data quality, alerts, EV quick actions, and navigation.
+- **Overview** with live energy flows, data quality, EV quick actions, and navigation.
 - **Solar & grid** with P1 import/export, phase loads, current production, daily totals, and forecasts for today and tomorrow.
 - **Battery & inverter** with SOC, charge and discharge power, export limitation, reserve profiles, and smart grid charging.
 - **EV & charging** with charging status, charging power, departure SOC, solar SOC, departure time, price planning, and a 15-minute timeline.
 - **Loads** with current power and protected control of a configurable flexible load.
 - **Lighting** with eight configurable lighting zones, on/off control, and brightness.
 - **Climate** with configurable cooling, heating, heat-pump, and domestic-hot-water zones.
-- **System** with data quality, warnings, and optional NAS status.
+- **System** with data quality, compact global alarms (shown only here), and optional NAS status.
 - **Configuration** for modules, installation limits, and Home Assistant entity mappings.
 
 All nine pages share readable typography, consistent controls, desktop navigation and a mobile bottom bar. EV charging, battery charging and quarter-hour prices appear in one read-only timeline. Optional technical details are collapsible; active loads appear first, unused zones stay hidden and missing measurements remain distinct from zero. Configuration includes grouped entity search, a missing/offline filter and an unsaved-changes indicator. See [dashboard interface and local preview](docs/dashboard-interface.md).
