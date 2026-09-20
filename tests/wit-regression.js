@@ -148,9 +148,11 @@ async function main() {
     assert.equal(f.run('esswitexport_ctrl'), null, 'Pending discharge handover owns export control');
     assert.equal(f.run('esswitaudi_ctrl1')[0].payload.powerPercent, 21, 'Watt-based EV power must be supported');
     f.values.ess_wit_audi_discharge_status = {};
+    f.values.ess_wit_discharge_watch = null;
     f.s['select.growatt_mode_vpp'].state = 'unknown';
     assert(f.run('esswitaudi_ctrl1')[0], 'An unknown optimistic mode after HA startup must not block a new timed session');
     f.values.ess_wit_audi_discharge_status = {};
+    f.values.ess_wit_discharge_watch = null;
     f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:40, recentDays:[{kwh:40}]};
     assert.equal(f.run('esswitaudi_ctrl1'), null, 'No surplus after house and refill means no extra discharge');
     f.values.ess_house_consumption_learning = {};
@@ -159,6 +161,108 @@ async function main() {
     assert.equal(f.run('esswitaudi_ctrl1'), null, 'BMS zero discharge cap must block start');
 
     // Fail-safe target mapping: no accidental writes to the default device.
+    // Missing/offline Easee and even a full-day cached EV plan cannot exclude
+    // economical WIT slots. Live phase headroom remains mandatory.
+    for (const chargerState of [null, 'unknown', 'unavailable', 'disconnected']) {
+        f = fixture();
+        f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);
+        if (chargerState === null) {
+            delete f.s['sensor.ev_charger_status']; delete f.s['sensor.ev_charger_power'];
+            delete f.values.ess_audi_control_status;
+        } else {
+            f.s['sensor.ev_charger_status'] = reading(chargerState, '', now);
+            f.s['sensor.ev_charger_power'] = reading('unavailable', 'W', now);
+            f.s['binary_sensor.ev_charger_online'] = reading('off', '', now);
+            f.values.ess_audi_control_status = {selectedSlots:[{start:new Date(now-3600000).toISOString(),end:new Date(now+86400000).toISOString()}]};
+        }
+        assert(f.run('esswitgrid_ctrl1')[0], 'Grid charge must be independent of Easee');
+        f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled', '', now);
+        f.s['sensor.p1_meter_vermogen_fase_1'] = reading(5060, 'W', now);
+        assert(f.run('esswitgrid_ctrl1')[3], 'No available phase headroom must stop the owned session');
+    }
+    f = fixture();
+    f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);
+    f.values.ess_wit_audi_discharge_status = {sessionOwned:true, updatedAt:new Date(now-300000).toISOString()};
+    assert(f.run('esswitgrid_ctrl1')[0], 'Stale reservation with fresh Disabled readback must not block independent grid charging');
+    f = fixture();
+    f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);
+    f.values.ess_wit_audi_discharge_status = {sessionOwned:true, updatedAt:new Date(now).toISOString()};
+    assert.equal(f.run('esswitgrid_ctrl1'),null, 'Never overlap with a live discharge session');
+
+    const refresh = () => {
+        now += 60000;
+        for (const item of Object.values(f.s)) item.last_reported = new Date(now).toISOString();
+        if (f.values.ess_audi_control_status) f.values.ess_audi_control_status.updatedAt = new Date(now).toISOString();
+    };
+    // Exercise both controllers, with and without matching register readback.
+    for (const id of ['esswitgrid_ctrl1','esswitaudi_ctrl1']) {
+        for (const acknowledged of [false,true]) {
+            now = date(6,20); f = fixture();
+            const charge = id === 'esswitgrid_ctrl1';
+            const statusKey = charge ? 'ess_wit_grid_charge_status' : 'ess_wit_audi_discharge_status';
+            f.s['sensor.growatt_battery_battery_soc'] = reading(charge ? 35 : 85, '%', now);
+            f.s['sensor.energy_production_tomorrow'] = reading(charge ? 2 : 60,'kWh',now);
+            output = f.run(id); assert(output[0]);
+            if (acknowledged) {
+                f.s['select.growatt_grid_remote_power_control_enable'].state = 'Enabled';
+                f.s['number.growatt_battery_remote_charge_and_discharge_power'].state = String((charge?1:-1)*output[0].payload.powerPercent);
+            }
+            refresh(); output = f.run(id);
+            assert(!output || !output[0], 'No repeated atomic command during first response window');
+            refresh(); output = f.run(id);
+            assert.equal(output[0].payload.durationMinutes,2,'One bounded recovery, always a short lease');
+            refresh(); output = f.run(id);
+            assert(!output || !output[0]);
+            refresh(); output = f.run(id);
+            assert(f.values.ess_wit_command_fault,'Non-response must latch, not renew indefinitely');
+            if (acknowledged) assert.equal(output[3].payload.option,'Disabled');
+            assert.equal(f.values[statusKey].active,false);
+            f.s['select.growatt_grid_remote_power_control_enable'].state = 'Disabled';
+            for (let i=0;i<3;i++) { refresh(); assert.equal(f.run(id),null); }
+            assert.equal(f.values[statusKey].sessionOwned,false);
+            assert.match(witHealthModel(f.s,f.flow,now).status,/geblokkeerd/,'Fault stays visible after safe stop');
+            f.values.ess_wit_command_fault.resetRequested = true;
+            assert(f.run(id)[0], 'Explicit acknowledgement plus fresh Disabled permits a new attempt');
+        }
+    }
+    // Changing power targets cannot keep pushing the response deadline back.
+    now = date(6,20); f = fixture();
+    f.s['sensor.energy_production_tomorrow'] = reading(2,'kWh',now);
+    f.run('esswitgrid_ctrl1');
+    f.s['select.growatt_grid_remote_power_control_enable'].state = 'Enabled';
+    f.s['number.growatt_battery_remote_charge_and_discharge_power'].state = '5';
+    for (let i=0;i<4;i++) {
+        refresh();
+        for (const phase of [1,2,3]) f.s['sensor.p1_meter_vermogen_fase_'+phase].state = String(2500+i*200);
+        f.run('esswitgrid_ctrl1');
+    }
+    assert(f.values.ess_wit_command_fault);
+    // Conversely, successful tracking of the previous target is healthy when
+    // the desired P1-limited power changes on every cycle.
+    now = date(6,20); f = fixture();
+    f.s['sensor.energy_production_tomorrow'] = reading(2,'kWh',now);
+    f.run('esswitgrid_ctrl1');
+    for (let i=0;i<7;i++) {
+        refresh();
+        const prior = f.values.ess_wit_grid_charge_status.powerPercent;
+        f.s['select.growatt_grid_remote_power_control_enable'].state = 'Enabled';
+        f.s['number.growatt_battery_remote_charge_and_discharge_power'].state = String(prior);
+        f.s['sensor.growatt_battery_battery_power'].state = String(prior*180);
+        for (const phase of [1,2,3]) f.s['sensor.p1_meter_vermogen_fase_'+phase].state = String(4000+(i%2)*600);
+        f.run('esswitgrid_ctrl1');
+        assert(!f.values.ess_wit_command_fault,'Normal target tracking must not trip the watchdog');
+    }
+    // Current PV alone must not falsely acknowledge a net-charging request.
+    now = date(6,20); f = fixture();
+    f.s['sensor.energy_production_tomorrow'] = reading(2,'kWh',now);
+    output = f.run('esswitgrid_ctrl1');
+    f.s['select.growatt_grid_remote_power_control_enable'].state = 'Enabled';
+    f.s['number.growatt_battery_remote_charge_and_discharge_power'].state = String(output[0].payload.powerPercent);
+    f.s['sensor.growatt_battery_battery_power'].state = '1000';
+    f.s['sensor.growatt_solar_solar_total_power'].state = '1000';
+    f.run('esswitgrid_ctrl1');
+    assert.equal(f.values.ess_wit_grid_charge_status.powerConfirmed,false);
+
     const actions = flows.filter(n=>n.type==='api-call-service'&&n.essCanonicalTarget);
     assert(actions.length >= 12);
     for (const action of actions) {

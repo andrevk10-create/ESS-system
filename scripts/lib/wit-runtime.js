@@ -131,4 +131,19 @@ function witBatteryLimit(states, config, direction, fallbackW, now) {
     return Math.max(0, limit);
 }
 
-module.exports = { witNumber, witFresh, witSolarWindow, witHouseReserve, witBatteryLimit };
+// Two attempts per session, including the original start. A changing target or
+// an optimistic Mode (VPP) value must never restart the response deadline.
+function witCommandWatch(previous, now, commandConfirmed, powerConfirmed) {
+    const state = { attempts:0, waitingSince:null, ...previous };
+    if (!state.attempts) return { action:'start', state:{ attempts:1, waitingSince:now } };
+    if (commandConfirmed && powerConfirmed) {
+        state.waitingSince = null;
+        return { action:'run', state };
+    }
+    if (state.waitingSince === null) state.waitingSince = now;
+    if (now - state.waitingSince < 120000) return { action:'wait', state };
+    if (state.attempts >= 2) return { action:'fault', state };
+    return { action:'start', state:{ attempts:state.attempts + 1, waitingSince:now } };
+}
+
+module.exports = { witNumber, witFresh, witSolarWindow, witHouseReserve, witBatteryLimit, witCommandWatch };

@@ -33,6 +33,17 @@ const tomorrowForecastKwh = solarWindow.inputKwh;`);
         .replace('gridChargeStatus.sessionOwned === true;', 'gridChargeStatus.sessionOwned === true || Number(gridChargeStatus.pendingUntil) > Date.now();');
     ev.func = ev.func.replace('if (gridChargeStatus.sessionOwned === true)', 'if (gridChargeStatus.sessionOwned === true || Number(gridChargeStatus.pendingUntil) > now)');
     grid.func = grid.func.replace('if (audiDischarge.sessionOwned === true)', 'if (audiDischarge.sessionOwned === true || Number(audiDischarge.pendingUntil) > now)');
+    // Plans may overlap. Actual fresh P1 phase readings, not Easee availability
+    // or a cached EV schedule, determine how much power is safe to use.
+    grid.func = grid.func.replace('    if (audiSlots.some((audiSlot) => overlaps(slot, audiSlot))) return false;\n', '');
+    grid.func = grid.func.replace("const audiDischarge = flow.get('ess_wit_audi_discharge_status') || {};", `const audiDischarge = flow.get('ess_wit_audi_discharge_status') || {};
+// Release only a stale software reservation with fresh proof the override is
+// disabled. A live or unreadable hardware session must never be stolen.
+if (audiDischarge.sessionOwned && now - new Date(audiDischarge.updatedAt || 0).getTime() > 150000 && remoteState === 'disabled' && fresh('select.growatt_grid_remote_power_control_enable', 120000)) {
+    audiDischarge.sessionOwned = false;
+    audiDischarge.pendingUntil = 0;
+    flow.set('ess_wit_audi_discharge_status', audiDischarge);
+}`);
 
     ev.func = ev.func.replace('const houseReserveKwh = reserveProfile.houseReserveKwh;',
         "const houseReserveKwh = witHouseReserve(flow.get('ess_house_consumption_learning'), reserveProfile.houseReserveKwh);");
@@ -103,28 +114,79 @@ const currentForcedPowerW = previous.sessionOwned`).replace('Math.min(measuredCh
         .replace('const requestedGridChargeW = gridChargeActive ?', 'const requestedGridChargeW = gridChargeStatus.sessionOwned === true ?')
         .replace('regelaar_bijgewerkt:status.updatedAt', "opdracht_bevestigd:status.commandConfirmed === true,\n        accuvermogen_bevestigd:status.powerConfirmed === true,\n        prognosedatum:status.forecastDate || null,\n        woningreserve_kwh:rounded(status.houseReserveKwh, 2),\n        regelaar_bijgewerkt:status.updatedAt")
         .replace('regelaar_bijgewerkt:gridChargeStatus.updatedAt', "opdracht_bevestigd:gridChargeStatus.commandConfirmed === true,\n        accuvermogen_bevestigd:gridChargeStatus.powerConfirmed === true,\n        prognosevenster:gridChargeStatus.forecastWindow || null,\n        woningreserve_kwh:rounded(gridChargeStatus.expectedHouseKwh, 2),\n        regelaar_bijgewerkt:gridChargeStatus.updatedAt");
+    get('esswithist_prep1').func = get('esswithist_prep1').func
+        .replace('opdracht_bevestigd:status.commandConfirmed', 'herstelpogingen:status.recoveryAttempts || 0,\n        opdracht_geblokkeerd:!!flow.get(\'ess_wit_command_fault\'),\n        opdracht_bevestigd:status.commandConfirmed')
+        .replace('opdracht_bevestigd:gridChargeStatus.commandConfirmed', 'herstelpogingen:gridChargeStatus.recoveryAttempts || 0,\n        opdracht_geblokkeerd:!!flow.get(\'ess_wit_command_fault\'),\n        opdracht_bevestigd:gridChargeStatus.commandConfirmed');
 
     // A power adjustment renews the two-minute lease only AFTER it succeeded.
     get('esswitgrid_live1').wires = [['esswitgrid_renew']];
-    // Publish observed power separately: the Mode (VPP) select is only the last
-    // command and is not proof the inverter or BMS accepted the request.
+    // Watch the entire write path, including repeated mode/setpoint failures.
+    // Never treat an optimistic mode selector as hardware confirmation.
     for (const [n, direction] of [[grid, 1], [ev, -1]]) {
+        const stop = n === grid ? 'stopOwned' : 'stopOwnedSession';
+        const watchKey = n === grid ? 'ess_wit_charge_watch' : 'ess_wit_discharge_watch';
+        n.func = n.func.replace(`function ${stop}(reason, details = {}) {`, `function ${stop}(reason, details = {}) {
+    flow.set('${watchKey}', null);`);
+        // A shared latched fault also prevents the other direction from taking
+        // over. Only an explicit settings action plus Disabled readback resets it.
+        const faultGate = `const commandFault = flow.get('ess_wit_command_fault');
+if (commandFault) {
+    if (commandFault.resetRequested && fresh('select.growatt_grid_remote_power_control_enable', 120000) && remoteState === 'disabled') {
+        flow.set('ess_wit_command_fault', null);
+        flow.set('ess_wit_charge_watch', null);
+        flow.set('ess_wit_discharge_watch', null);
+    } else {
+        return ${stop}('WIT reageert niet · regeling geblokkeerd; controleer BMS/Modbus en bevestig de stand opnieuw', { ...details, commandFault:true, recoveryAttempts:commandFault.attempts - 1 });
+    }
+}
+`;
+        const gate = n === grid ? "if (mode === 'off')" : "if (exportMode === 'on')";
+        n.func = n.func.replace(gate, faultGate + gate);
         n.func = n.func.replace('const liveDetails = {', 'details.requestedPowerW = targetPowerW;\nconst liveDetails = {');
-        const marker = "save('active', { ...liveDetails";
+        const marker = "if (previous.sessionOwned !== true || remoteState !== 'enabled' ||";
         const pos = n.func.indexOf(marker);
         if (pos < 0) throw new Error('WIT confirmation insertion point missing');
-        const confirmation = `const commandConfirmed = remoteState === 'enabled' && (${direction} * ${n === grid ? 'remotePercent' : 'remotePowerPercent'}) >= 3;
+        const confirmation = `const observedPercent = ${n === grid ? 'remotePercent' : 'remotePowerPercent'};
+const commandConfirmed = fresh('select.growatt_grid_remote_power_control_enable', 120000) && fresh('number.growatt_battery_remote_charge_and_discharge_power', 120000) && remoteState === 'enabled' && Math.abs(observedPercent - ${direction} * powerPercent) < 0.5;
 const measuredPowerW = liveDetails.measuredBatteryPowerW;
-const powerConfirmed = commandConfirmed && fresh('sensor.growatt_battery_battery_power', 120000) && measuredPowerW !== null && ${direction} * measuredPowerW >= 200;
+const powerConfirmed = commandConfirmed && fresh('sensor.growatt_battery_battery_power', 120000) && measuredPowerW !== null && ${n === grid ? 'measuredNetChargeW' : '-measuredPowerW'} >= 200;
 liveDetails.commandConfirmed = commandConfirmed;
 liveDetails.powerConfirmed = powerConfirmed;
 liveDetails.requestedPowerW = targetPowerW;
-if (!powerConfirmed) {
+liveDetails.commandFault = false;
+// Compare feedback to the PREVIOUS command too: a new P1-limited target must
+// not make successful tracking of the previous target look like a failure.
+const previousCommandConfirmed = previous.sessionOwned === true && remoteState === 'enabled' && fresh('select.growatt_grid_remote_power_control_enable', 120000) && fresh('number.growatt_battery_remote_charge_and_discharge_power', 120000) && Math.abs(observedPercent - ${direction} * Number(previous.powerPercent)) < 0.5;
+const previousPowerConfirmed = previousCommandConfirmed && fresh('sensor.growatt_battery_battery_power', 120000) && measuredPowerW !== null && ${n === grid ? 'measuredNetChargeW' : '-measuredPowerW'} >= 200;
+const watch = witCommandWatch(flow.get('${watchKey}'), now, commandConfirmed || previousCommandConfirmed, powerConfirmed || previousPowerConfirmed);
+flow.set('${watchKey}', watch.state);
+liveDetails.recoveryAttempts = Math.max(0, watch.state.attempts - 1);
+if (watch.action === 'fault') {
+    flow.set('ess_wit_command_fault', { at:now, attempts:watch.state.attempts });
+    return ${stop}('WIT reageert niet na herstelpoging · tijdelijke opdracht stoppen', { ...liveDetails, commandFault:true });
+}
+if (watch.action === 'start') {
+    save('blocked', { ...liveDetails, active:false, sessionOwned:true, status:(watch.state.attempts > 1 ? 'Eenmalige herstelpoging' : 'Veilige WIT-sessie starten')+' · '+powerPercent+'%' });
+    return [{ payload:{ durationMinutes:2, powerPercent, option:'${n === grid ? 'Charge' : 'Discharge'}' } }, null, null, null, null];
+}
+// Downward safety adjustments remain immediate, including while awaiting a
+// response. Do not retry the complete atomic mode command on every tick.
+if (remoteState === 'enabled' && observedPercent !== null && Math.abs(observedPercent - ${direction} * powerPercent) >= 0.5) {
+    save('blocked', { ...liveDetails, active:false, sessionOwned:true, status:'WIT-vermogen bijstellen · '+powerPercent+'%' });
+    return [null, { payload:{ value:${direction} * powerPercent } }, null, null, null];
+}
+if (watch.action === 'wait') {
     save('blocked', { ...liveDetails, sessionOwned:true, active:false, status:'Opdracht ingesteld; nog geen ${direction > 0 ? 'laden' : 'ontladen'} gemeten · controleer BMS/Modbus' });
-    return [null, null, { payload:{ option:'Enabled' } }, null, null];
+    return commandConfirmed ? [null, null, { payload:{ option:'Enabled' } }, null, null] : null;
 }
 `;
-        n.func = n.func.slice(0, pos) + confirmation + n.func.slice(pos);
+        const activePos = n.func.indexOf("save('active', { ...liveDetails", pos);
+        n.func = n.func.slice(0, pos) + confirmation + n.func.slice(activePos);
+    }
+    for (const control of [get('esswitgrid_set01'), flows.find(n => n.name === 'Kies reserveprofiel EV-accubuffer')]) {
+        control.func = control.func.replace('return { payload:Date.now() };', `const fault = flow.get('ess_wit_command_fault');
+if (fault && ['ess/wit/grid-charge-mode','ess/wit/audi-buffer-mode'].includes(msg.topic)) flow.set('ess_wit_command_fault', { ...fault, resetRequested:true });
+return { payload:Date.now() };`);
     }
 
     // Preserve role mapping for writes too. JSONata reads the existing local

@@ -702,13 +702,13 @@ flowValues.ess_audi_smart_enabled = false;
 flowValues.ess_audi_force_full = true;
 const runEVDefaults = new Function('flow', 'node', 'msg', audiDefaults.func);
 const defaultOutputs = runEVDefaults(flowContext, { status: () => undefined }, { payload: 'running' });
-assert.strictEqual(flowValues.ess_audi_settings.departureSoc, 80, 'Vertrek-SOC moet na een herstart standaard 80% zijn');
-assert.strictEqual(flowValues.ess_audi_settings.solarSoc, 80, 'Maximale zonne-SOC moet na een herstart standaard 80% zijn');
-assert.strictEqual(flowValues.ess_audi_settings.departureTime, '06:00', 'Vertrektijd moet na een herstart standaard 06:00 zijn');
-assert.strictEqual(flowValues.ess_audi_smart_enabled, true, 'Slim laden moet bij herstel worden ingeschakeld');
+assert.strictEqual(flowValues.ess_audi_settings.departureSoc, 95, 'Vertrek-SOC moet na een herstart behouden blijven');
+assert.strictEqual(flowValues.ess_audi_settings.solarSoc, 100, 'Maximale zonne-SOC moet behouden blijven');
+assert.strictEqual(flowValues.ess_audi_settings.departureTime, '23:15', 'Vertrektijd moet na een herstart behouden blijven');
+assert.strictEqual(flowValues.ess_audi_smart_enabled, false, 'Een expliciet uitgeschakelde regeling moet uit blijven');
 assert.strictEqual(flowValues.ess_audi_force_full, false, 'Tijdelijk direct laden mag een herstart niet overleven');
 assert(Number(flowValues.ess_audi_restart_grace_until) > Date.now(), 'Na een herstart moet de EV-regeling twee minuten respijt krijgen om de planning te herstellen');
-assert.strictEqual(defaultOutputs[1].payload.time, '06:00:00', 'Home Assistant-vertrektijdhelper moet naar 06:00 worden gesynchroniseerd');
+assert.strictEqual(defaultOutputs[1].payload.time, '23:15:00', 'Home Assistant-vertrektijdhelper moet de bewaarde tijd krijgen');
 flowValues.ess_audi_settings = settingsBeforeDefaultReset;
 flowValues.ess_audi_smart_enabled = smartEnabledBeforeDefaultReset;
 flowValues.ess_audi_force_full = forceFullBeforeDefaultReset;
@@ -1337,7 +1337,7 @@ assert.strictEqual(witExportInject.once, true, 'WIT-exportbegrenzing moet na een
 assert(witExportModeControl.initialize.includes("ess_wit_export_mode', 'auto"), 'Na een Node-RED-herstart moet de WIT-exportstand weer Automatisch zijn');
 assert(witEVBufferModeControl, 'Bediening voor het reserveprofiel van de EV-accubuffer ontbreekt');
 assert.deepStrictEqual(detailTemplates.battery.wires, [[witExportModeControl.id,witEVBufferModeControl.id,witGridChargeSettingsControl.id]], 'Alleen de drie beveiligde WIT-bedienfuncties mogen dashboardopdrachten ontvangen');
-assert.deepStrictEqual(witExportModeControl.wires, [[witExportControl.id]], 'Een handmatige moduswijziging moet direct worden toegepast');
+assert.deepStrictEqual(witExportModeControl.wires, [[witExportControl.id,'essprefs_save']], 'Een handmatige moduswijziging moet worden toegepast en opgeslagen');
 assert.deepStrictEqual(witExportControl.wires, [[witExportAuthorityAction.id],[witExportRateAction.id],[witExportToggleAction.id]], 'WIT-regelaar moet per cyclus hoogstens één Growatt-opdracht geven');
 assert.strictEqual(witExportAuthorityAction.essCanonicalTarget, 'select.growatt_grid_control_authority');
 assert.strictEqual(witActionLiteral(witExportAuthorityAction, 'option'), 'Enabled', 'De VPP-hoofdtoestemming moet vóór de exportbegrenzing worden ingeschakeld');
@@ -1463,7 +1463,7 @@ assert.strictEqual(witActionLiteral(witEVStopAction, 'option'), 'Disabled', 'Een
 const runWitEVControl = new Function('global', 'flow', 'node', 'msg', witEVControl.func);
 const runWitEVBufferModeControl = new Function('global', 'flow', 'node', 'msg', witEVBufferModeControl.func);
 assert(witEVBufferModeControl.initialize.includes("ess_wit_audi_buffer_mode', 'normal"), 'Na een herstart moet Normaal het reserveprofiel zijn');
-assert.deepStrictEqual(witEVBufferModeControl.wires, [[witEVControl.id]], 'Een profielkeuze moet de EV-accubuffer direct opnieuw beoordelen');
+assert.deepStrictEqual(witEVBufferModeControl.wires, [[witEVControl.id,'essprefs_save']], 'Een profielkeuze moet de EV-accubuffer opnieuw beoordelen en de voorkeur bewaren');
 const witEVStates = {
     'sun.sun': state('below_horizon', {next_rising:new Date(Date.now() + 24 * 3600000).toISOString()}),
     'sensor.growatt_battery_battery_soc': state(85),
@@ -1514,6 +1514,7 @@ witEVStates['select.growatt_mode_vpp'] = state('Hold', { options:['Hold','Charge
 flowValues.ess_wit_audi_discharge_status = { sessionOwned:false, active:false };
 witEVStates['select.growatt_grid_remote_power_control_enable'] = state('Disabled');
 witEVStates['sensor.ev_charger_power'] = state(0);
+flowValues.ess_wit_discharge_watch = null;
 witEVStates['sensor.ev_charger_power'].last_updated = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 witEVStates['sensor.ev_charger_current'] = state(15.6);
 flowValues.ess_audi_control_status = { controlled:true, actualCharging:true, targetCurrent:18, phaseCount:3, updatedAt:new Date().toISOString() };
@@ -1525,6 +1526,7 @@ assert.strictEqual(flowValues.ess_wit_audi_discharge_status.audiChargingDetected
 flowValues.ess_wit_audi_discharge_status = { sessionOwned:false, active:false };
 witEVStates['select.growatt_grid_remote_power_control_enable'] = state('Disabled');
 witEVStates['sensor.ev_charger_current'] = state('unavailable');
+flowValues.ess_wit_discharge_watch = null;
 witEVStates['sensor.ev_charger_power'] = state(0);
 witEVStates['sensor.p1_meter_vermogen'] = state(5200);
 flowValues.ess_audi_control_status = { controlled:true, actualCharging:false, targetCurrent:16, phaseCount:3, updatedAt:new Date().toISOString() };
@@ -1698,7 +1700,7 @@ for (const id of ['sensor.energy_production_tomorrow','sensor.energy_production_
 }
 flowValues.ess_audi_control_status = { selectedSlots:[priceSlots[0]] };
 runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
-assert(flowValues.ess_wit_grid_charge_status.selectedSlots.every((slot) => new Date(slot.start).getTime() >= new Date(priceSlots[0].end).getTime()), 'Voor de EV gereserveerde kwartieren moeten uit de WIT-planning blijven');
+assert(flowValues.ess_wit_grid_charge_status.selectedSlots.some((slot) => new Date(slot.start).getTime() < new Date(priceSlots[0].end).getTime()), 'Een EV-planning mag een goedkoop WIT-kwartier niet blokkeren; actuele P1-netruimte begrenst het vermogen');
 
 const witHistoryInject = flows.find((node) => node.id === 'esswithist_inject');
 const witHistoryPrepare = flows.find((node) => node.id === 'esswithist_prep1');

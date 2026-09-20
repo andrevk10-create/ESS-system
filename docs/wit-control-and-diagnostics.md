@@ -16,6 +16,9 @@
 - Only the three configured forecast roles are counted, and shared entity mappings are deduplicated. Stale or unavailable forecasts block automatic action; they are not treated as zero solar. Forecast dates are kept distinct in the historical comparison.
 - Dated day-ahead price intervals remain usable from a cache up to 36 hours old. Expired intervals are discarded, missing intervals are never invented, and the economics check still includes charging loss and wear. A fresh cloud request is not required for every already-known quarter.
 - The most heavily loaded P1 phase limits grid charging, with a 3 A margin below the configured fuse. Only measured battery charging after subtracting direct PV can be credited as existing net charge. An unconfirmed setpoint cannot create imaginary connection headroom. Downward power limits take effect without upward hysteresis.
+- WIT grid charging is independent of Easee availability and EV slot reservations. Both plans may use the same economical quarter; actual P1 phase headroom limits WIT power. Simultaneous WIT charge/discharge remains prohibited. A stale discharge reservation is released only with fresh Disabled readback.
+- A command gets two minutes to produce matching remote feedback and measured power. There is at most **one complete retry** per session, then a shared fault blocks temporary charge/discharge and requests Remote Power Control Disabled. No Hold command is sent. The two-minute lease remains the fallback if communication is lost. Inspect BMS/Modbus first, then explicitly reselect a grid-charge mode or reserve profile; reset is allowed only after fresh Disabled feedback. Merely entering another price quarter does not clear a fault. Mode labels alone, target changes and renewals cannot indefinitely extend the response window.
+- Recovery attempts and the latched fault are included in historical sensor attributes. Direct PV alone is not accepted as confirmation of grid charging. The watchdog detects missing response, not the exact cause of a hardware/BMS refusal, nor delivery of the full requested power.
 
 ### Installation limits and optional BMS telemetry
 
@@ -59,6 +62,12 @@ Op Accu & WIT zie je **gevraagd vermogen**, **werkelijk accuvermogen** en **beve
 De configuratie heeft nu een afzonderlijke bovengrens voor netladen. Optionele BMS-grenzen staan in de tabel hierboven: bij een stroomgrens in A hoort ook accuspanning in V. Een gekoppelde grens die nul, onbekend of te oud is blokkeert die richting. Laat niet-gebruikte grensrollen leeg; verhoog nooit hardwaregrenzen om een regelprobleem te omzeilen.
 
 De systeempagina toont ook WIT- en prijsproblemen. Ontbrekende meetwaarden zijn `—` in plaats van schijnbaar geldige nullen. De historie bewaart ook opdrachtbevestiging, gemeten richting, prognosedatum en woningreserve.
+
+Netladen werkt onafhankelijk van Easee en de EV-laadplanning. Beide mogen in hetzelfde goedkope kwartier laden; actuele P1-fasemetingen begrenzen het WIT-vermogen. De blokkering tegen tegelijk laden en extra ontladen blijft gelden.
+
+Bij geen reactie krijgt de WIT na twee minuten één volledige herstelpoging. Volgt weer twee minuten geen bevestigde reactie, dan stopt de tijdelijke opdracht en blijft een waarschuwing staan. Controleer BMS/Modbus en kies daarna de gewenste netlaadstand of het reserveprofiel opnieuw. De blokkering wordt pas opgeheven wanneer de afstandsbediening aantoonbaar uit staat. Een nieuw kwartier wist de fout niet.
+
+EV- en WIT-laadvoorkeuren worden lokaal buiten Git opgeslagen en vóór het regelen hersteld. SOC-doelen, vertrektijd, reserveprofiel en gekozen standen blijven behouden na HA-/Node-RED-herstart en pull. Tijdelijk EV Direct 100% en lopende Modbus-sessies worden niet teruggezet; de planning wordt met actuele metingen opnieuw berekend.
 
 Voor problemen buiten de regelcode: controleer bij fouten in meerdere integraties eerst netwerk/DNS, bij lokale P1/Modbus-time-outs ook het LAN en bij Tado een eventuele herauthenticatie. Houd de tijdzones van HA en Node-RED gelijk. Logbestanden en persoonlijke entiteiten horen niet in de openbare repository.
 

@@ -7,6 +7,7 @@ function witHealthModel(states, flow, now) {
     };
     const grid = flow.get('ess_wit_grid_charge_status') || {};
     const ev = flow.get('ess_wit_audi_discharge_status') || {};
+    const fault = flow.get('ess_wit_command_fault');
     const current = s => now - new Date(s.updatedAt || 0).getTime() <= 150000;
     const observed = states['sensor.growatt_battery_battery_power'];
     const raw = observed && numeric(observed.state);
@@ -21,7 +22,8 @@ function witHealthModel(states, flow, now) {
     const pricesFresh = priceAge >= -60000 && priceAge <= 36 * 3600000 &&
         prices.some(s => new Date(s.end).getTime() > now && numeric(s.allInPrice) !== null);
     const blocked = [grid, ev].find(s => current(s) && /ontbreekt|te oud|niet beschikbaar|ongeldig/.test(s.status || ''));
-    const problem = !telemetryFresh ? 'WIT-meetdata ontbreekt of is te oud; controleer Modbus' :
+    const problem = fault ? 'WIT reageert niet na herstelpoging; tijdelijke regeling geblokkeerd. Controleer BMS/Modbus en bevestig de stand opnieuw.' :
+        !telemetryFresh ? 'WIT-meetdata ontbreekt of is te oud; controleer Modbus' :
         !p1Fresh ? 'P1-meetdata ontbreekt of is te oud' :
         active && !active.powerConfirmed ? 'Opdracht verstuurd; accuvermogen nog niet bevestigd' :
         !current(grid) || !current(ev) ? 'WIT-regelaar heeft geen recente update' : blocked ? blocked.status : null;

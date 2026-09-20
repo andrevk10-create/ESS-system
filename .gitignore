@@ -15,6 +15,7 @@ secrets*.yaml
 *.pem
 ess-system-config.json
 ess-system-config.local.json
+ess-charging-preferences*.json
 config/ess-system-config*.json
 !examples/ess-system-config.example.json
 

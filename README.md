@@ -59,6 +59,8 @@ All nine pages share readable typography, consistent controls, desktop navigatio
 - Additional discharge during EV charging only when the forecast leaves enough energy to recharge the home battery.
 - **Eco**, **Normal**, and **EV priority** reserve profiles.
 - Short-lived commands and safe fallback when Home Assistant, Node-RED, or Modbus becomes unavailable.
+- WIT grid charging does not depend on Easee being online or its planned slots; fresh P1 phase measurements limit shared connection use.
+- One bounded recovery attempt for an unresponsive WIT, then a latched warning and safe stop of the temporary override.
 - Lease renewal after power changes, protected export handover, date-aware overnight solar forecasts and reuse of valid cached day-ahead prices.
 - Separate requested/measured battery power, learned household reserve and optional directional BMS power/current limits.
 - Historical sensors for requested and actual power, energy budget, cost, SOC, forecast, and decision reason.
@@ -74,7 +76,7 @@ See [WIT control and diagnostics](docs/wit-control-and-diagnostics.md) for confi
 - Local configuration is stored outside the repository.
 - Safe allowlists for switch, lighting, and climate commands.
 - Confirmed command status instead of a blindly optimistic dashboard.
-- Automatic safe defaults after a Home Assistant or Node-RED restart.
+- Saved EV and WIT charging preferences survive Home Assistant/Node-RED restarts and Git pulls; defaults apply only on first use. Temporary EV **Direct 100%** requests and live WIT sessions are not restored.
 - Optional GitHub monitor that reports a new commit but never installs it automatically.
 
 ## Quick start
@@ -111,6 +113,10 @@ The configuration is stored locally as:
 ```
 
 The first file is the primary configuration; the second is an automatically updated full local backup. After a pull, deploy, or Node-RED restart, the backup is loaded first and the primary configuration shortly afterwards, so the primary file always takes precedence. If it is missing, the backup remains active. A normal pull therefore does not require entity mapping to be repeated. New roles introduced by an update are safely added with neutral defaults while loading.
+
+Charging preferences have their own private files: `/config/node-red/ess-charging-preferences.json` and `ess-charging-preferences.backup.json`. Validated dashboard changes save the EV departure SOC/time, solar SOC, smart-charge enabled setting, WIT charge mode/target, reserve profile and export mode. Startup restores these before allowing the controllers to run; a corrupt primary file falls back to the backup. Unreadable existing files block automatic control and produce a System warning rather than silently replacing your choices. These files are outside the project, excluded from Git, and should be included in local installation backups.
+
+Laadvoorkeuren blijven dus bewaard na een herstart of pull. De standaardwaarden gelden alleen als er nog niets is opgeslagen. Tijdelijk **Direct 100%** voor de EV wordt niet hervat; een bewaarde WIT-laadstand wordt opnieuw beoordeeld met actuele metingen, niet als oude Modbus-opdracht afgespeeld.
 
 These paths match a typical Home Assistant installation. For a standalone Node-RED installation, point the read and write nodes to private local paths. A neutral example is available in [examples/ess-system-config.example.json](examples/ess-system-config.example.json).
 

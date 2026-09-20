@@ -3380,10 +3380,9 @@ nordPoolParserNode.wires = [[regulator.id]];
 // of Easee-data ontbreekt.
 regulator.initialize = "flow.set('ess_audi_smart_enabled', true); flow.set('ess_audi_restart_grace_until', Date.now() + 120000);";
 
-// Herstel de gewenste standaardplanning bij een Node-RED-deploy en iedere keer
-// dat de Home Assistant-client na een herstart weer volledig draait. De
-// vertrektijd wordt tegelijk naar de HA-helper geschreven, zodat dashboard,
-// regelaar en helper dezelfde waarde tonen.
+// Behoud opgeslagen keuzes bij reconnect en gebruik defaults alleen voor een
+// eerste installatie. De lokale voorkeurenloader houdt deze functie tegen
+// totdat herstel van schijf klaar is. Synchroniseer de bewaarde vertrektijd.
 flows.push({
   id: ids.audiDefaultsInject, type: 'inject', z: FLOW_ID, name: 'Standaard laadplanning bij opstart',
   props: [{ p:'topic', vt:'str' }], repeat: '', crontab: '', once: true, onceDelay: '3',
@@ -3403,23 +3402,23 @@ const homeAssistantRunning = String(msg.payload || '').toLowerCase() === 'runnin
 if (!startupRequest && !homeAssistantRunning) return null;
 
 const settings = {
-    ...(flow.get('ess_audi_settings') || {}),
     departureSoc: 80,
     solarSoc: 80,
-    departureTime: '06:00'
+    departureTime: '06:00',
+    ...(flow.get('ess_audi_settings') || {})
 };
 delete settings.minimumSoc;
 delete settings.desiredSoc;
 delete settings.cheapPriceLimit;
 delete settings.daySoc;
 flow.set('ess_audi_settings', settings);
-flow.set('ess_audi_smart_enabled', true);
+if (typeof flow.get('ess_audi_smart_enabled') !== 'boolean') flow.set('ess_audi_smart_enabled', true);
 flow.set('ess_audi_force_full', false);
 flow.set('ess_audi_restart_grace_until', Date.now() + 120000);
-node.status({ fill:'green', shape:'dot', text:'80% · zon 80% · vertrek 06:00' });
+node.status({ fill:'green', shape:'dot', text:'Opgeslagen laadplanning hersteld' });
 return [
     { topic:'ess/audi/defaults-applied', payload:{ settings } },
-    { payload:{ time:'06:00:00' } }
+    { payload:{ time:settings.departureTime + ':00' } }
 ];`,
   outputs: 2, timeout: 0, noerr: 0, initialize: '', finalize: '', libs: [], x: 360, y: 625,
   wires: [['ess00000000000d'], ['ess000000000012']]
@@ -4691,5 +4690,6 @@ if (dashboardMapper) {
 require('./lib/dashboard-diagnostics').apply(flows);
 require('./lib/dashboard-presentation').apply(flows);
 require('./lib/harden-house-learning')(flows);
+require('./lib/charging-preferences')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
