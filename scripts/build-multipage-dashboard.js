@@ -129,6 +129,7 @@ const DEFAULT_SYSTEM_CONFIG = {
     'climate.heating_zone_3':'climate.heating_zone_3',
     'climate.heat_pump':'climate.heat_pump',
     'water_heater.domestic_hot_water':'water_heater.domestic_hot_water',
+    'binary_sensor.dhw_hygiene_active':'',
     'light.zone_1':'light.zone_1',
     'light.zone_2':'light.zone_2',
     'light.zone_3':'light.zone_3',
@@ -4691,5 +4692,6 @@ require('./lib/dashboard-diagnostics').apply(flows);
 require('./lib/dashboard-presentation').apply(flows);
 require('./lib/harden-house-learning')(flows);
 require('./lib/charging-preferences')(flows);
+require('./lib/climate-control')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

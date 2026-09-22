@@ -6,7 +6,7 @@ function chargingPreferences(flow) {
     const s = flow.get('ess_audi_settings') || {};
     const soc = (v, fallback) => Number.isFinite(Number(v)) && Number(v) >= 20 && Number(v) <= 100 ? Number(v) : fallback;
     const choice = (v, choices, fallback) => choices.includes(v) ? v : fallback;
-    return { version:1,
+    const result = { version:1,
         ev:{ departureSoc:soc(s.departureSoc, 80), solarSoc:soc(s.solarSoc, 80),
             departureTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(s.departureTime) ? s.departureTime : '06:00',
             enabled:flow.get('ess_audi_smart_enabled') !== false },
@@ -15,6 +15,8 @@ function chargingPreferences(flow) {
             reserve:choice(flow.get('ess_wit_audi_buffer_mode'), ['eco','normal','audi'], 'normal'),
             exportMode:choice(flow.get('ess_wit_export_mode'), ['auto','on','off'], 'auto') }
     };
+    if (flow.get('ess_climate_config')) result.climate = {config:flow.get('ess_climate_config'),ledger:flow.get('ess_climate_ledger') || {}};
+    return result;
 }
 
 module.exports = function chargingPersistence(flows) {

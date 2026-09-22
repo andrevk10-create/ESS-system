@@ -1295,7 +1295,7 @@ const climateControl = flows.find((node) => node.id === 'essclimate_ctrl1');
 const climateActionIds = ['essclimate_temp1','essclimate_mode1','esswater_temp001','esswater_mode001'];
 const climateActions = climateActionIds.map((id) => flows.find((item) => item.id === id));
 assert(climateControl, 'Beveiligde klimaatbediening ontbreekt');
-assert.deepStrictEqual(detailTemplates.climate.wires, [[climateControl.id]], 'Klimaatpagina moet uitsluitend via de beveiligingsfunctie bedienen');
+assert.deepStrictEqual(detailTemplates.climate.wires, [[climateControl.id,'essclim_settings']], 'Klimaatpagina mag alleen beveiligde bediening en gevalideerde voorkeuren bereiken');
 assert(climateActions.every(Boolean), 'De vier generieke klimaatacties ontbreken');
 assert.strictEqual(climateControl.outputs, 4, 'Klimaatbediening moet vier overzichtelijke uitgangen gebruiken');
 for (const entityId of ['climate.heating_zone_1', 'climate.heating_zone_2', 'climate.heating_zone_3']) {
