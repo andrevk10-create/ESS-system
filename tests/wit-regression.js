@@ -138,6 +138,9 @@ async function main() {
     assert.equal(f.run('esswitgrid_ctrl1')[3].payload.option, 'Disabled', 'Stop override, never select Hold/Standby');
     f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled', '', now);
     assert.equal(f.run('esswitgrid_ctrl1'), null);
+    assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned, true, 'Remote Disabled alone must retain ownership');
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled', '', now);
+    assert.equal(f.run('esswitgrid_ctrl1'), null);
     assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned, false);
 
     f = fixture();
@@ -183,6 +186,7 @@ async function main() {
     f = fixture();
     f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);
     f.values.ess_wit_audi_discharge_status = {sessionOwned:true, updatedAt:new Date(now-300000).toISOString()};
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled', '', now);
     assert(f.run('esswitgrid_ctrl1')[0], 'Stale reservation with fresh Disabled readback must not block independent grid charging');
     f = fixture();
     f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);
@@ -218,6 +222,7 @@ async function main() {
             if (acknowledged) assert.equal(output[3].payload.option,'Disabled');
             assert.equal(f.values[statusKey].active,false);
             f.s['select.growatt_grid_remote_power_control_enable'].state = 'Disabled';
+            f.s['select.growatt_grid_control_authority'].state = 'Disabled';
             for (let i=0;i<3;i++) { refresh(); assert.equal(f.run(id),null); }
             assert.equal(f.values[statusKey].sessionOwned,false);
             assert.match(witHealthModel(f.s,f.flow,now).status,/geblokkeerd/,'Fault stays visible after safe stop');
@@ -263,6 +268,42 @@ async function main() {
     f.run('esswitgrid_ctrl1');
     assert.equal(f.values.ess_wit_grid_charge_status.powerConfirmed,false);
 
+    // Full release: expired lease, failed authority write, waiting, mapped
+    // second step, and opposite controller exclusion for both directions.
+    for (const id of ['esswitgrid_ctrl1','esswitaudi_ctrl1']) {
+        now = date(6,20); f = fixture();
+        const charge = id === 'esswitgrid_ctrl1';
+        const key = charge ? 'ess_wit_grid_charge_status' : 'ess_wit_audi_discharge_status';
+        f.values[key] = {sessionOwned:true, active:true};
+        if (charge) f.values.ess_wit_grid_charge_mode = 'off';
+        else f.s['sensor.ev_charger_status'].state = 'disconnected';
+        output = f.run(id);
+        assert.equal(output[3].payload.releaseStep,'authority', 'Expired remote lease still requires authority release');
+        assert(f.values[key].releasing);
+        assert.equal(f.run(id),null,'No immediate write collision');
+        if (charge) f.values.ess_wit_grid_charge_mode = 'on';
+        else f.s['sensor.ev_charger_status'].state = 'charging';
+        refresh();
+        assert.equal(f.run(id)[3].payload.releaseStep,'authority','Retry refused authority write; restored demand must not restart');
+        refresh();
+        f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now-300000);
+        assert.equal(f.run(id)[3].payload.releaseStep,'authority','Stale Disabled cannot acknowledge authority release');
+        f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now);
+        f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled','',now);
+        assert.equal(f.run(id),null,'Wait after authority request');
+        refresh();
+        assert.equal(f.run(id)[3].payload.releaseStep,'remote','Clear remote only after authority confirmation and delay');
+        assert(f.values[key].sessionOwned,'Do not release on command alone');
+        f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled','',now);
+        assert.equal(f.run(id),null);
+        assert.equal(f.values[key].sessionOwned,false);
+        assert.equal(f.values[key].releasing,false);
+    }
+    const stopExpression = jsonata(get('esswitaudi_stop1').data);
+    stopExpression.registerFunction('flowContext',()=>({entities:{'select.growatt_grid_control_authority':'select.my_authority','select.growatt_grid_remote_power_control_enable':'select.my_remote'}}));
+    assert.equal((await stopExpression.evaluate({payload:{releaseStep:'remote'}})).entity_id,'select.my_remote');
+    await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'arbitrary'}}));
+
     const actions = flows.filter(n=>n.type==='api-call-service'&&n.essCanonicalTarget);
     assert(actions.length >= 12);
     for (const action of actions) {
@@ -271,9 +312,9 @@ async function main() {
         const evalAction = async config => {
             const expr = jsonata(action.data);
             expr.registerFunction('flowContext', key=>key==='ess_system_config'?config:undefined);
-            return expr.evaluate({payload:{value:25,option:'Enabled',powerPercent:25,durationMinutes:2,entity_id:'switch.not_allowed'}});
+            return expr.evaluate({payload:{releaseStep:'authority',value:25,option:'Enabled',powerPercent:25,durationMinutes:2,entity_id:'switch.not_allowed'}});
         };
-        const canonical = action.essCanonicalTarget;
+        const canonical = action.id === 'esswitaudi_stop1' ? 'select.growatt_grid_control_authority' : action.essCanonicalTarget;
         const mapped = canonical.split('.')[0] + '.configured_wit';
         assert.equal((await evalAction(undefined)).entity_id, canonical);
         assert.equal((await evalAction({entities:{[canonical]:mapped}})).entity_id, mapped);

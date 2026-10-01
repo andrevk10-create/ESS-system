@@ -291,6 +291,7 @@ const discoveryStates = {
     'number.growatt_vpp_power_rate': state(100),
     'number.growatt_battery_remote_charge_and_discharge_power': state(0),
     'number.growatt_grid_remote_power_control_charging_time': state(2),
+    'select.growatt_grid_control_authority': state('Enabled'),
     'select.growatt_grid_remote_power_control_enable': state('Disabled'),
     'sensor.primary_charger_status': state('charging', { friendly_name:'Primary status', id:'TEST', state_outputPhase:30, config_phaseMode:3 }),
     'sensor.primary_charger_power': state(7.4, { friendly_name:'Primary vermogen', unit_of_measurement:'kW', device_class:'power' }),
@@ -1472,6 +1473,7 @@ const witEVStates = {
     'sensor.ev_charger_power': state(11),
     'sensor.ev_charger_status': state('charging'),
     'number.growatt_discharge_cutoff_soc': state(10),
+    'select.growatt_grid_control_authority': state('Enabled'),
     'select.growatt_grid_remote_power_control_enable': state('Disabled'),
     'number.growatt_battery_remote_charge_and_discharge_power': state(0),
     'number.growatt_grid_remote_power_control_charging_time': state(0),
@@ -1632,6 +1634,7 @@ const witGridStates = {
     'select.growatt_mode_vpp': state('Hold', { options:['Hold','Charge','Discharge'] }),
     'number.growatt_vpp_power_rate': state(100, { unit_of_measurement:'%' }),
     'number.growatt_grid_remote_power_control_charging_time': state(2, { unit_of_measurement:'min' }),
+    'select.growatt_grid_control_authority': state('Enabled'),
     'select.growatt_grid_remote_power_control_enable': state('Disabled', { options:['Disabled','Enabled'] }),
     'number.growatt_battery_remote_charge_and_discharge_power': state(0, { unit_of_measurement:'%' }),
     'select.growatt_grid_vpp_export_limit_enable': state('Enabled', { options:['Disabled','Enabled'] }),
@@ -1684,6 +1687,7 @@ witGridStates['number.growatt_battery_remote_charge_and_discharge_power'] = stat
 witGridStates['sensor.growatt_battery_battery_soc'] = state(80);
 witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
 assert.strictEqual(witGridOutput[3].payload.option, 'Disabled', 'Na het bereiken van het doel moet de tijdelijke remote sessie worden beëindigd');
+witGridStates['select.growatt_grid_control_authority'] = state('Disabled');
 witGridStates['select.growatt_grid_remote_power_control_enable'] = state('Disabled', { options:['Disabled','Enabled'] });
 assert.strictEqual(runWitGridCharge(witGridGlobalContext, flowContext, witNode, {}), null);
 assert.strictEqual(flowValues.ess_wit_grid_charge_status.sessionOwned, false, 'Na het beëindigen van de lease moet de eigen sessie volledig vrijgegeven zijn en Load First weer gelden');

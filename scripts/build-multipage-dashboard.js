@@ -4606,6 +4606,7 @@ if (!mapper.func.includes('const configuredZoneName = configuredFriendlyName(ent
 }
 
 require('./lib/harden-wit')(flows);
+require('./lib/wit-release')(flows);
 require('./lib/wit-dashboard')(flows);
 
 // Houd generieke Growatt-rollen compatibel met oudere WIT-prefixen.
