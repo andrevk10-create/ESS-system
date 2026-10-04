@@ -135,10 +135,12 @@ async function main() {
     assert(f.values.ess_wit_grid_charge_status.targetPowerW <= 3 * (22 * 230 - 7000 + percent * 180 / 3));
     assert.deepEqual(get('esswitgrid_live1').wires, [['esswitgrid_renew']], 'Power change must renew lease after success');
     f.values.ess_wit_grid_charge_mode = 'off';
-    assert.equal(f.run('esswitgrid_ctrl1')[3].payload.option, 'Disabled', 'Stop override, never select Hold/Standby');
+    const stopRequest = f.run('esswitgrid_ctrl1')[3].payload;
+    assert.equal(stopRequest.option, 'Disabled', 'Stop override, never select Hold/Standby');
+    assert.equal(stopRequest.releaseStep, 'authority', 'Release authority before remote control');
     f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled', '', now);
-    assert.equal(f.run('esswitgrid_ctrl1'), null);
-    assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned, true, 'Remote Disabled alone must retain ownership');
+    f.run('esswitgrid_ctrl1');
+    assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned, true, 'Remote disabled alone does not release authority');
     f.s['select.growatt_grid_control_authority'] = reading('Disabled', '', now);
     assert.equal(f.run('esswitgrid_ctrl1'), null);
     assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned, false);
@@ -304,6 +306,87 @@ async function main() {
     assert.equal((await stopExpression.evaluate({payload:{releaseStep:'remote'}})).entity_id,'select.my_remote');
     await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'arbitrary'}}));
 
+    // Reproduce the live fault: fresh battery data, but remote control selectors
+    // left Enabled with a negative target since an earlier integration session.
+    now = date(6,20);
+    const orphan = () => {
+        const f = fixture();
+        f.values.ess_wit_grid_charge_mode = 'on';
+        f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled','',now-600000);
+        f.s['select.growatt_grid_control_authority'] = reading('Enabled','',now-600000);
+        f.s['number.growatt_battery_remote_charge_and_discharge_power'] = reading(-44,'%',now-600000);
+        return f;
+    };
+    f = orphan();
+    output = f.run('esswitgrid_ctrl1');
+    assert.equal(output[3].payload.releaseStep, 'authority');
+    assert.equal(output[0], null, 'Never start charge while releasing old controls');
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Do not repeat a release write');
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now-1000);
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Pre-request Disabled state is not confirmation');
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now);
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Allow 35 seconds after authority release');
+    now += 35000;
+    for (const phase of [1,2,3]) f.s['sensor.p1_meter_vermogen_fase_'+phase] = reading(500,'W',now);
+    output = f.run('esswitgrid_ctrl1');
+    assert.equal(output[3].payload.releaseStep, 'remote');
+    assert.equal(f.run('esswitgrid_ctrl1'), null);
+    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled','',now);
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Finish handover before starting');
+    assert.equal(f.values.ess_wit_manual_recovery, null);
+    assert.equal(f.run('esswitgrid_ctrl1')[0].payload.option, 'Charge');
+    assert.equal(f.values.ess_wit_manual_recovery_attempted, true);
+    // Unchanged optimistic selectors do not generate an HA state_changed event.
+    // Only a successful release service result from this attempt may substitute.
+    f = orphan();
+    f.run('esswitgrid_ctrl1');
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now-600000);
+    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled','',now-600000);
+    f.values.ess_wit_release_ack = {authority:now-1,remote:now-1};
+    assert.equal(f.run('esswitgrid_ctrl1'),null);
+    assert(f.values.ess_wit_manual_recovery,'Old service results cannot confirm a new release');
+    f.values.ess_wit_release_ack = {authority:now,remote:now};
+    assert.equal(f.run('esswitgrid_ctrl1'),null);
+    assert.equal(f.values.ess_wit_manual_recovery,null,'Successful current release can confirm unchanged selectors');
+    f = orphan();
+    f.values.ess_wit_grid_charge_mode = 'auto';
+    f.s['sensor.energy_production_tomorrow'] = reading(2,'kWh',now);
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Auto never takes over external controls');
+    assert.equal(f.values.ess_wit_manual_recovery, undefined);
+    f = orphan();
+    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled','',now);
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Protect a fresh external session');
+    f = orphan();
+    f.values.ess_wit_audi_discharge_status = {sessionOwned:true,updatedAt:new Date(now).toISOString()};
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Do not take over live ESS discharge');
+    f = orphan();
+    f.run('esswitgrid_ctrl1');
+    now += 180000;
+    assert.equal(f.run('esswitgrid_ctrl1'), null);
+    assert(f.values.ess_wit_command_fault, 'Unconfirmed release latches a fault');
+    assert.equal(f.values.ess_wit_manual_recovery, null);
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'No endless retries after failure');
+
+    f = fixture();
+    f.values.ess_wit_command_fault = {at:now,attempts:2};
+    f.values.ess_wit_grid_charge_status = {sessionOwned:false};
+    f.s['select.growatt_grid_control_authority'] = reading('Enabled','',now);
+    assert.equal(f.run('esswitgrid_ctrl1')[3].payload.releaseStep,'authority', 'Release a queued late write after watchdog stop');
+    assert.equal(f.run('esswitgrid_ctrl1'),null,'Late-write cleanup is bounded too');
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now);
+    f.values.ess_wit_export_mode = 'on';
+    assert.equal(f.run('esswitexport_ctrl'),null,'Export control cannot re-enable authority while WIT fault is latched');
+    f.s['select.growatt_grid_vpp_export_limit_enable'] = reading('Enabled','',now);
+    assert.equal(f.run('esswitexport_ctrl')[2].payload.option,'Disabled');
+    f = fixture();
+    f.values.ess_wit_grid_charge_mode = 'on';
+    f.values.ess_wit_command_fault = {at:now-500,attempts:2,resetRequested:true};
+    f.values.ess_wit_release_ack = {authority:now,remote:now};
+    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now-600000);
+    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled','',now-600000);
+    assert(f.run('esswitgrid_ctrl1')[0],'Explicit fault reset accepts successful current releases of unchanged selectors');
+    assert.equal(f.values.ess_wit_command_fault,null);
+
     const actions = flows.filter(n=>n.type==='api-call-service'&&n.essCanonicalTarget);
     assert(actions.length >= 12);
     for (const action of actions) {
@@ -336,6 +419,24 @@ async function main() {
             assert.equal(checks.find(x=>x.key==='prices').level, 'error');
         }
     }
+    f = fixture();
+    f.values.ess_wit_grid_charge_mode = 'on';
+    f.values.ess_wit_readback_enabled = true;
+    const hardware = {deviceId:'configured-device',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',authority:0,remote:0,duration:2,percent:-44,ac:1,periods:0,at:now};
+    f.values.ess_wit_control_readback = hardware;
+    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled', '', now-3600000);
+    assert(f.run('esswitgrid_ctrl1')[0], 'Actual Disabled registers override an orphan cached Enabled label');
+    const started = now;
+    f.values.ess_wit_grid_transport = {startedAt:started};
+    now += 150000;
+    for (const item of Object.values(f.s)) item.last_updated = new Date(now).toISOString();
+    hardware.at = now;
+    assert.equal(f.run('esswitgrid_ctrl1'), null, 'A delayed write must finish before the watchdog can retry');
+    assert.equal(f.values.ess_wit_charge_watch.attempts, 1);
+    now = started + 240000;
+    hardware.at = now;
+    f.run('esswitgrid_ctrl1');
+    assert.equal(f.values.ess_wit_command_fault.reason, 'WIT-opdracht blijft onderweg', 'A stuck transport has a bounded failure deadline');
     console.log('WIT regression: forecast dates, reserves, BMS, handover, lease, readback, mapped writes and dashboard OK');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

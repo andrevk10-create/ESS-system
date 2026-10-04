@@ -1,0 +1,73 @@
+const assert=require('node:assert/strict');
+const {witApplyReadback,witReadbackResult,witGridTransport}=require('../scripts/lib/wit-control-transport');
+let now=1791100000000;
+const remoteRole='select.growatt_grid_remote_power_control_enable',authorityRole='select.growatt_grid_control_authority';
+const binding={deviceId:'configured-device',remoteEntity:remoteRole,authorityEntity:authorityRole};
+let snapshot=witReadbackResult({success:true,values:[1]},{success:true,values:[1,2,65492,1,0]},binding,now);
+assert.equal(snapshot.percent,-44);
+assert.equal(witReadbackResult({success:false,values:[1]},{success:true,values:[1,2,10,1,0]},binding,now),null);
+assert.equal(witReadbackResult({success:true,values:[1]},{success:true,values:[1,2,101,1,0]},binding,now),null);
+const selectors={[remoteRole]:{state:'Enabled'},[authorityRole]:{state:'Enabled'},'number.growatt_battery_remote_charge_and_discharge_power':{state:'-44'}};
+witApplyReadback(selectors,{}, {...snapshot,remote:0},true,now);
+assert.equal(selectors[remoteRole].state,'Disabled','Real expired lease overrides a cached Enabled label');
+witApplyReadback(selectors,{},snapshot,true,now+120001);
+assert.equal(selectors[remoteRole].state,'unavailable','Expired readback fails closed');
+witApplyReadback(selectors,{entities:{[remoteRole]:'select.other_device',[authorityRole]:authorityRole}},snapshot,true,now);
+assert.equal(selectors[remoteRole].state,'unavailable','A snapshot cannot migrate to another device');
+
+const fixture=()=>{
+    const values={ess_wit_grid_charge_mode:'on',ess_wit_grid_charge_target_soc:80,
+        ess_wit_grid_charge_status:{sessionOwned:true,powerPercent:25},ess_wit_charge_watch:{attempts:1,waitingSince:now-60000},
+        ess_wit_control_readback:{...binding,authority:0,remote:0,duration:2,percent:-44,ac:0,periods:0,at:now}};
+    const state=n=>({state:String(n),attributes:{unit_of_measurement:'W'},last_updated:new Date(now).toISOString()});
+    const states={'sensor.growatt_battery_battery_soc':state(35),'sensor.growatt_battery_battery_power':state(0),'sensor.growatt_solar_solar_total_power':state(0)};
+    for(const n of [1,2,3])states['sensor.p1_meter_vermogen_fase_'+n]=state(500);
+    const flow={get:k=>values[k],set:(k,v)=>values[k]=v},global={get:()=>({homeAssistant:{states}})};
+    const run=(msg,reply=false)=>witGridTransport(flow,global,msg,reply,now);
+    return {values,states,flow,global,run,state};
+};
+let f=fixture(),out=f.run({payload:{option:'Charge',powerPercent:25,durationMinutes:2}}),id=out[0].witOperationId;
+assert.equal(out[0].payload.data.service,'select_option');
+assert.equal(out[0].payload.data.service_data.entity_id,authorityRole);
+assert.equal(f.run({payload:{option:'Charge',powerPercent:99}}),null,'Do not queue another start');
+out=f.run({witOperationId:id,witReply:{}},true);
+assert.deepEqual(out[0].payload.data.service_data,{device_id:binding.deviceId,register:30410,values:[1]});
+for(const n of [1,2,3])f.states['sensor.p1_meter_vermogen_fase_'+n]=f.state(4800);
+out=f.run({witOperationId:id,witReply:{}},true);
+assert.deepEqual(out[0].payload.data.service_data,{device_id:binding.deviceId,register:30407,values:[1,2,4]},'Recheck current phase headroom before the actual atomic command');
+out=f.run({witOperationId:id,witReply:{}},true);
+assert.equal(out[0].payload.data.service_data.start_address,30100);
+out=f.run({witOperationId:id,witReply:{response:{success:true,values:[1]}}},true);
+assert.equal(out[0].payload.data.service_data.start_address,30407);
+now+=30000;
+out=f.run({witOperationId:id,witReply:{response:{success:true,values:[1,2,4,1,0]}}},true);
+assert(out[1]);assert.equal(f.values.ess_wit_grid_transport,null);
+assert.equal(f.values.ess_wit_control_readback.percent,4);
+assert.equal(f.values.ess_wit_charge_watch.waitingSince,now,'Response window begins after completed and verified start');
+assert.equal(f.run({payload:{option:'Enabled'}}),null,'No rapid lease writes after a fast completion');
+
+f=fixture();f.values.ess_wit_control_readback.authority=1;f.values.ess_wit_control_readback.ac=1;
+out=f.run({payload:{option:'Charge',powerPercent:25}});id=out[0].witOperationId;
+assert.equal(out[0].payload.data.service_data.register,30407,'Skip already-enabled prerequisites');
+f.run({witOperationId:id,witReply:{}},true);
+f.run({witOperationId:id,witReply:{response:{success:true,values:[1]}}},true);
+f.run({witOperationId:id,witReply:{response:{success:true,values:[0,2,25,1,0]}}},true);
+assert(f.values.ess_wit_command_fault,'A service success alone cannot confirm a rejected hardware command');
+
+f=fixture();out=f.run({payload:{option:'Charge',powerPercent:25}});id=out[0].witOperationId;
+f.values.ess_wit_command_fault={at:now,attempts:2};
+out=f.run({witOperationId:id,witReply:{}},true);
+assert.equal(out[0],null,'Stop pending pipeline after a fault; never enable a late command');
+assert.equal(f.values.ess_wit_grid_transport,null);
+f=fixture();out=f.run({payload:{option:'Charge',powerPercent:25}});id=out[0].witOperationId;
+out=f.run({witOperationId:id,error:{message:'write rejected'}},true);
+assert(f.values.ess_wit_command_fault);assert.equal(out[0],null);
+f=fixture();f.values.ess_wit_control_readback.periods=1;
+assert.equal(f.run({payload:{option:'Charge',powerPercent:25}})[0],null,'Never silently erase an external TOU plan');
+f=fixture();f.values.ess_wit_control_readback.authority=1;f.values.ess_wit_control_readback.ac=1;
+f.states['sensor.p1_meter_vermogen_fase_1'].last_updated=new Date(now-20000).toISOString();
+assert.equal(f.run({payload:{option:'Charge',powerPercent:25}})[0],null,'Fresh P1 is mandatory at write time');
+f=fixture();f.states['sensor.growatt_battery_battery_soc']=f.state(100);
+f.values.ess_wit_control_readback.authority=1;f.values.ess_wit_control_readback.ac=1;
+assert.equal(f.run({payload:{option:'Charge',powerPercent:25}})[0],null,'Do not write a charge command into a full battery');
+console.log('WIT transport: real readback, atomic lease/setpoint, single pending request, current fuse limits, delayed acknowledgements and failed writes OK');

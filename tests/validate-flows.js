@@ -1597,7 +1597,11 @@ assert(witGridChargeControl.func.includes('chargeEfficiency = 0.90') && witGridC
 assert(witGridChargeControl.func.includes('specs?.maximumBatteryChargePowerKw') && witGridChargeControl.func.includes('directBatteryLimitW'), 'WIT-netladen moet de installatie- en BMS-vermogensgrens respecteren');
 assert(witGridChargeControl.func.includes('growattTelemetryFresh') && witGridChargeControl.func.includes('socUsable'), 'WIT-netladen moet een onveranderde SOC via actuele Growatt-telemetrie valideren');
 assert.strictEqual(witGridChargeControl.outputs, 5);
-assert.deepStrictEqual(witGridChargeControl.wires, [[witGridChargeDurationAction.id],[witGridChargeLivePowerAction.id],[witGridChargeRenewAction.id],[witEVStopAction.id],[witExportToggleAction.id]], 'De WIT-netlaadregelaar moet starten, bijregelen, vernieuwen, stoppen en exportbegrenzing afzonderlijk aansturen');
+assert.deepStrictEqual(witGridChargeControl.wires, [['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],[witEVStopAction.id],[witExportToggleAction.id]], 'Starten, bijregelen en vernieuwen moeten via één geserialiseerde WIT-opdracht lopen');
+const witTransport = flows.find(node => node.id === 'esswitgrid_transport_dispatch');
+assert(witTransport.func.includes('register:30407,values:[1,2,op.powerPercent]'), 'WIT inschakelen, looptijd en positief vermogen moeten samen worden geschreven');
+assert.deepStrictEqual(witTransport.wires, [['esswitgrid_transport_api'],['esswitgrid_ctrl1']], 'De laadopdracht moet via gecontroleerde registerterugmelding terugkoppelen');
+assert(flows.find(node => node.id === 'esswit_readback_save').func.includes('witReadbackResult'), 'De regeling moet echte WIT-registers valideren');
 assert.strictEqual(witGridChargeDurationAction.essCanonicalTarget, 'number.growatt_grid_remote_power_control_charging_time');
 assert.strictEqual(witGridChargePowerAction.essCanonicalTarget, 'number.growatt_vpp_power_rate');
 assert.strictEqual(witGridChargeModeAction.essCanonicalTarget, 'select.growatt_mode_vpp');
@@ -1689,6 +1693,7 @@ witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {})
 assert.strictEqual(witGridOutput[3].payload.option, 'Disabled', 'Na het bereiken van het doel moet de tijdelijke remote sessie worden beëindigd');
 witGridStates['select.growatt_grid_control_authority'] = state('Disabled');
 witGridStates['select.growatt_grid_remote_power_control_enable'] = state('Disabled', { options:['Disabled','Enabled'] });
+witGridStates['select.growatt_grid_control_authority'] = state('Disabled', { options:['Disabled','Enabled'] });
 assert.strictEqual(runWitGridCharge(witGridGlobalContext, flowContext, witNode, {}), null);
 assert.strictEqual(flowValues.ess_wit_grid_charge_status.sessionOwned, false, 'Na het beëindigen van de lease moet de eigen sessie volledig vrijgegeven zijn en Load First weer gelden');
 

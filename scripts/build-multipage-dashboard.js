@@ -4694,5 +4694,7 @@ require('./lib/dashboard-presentation').apply(flows);
 require('./lib/harden-house-learning')(flows);
 require('./lib/charging-preferences')(flows);
 require('./lib/climate-control')(flows);
+require('./lib/wit-manual-recovery')(flows);
+require('./lib/wit-control-readback')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
