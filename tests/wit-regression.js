@@ -363,7 +363,7 @@ async function main() {
     assert.deepEqual(await stopExpression.evaluate({payload:{releaseStep:'authority'}}),{device_id:'verified-device',register:30100,values:[0]});
     await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'arbitrary'}}));
     stopExpression.registerFunction('flowContext',key=>key==='ess_system_config'?{entities:{'select.growatt_grid_control_authority':'select.my_authority','select.growatt_grid_remote_power_control_enable':'select.my_remote'}}:{deviceId:'wrong-device',at:Date.now()-1000,remoteEntity:'select.other_remote',authorityEntity:'select.my_authority'});
-    await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'authority'}}),/WIT doelentiteit ontbreekt/);
+    await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'authority'}}),error=>/WIT doelentiteit ontbreekt/.test(error.message));
 
     // Reproduce the live fault: fresh battery data, but remote control selectors
     // left Enabled with a negative target since an earlier integration session.
