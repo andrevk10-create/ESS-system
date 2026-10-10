@@ -1463,7 +1463,8 @@ assert.strictEqual(witEVStopAction.essCanonicalTarget, 'select.growatt_grid_remo
 assert.deepStrictEqual(witEVDurationAction.wires, [[witEVRateAction.id]], 'Eerst moet de veilige looptijd worden ingesteld');
 assert.deepStrictEqual(witEVRateAction.wires, [[witEVModeAction.id]], 'Daarna moet de lokale VPP-sterkte vóór de atomaire modus worden ingesteld');
 assert.strictEqual(witActionLiteral(witEVModeAction, 'option'), 'Discharge', 'De nieuwe atomaire Mode (VPP) moet voor extra ontlading worden gebruikt');
-assert.strictEqual(witActionLiteral(witEVStopAction, 'option'), 'Disabled', 'Een eigen tijdelijke ontlaadsessie moet expliciet kunnen stoppen');
+assert.strictEqual(witEVStopAction.action, 'growatt_modbus.write_registers', 'Stop moet de echte bediening expliciet uitschakelen');
+assert(witEVStopAction.data.includes('30100:30407') && witEVStopAction.data.includes('"values":[0]'), 'Alleen bevoegdheid en remote enable mogen worden uitgezet');
 
 const runWitEVControl = new Function('global', 'flow', 'node', 'msg', witEVControl.func);
 const runWitEVBufferModeControl = new Function('global', 'flow', 'node', 'msg', witEVBufferModeControl.func);

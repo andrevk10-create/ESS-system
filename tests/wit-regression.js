@@ -358,9 +358,12 @@ async function main() {
         assert.equal(f.values[key].releasing,false);
     }
     const stopExpression = jsonata(get('esswitaudi_stop1').data);
-    stopExpression.registerFunction('flowContext',()=>({entities:{'select.growatt_grid_control_authority':'select.my_authority','select.growatt_grid_remote_power_control_enable':'select.my_remote'}}));
-    assert.equal((await stopExpression.evaluate({payload:{releaseStep:'remote'}})).entity_id,'select.my_remote');
+    stopExpression.registerFunction('flowContext',key=>key==='ess_system_config'?{entities:{'select.growatt_grid_control_authority':'select.my_authority','select.growatt_grid_remote_power_control_enable':'select.my_remote'}}:{deviceId:'verified-device',at:Date.now()-1000,remoteEntity:'select.my_remote',authorityEntity:'select.my_authority'});
+    assert.deepEqual(await stopExpression.evaluate({payload:{releaseStep:'remote'}}),{device_id:'verified-device',register:30407,values:[0]});
+    assert.deepEqual(await stopExpression.evaluate({payload:{releaseStep:'authority'}}),{device_id:'verified-device',register:30100,values:[0]});
     await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'arbitrary'}}));
+    stopExpression.registerFunction('flowContext',key=>key==='ess_system_config'?{entities:{'select.growatt_grid_control_authority':'select.my_authority','select.growatt_grid_remote_power_control_enable':'select.my_remote'}}:{deviceId:'wrong-device',at:Date.now()-1000,remoteEntity:'select.other_remote',authorityEntity:'select.my_authority'});
+    await assert.rejects(stopExpression.evaluate({payload:{releaseStep:'authority'}}),/WIT doelentiteit ontbreekt/);
 
     // Reproduce the live fault: fresh battery data, but remote control selectors
     // left Enabled with a negative target since an earlier integration session.
@@ -446,6 +449,7 @@ async function main() {
     const actions = flows.filter(n=>n.type==='api-call-service'&&n.essCanonicalTarget);
     assert(actions.length >= 12);
     for (const action of actions) {
+        if(action.id==='esswitaudi_stop1')continue; // Device/register release is checked above.
         assert.equal(action.blockInputOverrides, true);
         assert.deepEqual(action.entityId, []);
         const evalAction = async config => {
@@ -510,3 +514,4 @@ async function main() {
     console.log('WIT regression: forecast dates, reserves, BMS, handover, lease, readback, mapped writes and dashboard OK');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
+

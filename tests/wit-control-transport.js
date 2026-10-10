@@ -43,6 +43,17 @@ for(const stage of ['power','authorityRead','remoteRead']){
     assert.equal(lost.values.ess_wit_grid_transport,null);
     assert.equal(lost.run({witOperationId:dispatched[0].witOperationId,witReply:{}},true),null,'Late service response cannot reopen a completed operation');
 }
+{
+    const gap=fixture();Object.assign(gap.values.ess_wit_control_readback,{authority:1,ac:1});
+    const sent=gap.run({payload:{option:'Charge',powerPercent:25}}),operation=sent[0].witOperationId;
+    gap.run({witOperationId:operation,witReply:{}},true);
+    gap.run({witOperationId:operation,witReply:{success:true,values:[1]}},true);
+    gap.run({witOperationId:operation,witReply:{success:false}},true);
+    assert.equal(gap.values.ess_wit_grid_transport.stage,'awaitReadback');
+    assert(!gap.values.ess_wit_command_fault,'One invalid read reply does not latch a permanent fault');
+    gap.values.ess_wit_control_readback={...binding,authority:1,remote:1,duration:2,percent:25,ac:1,periods:0,at:now};
+    assert(gap.run({witReadbackTick:true},true)[1],'Fresh real registers recover a transient read error');
+}
 let f=fixture(),out=f.run({payload:{option:'Charge',powerPercent:25,durationMinutes:2}}),id=out[0].witOperationId;
 assert.equal(out[0].payload.data.service,'write_registers');
 assert.deepEqual(out[0].payload.data.service_data,{device_id:binding.deviceId,register:30100,values:[1]},'Enable actual authority without relying on an optimistic HA selector');

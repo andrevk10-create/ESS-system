@@ -25,6 +25,15 @@
 
 `maximumBatteryChargePowerKw` is the charge ceiling (default and installation maximum 8 kW). Both the planner and write transport clamp older, higher settings to 8 kW; lower configured or BMS limits take precedence. `maximumBatteryPowerKw` remains the extra-discharge ceiling. Neither overrides the inverter/BMS.
 
+Charge confirmation tolerates one missing register response for up to 90 seconds
+after the original write. The periodic actual readback can complete that request;
+no extra command is queued and persistent failures still stop the session.
+Release writes zero directly to 30100 (authority) and then 30407 (remote), on
+the device proven by a fresh readback matching both configured control entities.
+The existing release order and hardware confirmation checks remain mandatory.
+An explicit fault reset starts a bounded release recovery even if an earlier
+cleanup attempt has already completed.
+
 Optional entity roles on Configuration:
 
 | Role | Accepted unit |

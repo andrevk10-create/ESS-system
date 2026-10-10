@@ -76,7 +76,7 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     ].every(([role, step]) => String(entity(role)?.state).toLowerCase() === 'disabled' &&
         (fresh(role, 120000) || Number(flow.get('ess_wit_release_ack')?.[step]) >= commandFault.at))) {`);
     setter.func = setter.func.replace("flow.set('ess_wit_grid_charge_mode', mode);", "flow.set('ess_wit_grid_charge_mode', mode);\n    if (mode === 'on') flow.set('ess_wit_manual_recovery_attempted', false);");
-    setter.func = setter.func.replace("flow.set('ess_wit_command_fault', { ...fault, resetRequested:true });", "{ flow.set('ess_wit_command_fault', { ...fault, resetRequested:true }); if (flow.get('ess_wit_manual_recovery')) flow.set('ess_wit_manual_recovery',{startedAt:Date.now(),sentSteps:[]}); }");
+    setter.func = setter.func.replace("flow.set('ess_wit_command_fault', { ...fault, resetRequested:true });", "{ flow.set('ess_wit_command_fault', { ...fault, resetRequested:true }); flow.set('ess_wit_manual_recovery',{startedAt:Date.now(),sentSteps:[]}); }");
     // The release service selects one of two fixed, configured roles.
     const stop = flows.find(n => n.id === 'esswitaudi_stop1');
     stop.name = 'Geef externe WIT-aansturing vrij';

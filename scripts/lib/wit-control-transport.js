@@ -64,7 +64,14 @@ function witGridTransport(flow, global, msg, reply, now) {
         if (op.stage === 'authorityRead') op.authorityResult = msg.witReply?.response || msg.witReply;
         if (op.stage === 'remoteRead') {
             const readback = witReadbackResult(op.authorityResult, msg.witReply?.response || msg.witReply, op.binding, now);
-            if (!readback) return fail('WIT-registerterugmelding ontbreekt of is ongeldig');
+            if (!readback) {
+                if (op.powerSentAt && now-op.powerSentAt>=0 && now-op.powerSentAt<90000 &&
+                    !flow.get('ess_wit_command_fault') && flow.get('ess_wit_grid_charge_status')?.sessionOwned &&
+                    !flow.get('ess_wit_grid_charge_status')?.releasing && flow.get('ess_wit_grid_charge_mode')!=='off') {
+                    op.stage='awaitReadback';flow.set(key,op);return null;
+                }
+                return fail('WIT-registerterugmelding ontbreekt of is ongeldig');
+            }
             flow.set('ess_wit_control_readback', readback);
             if (readback.authority !== 1 || readback.remote !== 1 || readback.ac !== 1 || readback.duration !== 2 || readback.percent !== op.powerPercent) {
                 if (now - op.powerSentAt < 90000 && !flow.get('ess_wit_command_fault') && flow.get('ess_wit_grid_charge_status')?.sessionOwned && flow.get('ess_wit_grid_charge_mode') !== 'off') {
