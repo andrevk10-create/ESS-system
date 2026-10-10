@@ -22,6 +22,9 @@
     "evBatteryCapacityKwh": 75,
     "evMaximumCurrentA": 16,
     "evGridChargePowerKw": 7.4,
+    "ev2BatteryCapacityKwh": 54,
+    "ev2MaximumCurrentA": 16,
+    "ev2GridChargePowerKw": 11,
     "gridImportBufferW": 200
   },
   "entities": {
@@ -47,6 +50,11 @@
     "sensor.ev_charger_power": "sensor.ev_charger_power",
     "sensor.ev_charger_current": "sensor.ev_charger_current",
     "binary_sensor.ev_charger_online": "binary_sensor.ev_charger_online",
+    "sensor.ev_charger_2_status": "",
+    "sensor.ev_charger_2_power": "",
+    "sensor.ev_charger_2_current": "",
+    "sensor.ev_charger_2_energy_today": "",
+    "binary_sensor.ev_charger_2_online": "",
     "sensor.ev_state_of_charge": "sensor.ev_state_of_charge",
     "sensor.ev_target_state_of_charge": "sensor.ev_target_state_of_charge",
     "sensor.energy_production_today": "sensor.energy_production_today",

@@ -172,6 +172,17 @@ async function main() {
     assert.equal(f.run('esswitgrid_ctrl1'), null);
     assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned, false);
 
+    for(const cars of ['jeep','both','jeep-stale']){
+        f=fixture();f.s['sensor.growatt_battery_battery_soc']=reading(85,'%',now);
+        if(cars!=='both')f.values.ess_audi_control_status={controlled:false};
+        f.values.ess_jeep_control_status={controlled:true,targetCurrent:16,phaseCount:3,updatedAt:new Date(now).toISOString()};
+        f.s['sensor.ev_charger_2_status']=reading('charging','',now);
+        f.s['sensor.ev_charger_2_power']=reading(11,'kW',cars==='jeep-stale'?now-120001:now);
+        const result=f.run('esswitaudi_ctrl1');
+        assert.equal(!!result?.[0],cars!=='jeep-stale','WIT buffer must support '+cars);
+        assert.equal(f.values.ess_wit_audi_discharge_status.jeepChargingDetected,cars!=='jeep-stale');
+        if(cars!=='jeep-stale')assert(f.values.ess_wit_audi_discharge_status.requestedPowerW<=8000,'Both cars share one WIT power limit');
+    }
     f = fixture();
     f.s['sensor.growatt_battery_battery_soc'] = reading(85, '%', now);
     f.s['select.growatt_grid_vpp_export_limit_enable'] = reading('Enabled', '', now);

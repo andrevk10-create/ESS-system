@@ -24,6 +24,7 @@ function planView(d, now) {
         a:new Date(slot.start).getTime(), b:new Date(slot.end).getTime()
     })).filter(slot => Number.isFinite(slot.a) && slot.b > slot.a && slot.b > now && slot.a < start + 96 * quarter);
     const ev = read((d.audiSmart || {}).selectedSlots);
+    const ev2 = read((d.jeepSmart || {}).selectedSlots);
     const wit = read((d.wit && d.wit.gridCharge || {}).selectedSlots);
     const prices = d.presentation && d.presentation.pricesFresh ? read(d.presentation.priceSlots) : [];
     const priceValues = prices.map(slot=>num(slot.allInPrice)).filter(value=>value!==null);
@@ -33,7 +34,7 @@ function planView(d, now) {
         const price = prices.find(slot=>slot.a<=a && slot.b>=b);
         const rate = price ? num(price.allInPrice) : null;
         const time = new Date(a).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-        return {key:a,time,now:now>=a && now<b,ev:ev.some(slot=>slot.a<b && slot.b>a),wit:wit.some(slot=>slot.a<b && slot.b>a),rate,
+        return {key:a,time,now:now>=a && now<b,ev:ev.some(slot=>slot.a<b && slot.b>a),ev2:ev2.some(slot=>slot.a<b && slot.b>a),wit:wit.some(slot=>slot.a<b && slot.b>a),rate,
             height:rate===null?4:max===min?50:15+85*(rate-min)/(max-min)};
     });
     const blocks = (slots, name) => {
@@ -46,7 +47,7 @@ function planView(d, now) {
         return result;
     };
     return {cells, labels:[0,24,48,72,95].map(i=>({key:i,text:(i===0||i===95?new Date(cells[i].key).toLocaleDateString('nl-NL',{weekday:'short'})+' ':'')+cells[i].time})),
-        blocks:[...blocks(ev,'Auto'),...blocks(wit,'Thuisaccu')].sort((a,b)=>new Date(a.start)-new Date(b.start))};
+        blocks:[...blocks(ev,'Auto'),...blocks(ev2,'Jeep rechts'),...blocks(wit,'Thuisaccu')].sort((a,b)=>new Date(a.start)-new Date(b.start))};
 }
 
 function configurationGroups(rows, search, onlyMissing, missing, unavailable) {

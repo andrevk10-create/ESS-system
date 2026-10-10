@@ -27,6 +27,10 @@ assert.equal(JSON.stringify(data),before,'Rendering must never replan or mutate 
 assert(plan.cells.every(cell=>Number.isFinite(cell.height)&&cell.height>=0&&cell.height<=100));
 assert(planView({...data,presentation:{pricesFresh:false,priceSlots:data.presentation.priceSlots}},now).cells.every(cell=>cell.rate===null),'Stale prices must not be presented as current');
 assert.equal(planView({},now).blocks.length,0);
+const jeepPlan=planView({jeepSmart:{selectedSlots:[slot(2)]}},now);
+assert.equal(jeepPlan.cells[2].ev2,true);
+assert.equal(jeepPlan.cells[2].ev,false,'Jeep timeline remains separate from Audi');
+assert.equal(jeepPlan.blocks[0].name,'Jeep rechts');
 assert(planView({presentation:{pricesFresh:true,priceSlots:[slot(0,0),slot(1,0)]}},now).cells.every(cell=>Number.isFinite(cell.height)),'Equal/zero prices must not divide by zero');
 assert.equal(planView({audiSmart:{selectedSlots:[{start:'invalid',end:'invalid'},slot(-1)]}},now).blocks.length,0);
 assert.equal(numberOrNull(null),null);

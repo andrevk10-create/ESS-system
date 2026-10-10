@@ -26,6 +26,9 @@ module.exports = function dashboardDemo(flows, scenario = 'normal') {
         alarms:[],details:{grid:[],solar:[],battery:[],ev:[],loads:[],system:[]},
         presentation:{configuredRoles:Object.keys(config.entities).filter(role=>!['sensor.flex_load_6_power','sensor.flex_load_7_power','climate.heating_zone_3'].includes(role)),pricesFresh:true,priceSlots:Array.from({length:96},(_,i)=>({...slots(i,1,0)[0],allInPrice:i>=8&&i<24?.16:.22+Math.sin(i/11)*.09}))}
     };
+    data.jeepSmart={enabled:false,forceFull:false,estimatedEVSoc:40,reason:'Wacht op gepland laadkwartier',selectedSlots:slots(12,3,11),plannedGridEnergyKwh:8.25,plannedGridCost:1.32};
+    data.jeepSettings={departureSoc:80,solarSoc:90,departureTime:'07:00'};
+    data.jeepManualSoc={soc:40,at:now};
     if (scenario === 'offline') {
         data.climate.tado[0]={...data.climate.tado[0],available:false,status:'Niet beschikbaar',active:false};
         data.wit.runtime={...data.wit.runtime,p1Fresh:false,pricesFresh:false,level:'error',status:'P1-meetdata ontbreekt of is te oud'};

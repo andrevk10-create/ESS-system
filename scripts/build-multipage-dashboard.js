@@ -47,6 +47,9 @@ const DEFAULT_SYSTEM_CONFIG = {
     evBatteryCapacityKwh: 86,
     evMaximumCurrentA: 25,
     evGridChargePowerKw: 11,
+    ev2BatteryCapacityKwh: 54,
+    ev2MaximumCurrentA: 16,
+    ev2GridChargePowerKw: 11,
     gridImportBufferW: 200
   },
   entities: {
@@ -79,6 +82,8 @@ const DEFAULT_SYSTEM_CONFIG = {
     'lock.ev':'lock.ev',
     'sensor.ev_climate_state':'sensor.ev_climate_state',
     'sensor.ev_charger_2_status':'sensor.ev_charger_2_status',
+    'sensor.ev_charger_2_current':'sensor.ev_charger_2_current',
+    'binary_sensor.ev_charger_2_online':'binary_sensor.ev_charger_2_online',
     'sensor.ev_charger_2_power':'sensor.ev_charger_2_power',
     'sensor.ev_charger_2_energy_today':'sensor.ev_charger_2_energy_today',
     'sensor.energy_production_today':'sensor.energy_production_today',
@@ -537,7 +542,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const entityPattern = /^(?:sensor|binary_sensor|select|number|switch|light|climate|water_heater|weather|sun|device_tracker|lock|update|input_number|input_boolean|input_select)\.[a-z0-9_]+$/;
 const ranges = {
     phases:[1,3], voltage:[100,260], mainFuseA:[6,100], batteryCapacityKwh:[1,500], inverterRatedPowerKw:[1,500],
-    maximumBatteryPowerKw:[0.1,500], maximumBatteryChargePowerKw:[0.1,500], evBatteryCapacityKwh:[1,500], evMaximumCurrentA:[6,80], evGridChargePowerKw:[1,100], gridImportBufferW:[0,5000]
+    maximumBatteryPowerKw:[0.1,500], maximumBatteryChargePowerKw:[0.1,500], evBatteryCapacityKwh:[1,500], evMaximumCurrentA:[6,80], evGridChargePowerKw:[1,100], ev2BatteryCapacityKwh:[1,500], ev2MaximumCurrentA:[6,80], ev2GridChargePowerKw:[1,100], gridImportBufferW:[0,5000]
 };
 function normalize(input) {
     const source = input && typeof input === 'object' ? input : {};
@@ -693,6 +698,10 @@ function discoverEntities(input) {
     if (secondCharger) {
         assign('sensor.ev_charger_2_status', secondCharger.id, 'second-charger-status');
         const secondPower = chargerSibling(secondCharger, /(?:vermogen|power)/, ['sensor']);
+        const secondCurrent = chargerSibling(secondCharger, /(?:laadstroom|stroom|current|ampere)/, ['sensor']);
+        const secondOnline = chargerSibling(secondCharger, /(?:online|connect)/, ['binary_sensor']);
+        if (secondCurrent) assign('sensor.ev_charger_2_current', secondCurrent.id, 'second-charger-sibling');
+        if (secondOnline) assign('binary_sensor.ev_charger_2_online', secondOnline.id, 'second-charger-sibling');
         const secondEnergy = chargerSibling(secondCharger, /(?:kosten.*dag|cost.*day|energy.*today|energie.*vandaag|session.*energy|sessie.*energie|total.*energy)/, ['sensor']);
         if (secondPower) assign('sensor.ev_charger_2_power', secondPower.id, 'second-charger-sibling');
         if (secondEnergy) assign('sensor.ev_charger_2_energy_today', secondEnergy.id, 'second-charger-sibling');
@@ -4696,5 +4705,6 @@ require('./lib/charging-preferences')(flows);
 require('./lib/climate-control')(flows);
 require('./lib/wit-manual-recovery')(flows);
 require('./lib/wit-control-readback')(flows);
+require('./lib/second-ev')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

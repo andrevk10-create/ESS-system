@@ -13,6 +13,8 @@ const fixture = () => {
 let f = fixture();
 f.values.ess_audi_settings = {departureSoc:95,solarSoc:90,departureTime:'09:35'};
 f.values.ess_audi_smart_enabled = false;
+f.values.ess_jeep_settings={departureSoc:85,solarSoc:95,departureTime:'07:30'};
+f.values.ess_jeep_smart_enabled=true;
 f.values.ess_wit_grid_charge_mode = 'off';
 f.values.ess_wit_grid_charge_target_soc = 95;
 f.values.ess_wit_audi_buffer_mode = 'eco';

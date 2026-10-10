@@ -15,6 +15,10 @@ function chargingPreferences(flow) {
             reserve:choice(flow.get('ess_wit_audi_buffer_mode'), ['eco','normal','audi'], 'normal'),
             exportMode:choice(flow.get('ess_wit_export_mode'), ['auto','on','off'], 'auto') }
     };
+    const second=flow.get('ess_jeep_settings') || {};
+    result.ev2={departureSoc:soc(second.departureSoc,80),solarSoc:soc(second.solarSoc,80),
+        departureTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(second.departureTime)?second.departureTime:'06:00',
+        enabled:flow.get('ess_jeep_smart_enabled')===true};
     if (flow.get('ess_climate_config')) result.climate = {config:flow.get('ess_climate_config'),ledger:flow.get('ess_climate_ledger') || {}};
     return result;
 }
@@ -75,8 +79,10 @@ try {
     const candidate = {ess_audi_settings:saved.ev,ess_audi_smart_enabled:saved.ev.enabled,
         ess_wit_grid_charge_mode:saved.wit.mode,ess_wit_grid_charge_target_soc:saved.wit.targetSoc,
         ess_wit_audi_buffer_mode:saved.wit.reserve,ess_wit_export_mode:saved.wit.exportMode};
+    if(saved.ev2){candidate.ess_jeep_settings=saved.ev2;candidate.ess_jeep_smart_enabled=saved.ev2.enabled;}
     const normalized = chargingPreferences({get:key=>candidate[key]});
     if (!['ev','wit'].every(group => Object.entries(normalized[group]).every(([key,value]) => saved[group][key] === value))) throw new Error('Ongeldige laadvoorkeuren');
+    if(saved.ev2 && !Object.entries(normalized.ev2).every(([key,value])=>saved.ev2[key]===value))throw new Error('Ongeldige Jeep-laadvoorkeuren');
     for (const [key,value] of Object.entries(candidate)) flow.set(key,value);
 } catch (error) {
     missing = /ENOENT/.test(error.message);
@@ -91,6 +97,7 @@ try {
 flow.set('ess_charging_preferences_ready', true);
 flow.set('ess_charging_preferences_error', null);
 flow.set('ess_audi_force_full', false);
+flow.set('ess_jeep_force_full', false);
 return [{topic:'ess/audi/apply-defaults'}, null];`, [['essaudi_defaults1','essprefs_save'],['essprefs_backup_read']], "flow.set('ess_charging_preferences_ready', false);"),
         fn('essprefs_save','Bewaar alleen laadvoorkeuren', `${chargingPreferences.toString()}
 if (flow.get('ess_charging_preferences_ready') !== true) return null;
