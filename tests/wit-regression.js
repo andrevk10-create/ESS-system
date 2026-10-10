@@ -92,6 +92,23 @@ async function main() {
         new Function('flow',get(id).initialize)(f.flow);
         assert.equal(f.values[key].sessionOwned,false,'An empty context starts without claiming hardware ownership');
     }
+    for (const condition of ['matching','different-device','different-power','released','stale','fault','external-schedule','legacy']) {
+        f=fixture();
+        const binding={deviceId:'wit-device',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority'};
+        f.values.ess_wit_readback_enabled=true;
+        f.values.ess_wit_grid_charge_status={sessionOwned:false};
+        f.values.ess_wit_grid_write_ack={...binding,at:now-60000,sentAt:now-65000,powerPercent:27};
+        f.values.ess_wit_control_readback={...binding,at:now,authority:1,remote:1,ac:1,duration:2,periods:0,percent:27};
+        if(condition==='different-device')f.values.ess_wit_control_readback.deviceId='another-device';
+        if(condition==='different-power')f.values.ess_wit_control_readback.percent=28;
+        if(condition==='released')f.values.ess_wit_release_ack={authority:now-30000};
+        if(condition==='stale')f.values.ess_wit_control_readback.at=now-120001;
+        if(condition==='fault')f.values.ess_wit_command_fault={at:now,reason:'Modbus fault'};
+        if(condition==='external-schedule')f.values.ess_wit_control_readback.periods=1;
+        if(condition==='legacy')delete f.values.ess_wit_grid_write_ack.deviceId;
+        f.run('esswitgrid_ctrl1');
+        assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned,condition==='matching','Ownership recovery: '+condition);
+    }
     f = fixture();
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'No net charge when sun covers target');
     f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]};

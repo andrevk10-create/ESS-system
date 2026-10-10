@@ -71,7 +71,7 @@ function witGridTransport(flow, global, msg, reply, now) {
             flow.set(key, null);
             const watch = flow.get('ess_wit_charge_watch');
             if (op.kind === 'start' && watch && watch.attempts === op.attempt) flow.set('ess_wit_charge_watch', {...watch,waitingSince:now});
-            flow.set('ess_wit_grid_write_ack', {at:now,sentAt:op.powerSentAt,powerPercent:op.powerPercent});
+            flow.set('ess_wit_grid_write_ack', {at:now,sentAt:op.powerSentAt,powerPercent:op.powerPercent,...op.binding});
             return [null,{payload:now}];
         }
         op.next += 1;

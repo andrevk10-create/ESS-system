@@ -45,6 +45,26 @@ flow.set('ess_wit_readback_pending',null);return {payload:Date.now(),witReadback
     const previousMarker="const previous = flow.get('ess_wit_grid_charge_status') || {};";
     grid.func=grid.func.replace(previousMarker,`${previousMarker}
 const chargeAck=flow.get('ess_wit_grid_write_ack'), chargeReadback=flow.get('ess_wit_control_readback');
+const releaseAck=flow.get('ess_wit_release_ack') || {};
+// Recover only a verified ESS command on the same configured device. A stop,
+// another controller, changed registers or missing telemetry prevents adoption.
+if(!previous.sessionOwned && !previous.releasing && chargeAck?.deviceId && chargeReadback &&
+    !flow.get('ess_wit_command_fault') && !flow.get('ess_wit_manual_recovery') &&
+    !flow.get('ess_wit_audi_discharge_status')?.sessionOwned &&
+    Date.now()-chargeAck.at>=0 && Date.now()-chargeAck.at<=1200000 &&
+    Date.now()-chargeReadback.at>=0 && Date.now()-chargeReadback.at<=120000 && chargeReadback.at>=chargeAck.at &&
+    Math.max(Number(releaseAck.authority)||0,Number(releaseAck.remote)||0)<chargeAck.sentAt &&
+    chargeReadback.deviceId===chargeAck.deviceId && chargeReadback.remoteEntity===chargeAck.remoteEntity &&
+    chargeReadback.authorityEntity===chargeAck.authorityEntity &&
+    chargeReadback.remoteEntity===(flow.get('ess_system_config')?.entities?.['select.growatt_grid_remote_power_control_enable'] || 'select.growatt_grid_remote_power_control_enable') &&
+    chargeReadback.authorityEntity===(flow.get('ess_system_config')?.entities?.['select.growatt_grid_control_authority'] || 'select.growatt_grid_control_authority') &&
+    chargeReadback.authority===1 && chargeReadback.remote===1 && chargeReadback.ac===1 && chargeReadback.duration===2 &&
+    chargeReadback.periods===0 && chargeReadback.percent===chargeAck.powerPercent && chargeAck.powerPercent>0) {
+    previous.sessionOwned=true;
+    previous.powerPercent=chargeAck.powerPercent;
+    previous.targetPowerW=chargeAck.powerPercent/100*(Number(flow.get('ess_system_config')?.specs?.inverterRatedPowerKw)||18)*1000;
+    flow.set('ess_wit_grid_charge_status',{...previous});
+}
 if(previous.sessionOwned && chargeAck && chargeReadback && Date.now()-chargeAck.at>=0 && Date.now()-chargeAck.at<=120000 && chargeReadback.remote===1 && chargeReadback.percent===chargeAck.powerPercent) {
     // The transport can lower a requested target using newer P1 measurements.
     // Supervise that verified applied command, not the older planner target.
