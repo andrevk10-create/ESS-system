@@ -83,6 +83,16 @@ async function main() {
         return {s, values, flow, run};
     };
     let f = fixture();
+    for (const [id,key] of [['esswitgrid_set01','ess_wit_grid_charge_status'],['esswitaudi_ctrl1','ess_wit_audi_discharge_status']]) {
+        const owned={sessionOwned:true,releasing:true,powerPercent:37,releaseRequestedAt:now};
+        f.values[key]=owned;
+        new Function('flow',get(id).initialize)(f.flow);
+        assert.equal(f.values[key],owned,'A warm deployment must retain hardware ownership and pending release');
+        delete f.values[key];
+        new Function('flow',get(id).initialize)(f.flow);
+        assert.equal(f.values[key].sessionOwned,false,'An empty context starts without claiming hardware ownership');
+    }
+    f = fixture();
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'No net charge when sun covers target');
     f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]};
     assert(f.run('esswitgrid_ctrl1')[0], 'Learned full household reserve must increase needed net energy');

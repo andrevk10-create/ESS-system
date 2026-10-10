@@ -2,6 +2,13 @@ const {witApplyReadback,witReadbackResult,witGridTransport}=require('./wit-contr
 const runtime=require('./wit-runtime');
 module.exports=function applyWitControlReadback(flows) {
     const get=id=>flows.find(n=>n.id===id),grid=get('esswitgrid_ctrl1'),z=grid.z;
+    // A nodes/full deployment retains flow context. Do not orphan a hardware
+    // session by overwriting its ownership when its settings node restarts.
+    for(const [id,key] of [['esswitgrid_set01','ess_wit_grid_charge_status'],['esswitaudi_ctrl1','ess_wit_audi_discharge_status']]) {
+        const n=get(id),marker=`flow.set('${key}',`;
+        if(!n.initialize.includes(marker))throw new Error('WIT initialization insertion point missing: '+id);
+        n.initialize=n.initialize.replace(marker,`if (flow.get('${key}') === undefined) ${marker}`);
+    }
     const add=n=>{const i=flows.findIndex(x=>x.id===n.id);if(i<0)flows.push(n);else flows[i]=n;};
     const fn=(id,name,func,wires,initialize='')=>({id,type:'function',z,name,func,outputs:wires.length,noerr:0,initialize,finalize:'',libs:[],wires,x:750,y:1800});
     const api=(id,name,data,wires,property='witReply')=>({id,type:'ha-api',z,name,server:'ess00000000000b',version:1,debugenabled:false,protocol:'websocket',method:'get',path:'',data,dataType:'json',responseType:'json',outputProperties:[{property,propertyType:'msg',value:'',valueType:'results'}],wires:[wires],x:450,y:1800});

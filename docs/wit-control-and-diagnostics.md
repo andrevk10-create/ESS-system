@@ -78,6 +78,8 @@ Bij geen reactie krijgt de WIT na twee minuten één volledige herstelpoging. Vo
 
 EV- en WIT-laadvoorkeuren worden lokaal buiten Git opgeslagen en vóór het regelen hersteld. SOC-doelen, vertrektijd, reserveprofiel en gekozen standen blijven behouden na HA-/Node-RED-herstart en pull. Tijdelijk EV Direct 100% en lopende Modbus-sessies worden niet teruggezet; de planning wordt met actuele metingen opnieuw berekend.
 
+Bij een Node-RED-deployment waarbij de bestaande flowcontext behouden blijft, worden het eigenaarschap van een lopende WIT-sessie en een nog lopende vrijgave niet gewist. Anders kan de eigen opdracht na een update ten onrechte als extern worden behandeld. Zonder bestaande context begint de regeling zonder eigenaarschap; onbekende externe sessies blijven beschermd.
+
 Voor problemen buiten de regelcode: controleer bij fouten in meerdere integraties eerst netwerk/DNS, bij lokale P1/Modbus-time-outs ook het LAN en bij Tado een eventuele herauthenticatie. Houd de tijdzones van HA en Node-RED gelijk. Logbestanden en persoonlijke entiteiten horen niet in de openbare repository.
 
 Na een pull moet de aangepaste flow nog via de bestaande werkwijze worden gedeployed. Deze Git-wijziging schakelt live niets. Pas na een gecontroleerde laad-/ontlaadperiode is de volledige werking op de installatie bevestigd.
