@@ -116,14 +116,15 @@ async function main() {
         const result=f.run('esswitexport_ctrl');
         assert.equal(!!result?.[0],solarSafe,'Solar export control requires fresh inactive remote registers after a charge fault');
     }
-    f=fixture();f.values.ess_wit_grid_transport={id:now,startedAt:now};
+    f=fixture();f.values.ess_wit_grid_charge_mode='off';f.values.ess_wit_grid_transport={id:now,startedAt:now};
     f.run('esswitgrid_ctrl1');
     assert.equal(f.values.ess_wit_grid_transport,null,'Stopping cancels the pending pipeline even after ownership is lost');
     f = fixture();
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'No net charge when sun covers target');
+    assert(f.run('esswitgrid_ctrl1')[0], 'Future sun cannot postpone filling before expensive prices');
+    const priorNeed=f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh;
     f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]};
-    assert(f.run('esswitgrid_ctrl1')[0], 'Learned full household reserve must increase needed net energy');
-    assert(f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh > 0);
+    f.run('esswitgrid_ctrl1');
+    assert(f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh > priorNeed);
 
     f = fixture();
     f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);

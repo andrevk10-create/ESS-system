@@ -1692,7 +1692,7 @@ witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {})
 assert.strictEqual(witGridOutput[1].payload.value, requestedChargePercent, 'Een lopende sessie moet het laadvermogen via het EEPROM-veilige remote register kunnen bijregelen');
 witGridStates['number.growatt_battery_remote_charge_and_discharge_power'] = state(requestedChargePercent, { unit_of_measurement:'%' });
 
-witGridStates['sensor.growatt_battery_battery_soc'] = state(80);
+witGridStates['sensor.growatt_battery_battery_soc'] = state(100);
 witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
 assert.strictEqual(witGridOutput[3].payload.option, 'Disabled', 'Na het bereiken van het doel moet de tijdelijke remote sessie worden beëindigd');
 witGridStates['select.growatt_grid_control_authority'] = state('Disabled');
@@ -1705,8 +1705,8 @@ witGridStates['sensor.growatt_battery_battery_soc'] = state(35);
 for (const id of ['sensor.energy_production_tomorrow','sensor.energy_production_tomorrow_2','sensor.energy_production_tomorrow_3']) {
     witGridStates[id] = state(20, { unit_of_measurement:'kWh' });
 }
-assert.strictEqual(runWitGridCharge(witGridGlobalContext, flowContext, witNode, {}), null, 'Als de zon het doel dekt mag automatisch netladen niet starten');
-assert(flowValues.ess_wit_grid_charge_status.status.includes('dekken het doel'));
+runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
+assert(flowValues.ess_wit_grid_charge_status.gridEnergyNeededKwh > 0, 'Onzekere toekomstige zon mag het vol-doel vóór dure uren niet uitstellen');
 
 for (const id of ['sensor.energy_production_tomorrow','sensor.energy_production_tomorrow_2','sensor.energy_production_tomorrow_3']) {
     witGridStates[id] = state(2, { unit_of_measurement:'kWh' });

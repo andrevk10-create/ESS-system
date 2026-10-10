@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+const {witPriceDeadline}=require('../scripts/lib/wit-price-deadline');
+const now=Date.parse('2026-10-10T18:00:00Z');
+const slots=prices=>prices.map((allInPrice,i)=>({start:now+i*3600000,end:now+(i+1)*3600000,allInPrice}));
+assert.equal(witPriceDeadline(slots([.40,.40,.12,.08,.10,.20,.40,.45]),now),now+6*3600000,'Skip current expensive run and include cheap night');
+assert.equal(witPriceDeadline(slots([.10,.08,.15,.40]),now),now+3*3600000);
+assert.equal(witPriceDeadline(slots([.20,.20,.20]),now),null,'Flat prices have no expensive period');
+const flows=require('../flows.json');
+const code=flows.find(n=>n.id==='esswitgrid_ctrl1').func;
+assert(code.includes("mode === 'auto' ? 100"));
+assert(code.includes('slot.end <= expensivePeriodStart'));
+assert(!code.includes("if (mode === 'auto' && !forecastValid)"));
+console.log('WIT price deadline checks passed');
