@@ -4708,5 +4708,6 @@ require('./lib/wit-control-readback')(flows);
 require('./lib/second-ev')(flows);
 require('./lib/ev-layout')(flows);
 require('./lib/wit-price-deadline')(flows);
+require('./lib/wit-soc')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
