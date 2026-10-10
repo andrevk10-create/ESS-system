@@ -45,6 +45,9 @@ assert(out[1]);assert.equal(f.values.ess_wit_grid_transport,null);
 assert.equal(f.values.ess_wit_control_readback.percent,4);
 assert.equal(f.values.ess_wit_charge_watch.waitingSince,now,'Response window begins after completed and verified start');
 assert.equal(f.run({payload:{option:'Enabled'}}),null,'No rapid lease writes after a fast completion');
+assert.equal(f.run({payload:{value:25}}),null,'A planner callback cannot immediately increase a verified setpoint');
+for (const item of Object.values(f.states)) item.last_updated=new Date(now).toISOString();
+assert.deepEqual(f.run({payload:{value:3}})[0].payload.data.service_data.values,[1,2,3],'A downward safety adjustment bypasses the upward settling interval');
 
 f=fixture();f.values.ess_wit_control_readback.authority=1;f.values.ess_wit_control_readback.ac=1;
 out=f.run({payload:{option:'Charge',powerPercent:25}});id=out[0].witOperationId;
@@ -52,7 +55,23 @@ assert.equal(out[0].payload.data.service_data.register,30407,'Skip already-enabl
 f.run({witOperationId:id,witReply:{}},true);
 f.run({witOperationId:id,witReply:{response:{success:true,values:[1]}}},true);
 f.run({witOperationId:id,witReply:{response:{success:true,values:[0,2,25,1,0]}}},true);
+assert.equal(f.values.ess_wit_grid_transport.stage,'awaitReadback','A service acknowledgement can precede physical register application');
+assert(!f.values.ess_wit_command_fault,'Wait for bounded readback instead of faulting immediately');
+now+=90000;
+f.values.ess_wit_control_readback.at=now;
+f.run({witReadbackTick:true},true);
 assert(f.values.ess_wit_command_fault,'A service success alone cannot confirm a rejected hardware command');
+
+f=fixture();f.values.ess_wit_control_readback.authority=1;f.values.ess_wit_control_readback.ac=1;
+out=f.run({payload:{option:'Charge',powerPercent:25}});id=out[0].witOperationId;
+f.run({witOperationId:id,witReply:{}},true);
+f.run({witOperationId:id,witReply:{success:true,values:[1]}},true);
+f.run({witOperationId:id,witReply:{success:true,values:[1,2,10,1,0]}},true);
+now+=30000;
+f.values.ess_wit_control_readback={...f.values.ess_wit_control_readback,percent:25,at:now};
+assert(f.run({witReadbackTick:true},true)[1],'Periodic hardware readback completes a delayed command');
+assert.equal(f.values.ess_wit_grid_transport,null);
+assert(!f.values.ess_wit_command_fault);
 
 f=fixture();out=f.run({payload:{option:'Charge',powerPercent:25}});id=out[0].witOperationId;
 f.values.ess_wit_command_fault={at:now,attempts:2};

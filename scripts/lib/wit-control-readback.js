@@ -26,7 +26,7 @@ msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_regi
     add(fn('esswit_readback_save','Bewaar gevalideerde WIT-registers',witReadbackResult.toString()+`
 if(flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;
 flow.set('ess_wit_control_readback',witReadbackResult(msg.witAuthority,msg.witReply?.response||msg.witReply,msg.witBinding,Date.now()));
-flow.set('ess_wit_readback_pending',null);return {payload:Date.now()};`,[['esswitgrid_ctrl1']]));
+flow.set('ess_wit_readback_pending',null);return {payload:Date.now(),witReadbackTick:true};`,[['esswitgrid_transport_reply','esswitgrid_ctrl1']]));
     add({id:'esswit_readback_catch',type:'catch',z,name:'WIT-terugmelding niet beschikbaar',scope:['esswit_readback_registry','esswit_readback_authority','esswit_readback_remote'],uncaught:false,wires:[['esswit_readback_error']],x:450,y:1840});
     add(fn('esswit_readback_error','Blokkeer bij ontbrekende WIT-registers',"flow.set('ess_wit_control_readback',null);flow.set('ess_wit_readback_pending',null);return {payload:Date.now()};",[['esswitgrid_ctrl1']]));
     for(const [id,marker] of [['esswitgrid_ctrl1',"const previous = flow.get('ess_wit_grid_charge_status')"],['esswitaudi_ctrl1',"const previous = flow.get('ess_wit_audi_discharge_status')"],['esswitexport_ctrl','const socEntity =']]) {

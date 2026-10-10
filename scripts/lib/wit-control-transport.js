@@ -45,6 +45,13 @@ function witGridTransport(flow, global, msg, reply, now) {
     const mapping = config.entities;
     const mapped = role => mapping ? mapping[role] : role;
     let op = flow.get(key);
+    if (reply && msg.witReadbackTick) {
+        if (!op || op.stage !== 'awaitReadback') return null;
+        if (!snapshot || snapshot.at < op.powerSentAt || snapshot.remoteEntity !== op.binding.remoteEntity || snapshot.authorityEntity !== op.binding.authorityEntity) return null;
+        msg = {witOperationId:op.id,witReply:{success:true,values:[snapshot.remote,snapshot.duration,(snapshot.percent+65536)%65536,snapshot.ac,snapshot.periods]}};
+        op.stage = 'remoteRead';
+        op.authorityResult = {success:true,values:[snapshot.authority]};
+    }
     if (reply) {
         if (!op || op.id !== msg.witOperationId) return null;
         if (msg.error) return fail('WIT-opdracht mislukt: '+String(msg.error.message || 'Modbus'));
@@ -53,10 +60,15 @@ function witGridTransport(flow, global, msg, reply, now) {
             const readback = witReadbackResult(op.authorityResult, msg.witReply?.response || msg.witReply, op.binding, now);
             if (!readback) return fail('WIT-registerterugmelding ontbreekt of is ongeldig');
             flow.set('ess_wit_control_readback', readback);
-            flow.set(key, null);
             if (readback.authority !== 1 || readback.remote !== 1 || readback.ac !== 1 || readback.duration !== 2 || readback.percent !== op.powerPercent) {
+                if (now - op.powerSentAt < 90000 && !flow.get('ess_wit_command_fault') && flow.get('ess_wit_grid_charge_status')?.sessionOwned && flow.get('ess_wit_grid_charge_mode') !== 'off') {
+                    op.stage = 'awaitReadback';
+                    flow.set(key,op);
+                    return null;
+                }
                 return fail('WIT neemt de laadopdracht niet over · registerterugmelding wijkt af');
             }
+            flow.set(key, null);
             const watch = flow.get('ess_wit_charge_watch');
             if (op.kind === 'start' && watch && watch.attempts === op.attempt) flow.set('ess_wit_charge_watch', {...watch,waitingSince:now});
             flow.set('ess_wit_grid_write_ack', {at:now,sentAt:op.powerSentAt,powerPercent:op.powerPercent});
@@ -77,6 +89,11 @@ function witGridTransport(flow, global, msg, reply, now) {
         if (snapshot.periods !== 0) return fail('Externe WIT-tijdplanning actief · netladen geblokkeerd');
         const ack = flow.get('ess_wit_grid_write_ack');
         if (kind === 'renew' && ack && now - ack.sentAt < 45000) return null;
+        // A verified start immediately wakes the planner. Fresh measurements
+        // can then suggest more power before the inverter accepts another
+        // setpoint. Hold upward adjustments during this settling interval;
+        // downward safety reductions must still be sent immediately.
+        if (kind === 'update' && ack && now - ack.sentAt < 45000 && percent >= ack.powerPercent) return null;
         const steps = [];
         if (!snapshot.authority) steps.push('authority');
         if (!snapshot.ac) steps.push('ac');
