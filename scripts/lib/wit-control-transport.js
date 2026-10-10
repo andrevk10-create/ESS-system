@@ -1,6 +1,7 @@
 // WIT VPP addresses: integration's WIT guide and v1.9.8 diagnostic/select code.
 // No SOC, BMS, base mode, TOU schedule or installation limit is written here.
 const {witBatteryLimit} = require('./wit-runtime');
+const {witChargeSoc} = require('./wit-soc');
 function witApplyReadback(states, config, snapshot, enabled, now) {
     if (!enabled || !states) return;
     const remoteRole = 'select.growatt_grid_remote_power_control_enable';
@@ -117,7 +118,7 @@ function witGridTransport(flow, global, msg, reply, now) {
     if (!stage) return fail('Ongeldige WIT-schrijfstap');
     let data;
     if (stage === 'authority') {
-        data = {domain:'select',service:'select_option',service_data:{entity_id:op.binding.authorityEntity,option:'Enabled'}};
+        data = {domain:'growatt_modbus',service:'write_registers',service_data:{device_id:op.binding.deviceId,register:30100,values:[1]}};
     } else if (stage === 'ac') {
         data = {domain:'growatt_modbus',service:'write_registers',service_data:{device_id:op.binding.deviceId,register:30410,values:[1]}};
     } else if (stage === 'power') {
@@ -130,13 +131,13 @@ function witGridTransport(flow, global, msg, reply, now) {
         };
         const phaseRoles=[1,2,3].map(n=>'sensor.p1_meter_vermogen_fase_'+n);
         const phase=phaseRoles.map(id=>{const n=freshNumber(id);return n===null?null:n*(String(role(id)?.attributes?.unit_of_measurement).toLowerCase()==='kw'?1000:1);});
-        const socItem=role('sensor.growatt_battery_battery_soc');
-        const soc=Number(socItem?.state),target=Number(flow.get('ess_wit_grid_charge_target_soc'))||80;
+        const soc=witChargeSoc(flow,{'sensor.growatt_battery_battery_soc':role('sensor.growatt_battery_battery_soc'),'sensor.growatt_battery_battery_power':role('sensor.growatt_battery_battery_power')},config,now).soc;
+        const target=String(flow.get('ess_wit_grid_charge_mode')||'auto')==='auto'?100:Number(flow.get('ess_wit_grid_charge_target_soc'))||80;
         const telemetryFresh = ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power'].some(id => {
             const item=role(id), stamp=new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime();
             return item && !['unknown','unavailable',''].includes(String(item.state)) && now-stamp>=0 && now-stamp<=120000;
         });
-        if (phase.some(n=>n===null) || !telemetryFresh || !socItem || !Number.isFinite(soc) || soc<0 || soc>=target-0.2) {
+        if (phase.some(n=>n===null) || !telemetryFresh || soc===null || !Number.isFinite(soc) || soc<0 || soc>=target-0.2) {
             flow.set(key,null);return [null,{payload:now}];
         }
         const spec=config.specs||{},rated=(Number(spec.inverterRatedPowerKw)||18)*1000;

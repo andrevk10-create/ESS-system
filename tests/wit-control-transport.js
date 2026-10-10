@@ -26,6 +26,13 @@ const fixture=()=>{
     const run=(msg,reply=false)=>witGridTransport(flow,global,msg,reply,now);
     return {values,states,flow,global,run,state};
 };
+for(const mode of ['auto','on']) {
+    const high=fixture();high.values.ess_wit_grid_charge_mode=mode;
+    high.states['sensor.growatt_battery_battery_soc']=high.state(85);
+    Object.assign(high.values.ess_wit_control_readback,{authority:1,ac:1});
+    const command=high.run({payload:{value:25}});
+    assert.equal(!!command?.[0],mode==='auto','Automatic charging continues beyond saved manual 80% target');
+}
 for(const stage of ['power','authorityRead','remoteRead']){
     const lost=fixture();lost.values.ess_wit_control_readback.authority=1;lost.values.ess_wit_control_readback.ac=1;
     const dispatched=lost.run({payload:{option:'Charge',powerPercent:25}});
@@ -37,8 +44,8 @@ for(const stage of ['power','authorityRead','remoteRead']){
     assert.equal(lost.run({witOperationId:dispatched[0].witOperationId,witReply:{}},true),null,'Late service response cannot reopen a completed operation');
 }
 let f=fixture(),out=f.run({payload:{option:'Charge',powerPercent:25,durationMinutes:2}}),id=out[0].witOperationId;
-assert.equal(out[0].payload.data.service,'select_option');
-assert.equal(out[0].payload.data.service_data.entity_id,authorityRole);
+assert.equal(out[0].payload.data.service,'write_registers');
+assert.deepEqual(out[0].payload.data.service_data,{device_id:binding.deviceId,register:30100,values:[1]},'Enable actual authority without relying on an optimistic HA selector');
 assert.equal(f.run({payload:{option:'Charge',powerPercent:99}}),null,'Do not queue another start');
 out=f.run({witOperationId:id,witReply:{}},true);
 assert.deepEqual(out[0].payload.data.service_data,{device_id:binding.deviceId,register:30410,values:[1]});

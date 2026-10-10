@@ -39,8 +39,8 @@ if (recovery) {
             new Date(authority.last_changed || authority.last_updated || 0).getTime());
         if (now - stamp < 35000) return null;
     }
-    if (recovery.sentSteps.includes(step)) return null;
-    flow.set('ess_wit_manual_recovery', { ...recovery, sentSteps:[...recovery.sentSteps, step] });
+    if (recovery.sentSteps.includes(step) && now - (Number(recovery.lastSentAt) || recovery.startedAt) < 35000) return null;
+    flow.set('ess_wit_manual_recovery', { ...recovery, lastSentAt:now, sentSteps:[...new Set([...recovery.sentSteps, step])] });
     return [null, null, null, { payload:{ option:'Disabled', releaseStep:step } }, null];
 }
 ${marker}
@@ -76,6 +76,7 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     ].every(([role, step]) => String(entity(role)?.state).toLowerCase() === 'disabled' &&
         (fresh(role, 120000) || Number(flow.get('ess_wit_release_ack')?.[step]) >= commandFault.at))) {`);
     setter.func = setter.func.replace("flow.set('ess_wit_grid_charge_mode', mode);", "flow.set('ess_wit_grid_charge_mode', mode);\n    if (mode === 'on') flow.set('ess_wit_manual_recovery_attempted', false);");
+    setter.func = setter.func.replace("flow.set('ess_wit_command_fault', { ...fault, resetRequested:true });", "{ flow.set('ess_wit_command_fault', { ...fault, resetRequested:true }); if (flow.get('ess_wit_manual_recovery')) flow.set('ess_wit_manual_recovery',{startedAt:Date.now(),sentSteps:[]}); }");
     // The release service selects one of two fixed, configured roles.
     const stop = flows.find(n => n.id === 'esswitaudi_stop1');
     stop.name = 'Geef externe WIT-aansturing vrij';
@@ -90,7 +91,7 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     if (!exportControl.func.includes(exportGate)) throw new Error('WIT export interlock insertion point missing');
     exportControl.func = exportControl.func.replace(exportGate, `const solarReadback=flow.get('ess_wit_control_readback'), solarConfig=flow.get('ess_system_config');
 const solarRole=role=>solarConfig?.entities ? solarConfig.entities[role] : role;
-const solarSafe=solarReadback && Date.now()-solarReadback.at>=0 && Date.now()-solarReadback.at<=120000 &&
+const solarSafe=!flow.get('ess_wit_manual_recovery') && !flow.get('ess_wit_command_fault')?.resetRequested && solarReadback && Date.now()-solarReadback.at>=0 && Date.now()-solarReadback.at<=120000 &&
     solarReadback.remoteEntity===solarRole('select.growatt_grid_remote_power_control_enable') &&
     solarReadback.authorityEntity===solarRole('select.growatt_grid_control_authority') &&
     solarReadback.remote===0 && solarReadback.periods===0 && !flow.get('ess_wit_grid_transport') &&

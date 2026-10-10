@@ -15,6 +15,7 @@ function witChargeSoc(flow, states, config, now) {
     // mapped battery. Never use the grace near full or after a prolonged gap.
     if(cached?.binding===binding&&cached.soc>=0&&cached.soc<99&&now-cached.at>=0&&now-cached.at<=30000&&numeric(power)&&fresh(power))
         return {soc:cached.soc,cached:true};
+    flow.set('ess_wit_soc_gap', {at:now,state:item?.state??null,powerState:power?.state??null,powerAt:power?.last_reported||power?.last_updated||null,cacheAt:cached?.at??null,bindingMatches:cached?.binding===binding});
     return {soc:null,cached:false};
 }
 module.exports=function applySoc(flows){

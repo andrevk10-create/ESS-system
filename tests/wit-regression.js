@@ -115,6 +115,13 @@ async function main() {
         f.values.ess_wit_control_readback={deviceId:'wit',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',authority:0,remote:solarSafe?0:1,duration:2,percent:25,ac:1,periods:0,at:now};
         const result=f.run('esswitexport_ctrl');
         assert.equal(!!result?.[0],solarSafe,'Solar export control requires fresh inactive remote registers after a charge fault');
+        if(solarSafe){
+            f.values.ess_wit_command_fault.resetRequested=true;
+            assert(!f.run('esswitexport_ctrl')?.[0],'Export cannot re-enable authority during fault reset');
+            f.values.ess_wit_command_fault.resetRequested=false;
+            f.values.ess_wit_manual_recovery={startedAt:now,sentSteps:[]};
+            assert(!f.run('esswitexport_ctrl')?.[0],'Export cannot race an explicit release recovery');
+        }
     }
     f=fixture();f.values.ess_wit_grid_charge_mode='off';f.values.ess_wit_grid_transport={id:now,startedAt:now};
     f.run('esswitgrid_ctrl1');
