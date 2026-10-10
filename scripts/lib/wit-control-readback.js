@@ -35,6 +35,16 @@ flow.set('ess_wit_readback_pending',null);return {payload:Date.now(),witReadback
         n.func=witApplyReadback.toString()+'\n'+n.func.replace(marker,`witApplyReadback(states, flow.get('ess_system_config'), flow.get('ess_wit_control_readback'), flow.get('ess_wit_readback_enabled'), Date.now());\n${marker}`);
         if(id!=='esswitexport_ctrl')n.func=n.func.replace('        pendingUntil:0,','        pendingUntil:0,\n        commandFault:!!flow.get(\'ess_wit_command_fault\'),');
     }
+    const previousMarker="const previous = flow.get('ess_wit_grid_charge_status') || {};";
+    grid.func=grid.func.replace(previousMarker,`${previousMarker}
+const chargeAck=flow.get('ess_wit_grid_write_ack'), chargeReadback=flow.get('ess_wit_control_readback');
+if(previous.sessionOwned && chargeAck && chargeReadback && Date.now()-chargeAck.at>=0 && Date.now()-chargeAck.at<=120000 && chargeReadback.remote===1 && chargeReadback.percent===chargeAck.powerPercent) {
+    // The transport can lower a requested target using newer P1 measurements.
+    // Supervise that verified applied command, not the older planner target.
+    previous.powerPercent=chargeAck.powerPercent;
+    previous.targetPowerW=chargeAck.powerPercent/100*(Number(flow.get('ess_system_config')?.specs?.inverterRatedPowerKw)||18)*1000;
+}
+`);
     const guardMarker="if (!chargeOption ||";
     grid.func=grid.func.replace(guardMarker,`const transport=flow.get('ess_wit_grid_transport');
 if(transport) {

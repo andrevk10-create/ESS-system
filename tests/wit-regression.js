@@ -421,6 +421,20 @@ async function main() {
     }
     f = fixture();
     f.values.ess_wit_grid_charge_mode = 'on';
+    f.values.ess_wit_grid_charge_status={sessionOwned:true,powerPercent:59};
+    f.values.ess_wit_grid_write_ack={at:now,sentAt:now,powerPercent:25};
+    f.values.ess_wit_control_readback={remote:1,percent:25};
+    f.values.ess_wit_charge_watch={attempts:1,waitingSince:now-180000};
+    f.s['select.growatt_grid_remote_power_control_enable']=reading('Enabled','',now);
+    f.s['number.growatt_battery_remote_charge_and_discharge_power']=reading(25,'%',now);
+    f.s['sensor.growatt_battery_battery_power']=reading(4500,'W',now);
+    f.run('esswitgrid_ctrl1');
+    assert.equal(f.values.ess_wit_charge_watch.attempts,1,'A verified safety-capped target must not trigger another full start');
+    assert.equal(f.values.ess_wit_charge_watch.waitingSince,null,'Supervise actual applied power rather than the higher planner target');
+    assert(!f.values.ess_wit_command_fault);
+
+    f = fixture();
+    f.values.ess_wit_grid_charge_mode = 'on';
     f.values.ess_wit_readback_enabled = true;
     const hardware = {deviceId:'configured-device',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',authority:0,remote:0,duration:2,percent:-44,ac:1,periods:0,at:now};
     f.values.ess_wit_control_readback = hardware;

@@ -145,6 +145,7 @@ function witGridTransport(flow, global, msg, reply, now) {
         const headroom=3*Math.min(...phase.map(w=>limit-w+credited/3));
         const bmsLimit=witBatteryLimit(Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]])),config,'charge',(Number(spec.maximumBatteryChargePowerKw)||12)*1000,now);
         op.powerPercent=Math.min(op.powerPercent,Math.floor(Math.max(0,Math.min(headroom,bmsLimit))/rated*100));
+        flow.set('ess_wit_grid_applied_limit',{at:now,powerPercent:op.powerPercent,headroomW:headroom,batteryLimitW:bmsLimit});
         if (op.powerPercent<3) {flow.set(key,null);return [null,{payload:now}];}
         // FC16 commits enable, two-minute lease and positive setpoint together.
         // This avoids activating an old negative setpoint between writes.
