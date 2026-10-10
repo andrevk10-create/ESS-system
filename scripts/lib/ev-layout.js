@@ -4,12 +4,13 @@ module.exports=function evLayout(flows) {
     const controls=articles.find(a=>a.includes('<b>Laadbediening</b>'));
     const planning=articles.find(a=>a.includes('<b>Laadplanning</b>'));
     const oldJeep=articles.find(a=>a.includes('<b>Jeep Avenger · Easee rechts</b>'));
-    if(!controls||!planning||!oldJeep)throw Error('Missing vehicle panels for shared charging layout');
+    const vehicle=articles.find(a=>a.includes('<b>Elektrische auto</b>'));
+    if(!controls||!planning||!oldJeep||!vehicle)throw Error('Missing vehicle panels for shared charging layout');
     const content=a=>a.replace(/^<article[^>]*><div class="panel-head">[\s\S]*?<\/div>/,'').replace(/<\/article>$/,'');
     const timeline=planning.match(/<section class="ess-timeline"[\s\S]*?<\/section>/)?.[0]||'';
     const body=content(controls)+'<h3>Laadplanning</h3>'+content(planning).replace(timeline,'');
     const card=(title,side,smart,contents)=>`<article class="panel ess-ev-control" aria-label="${title} laadregeling"><div class="panel-head"><b>${title}</b><span>Easee ${side}</span></div><p class="subtle ess-ev-reason">{{d.${smart}?.reason||d.${smart}?.status||'Wacht op actuele gegevens'}}</p>${contents}</article>`;
-    const audi=card('Audi','links','audiSmart',body);
+    const audi=card('Audi','links','audiSmart',content(vehicle)+body);
     let jeepBody=body.replaceAll('d.audiSmart','d.jeepSmart').replaceAll('ess/audi/','ess/jeep/')
         .replace('@click="toggleEV"',`@click="send({topic:'ess/jeep/smart-enabled',payload:!d.jeepSmart?.enabled})"`)
         .replace('@click="toggleForceFull"',`@click="send({topic:'ess/jeep/force-full',payload:!d.jeepSmart?.forceFull})"`)
@@ -22,7 +23,7 @@ module.exports=function evLayout(flows) {
     const manual=`<div class="ess-ev-manual"><label class="setting soc-setting"><span>HUIDIGE JEEP-ACCUSTAND</span><select :value="d.jeepManualSoc?.soc??''" @change="send({topic:'ess/jeep/manual-soc',payload:$event.target.value})"><option value="" disabled>Vul in bij aansluiten</option><option v-for="value in 101" :key="value" :value="value-1">{{value-1}}%</option></select></label><p class="subtle">Geschat: {{d.jeepSmart?.estimatedEVSoc==null?'—':Math.round(d.jeepSmart.estimatedEVSoc)+'%'}} · 54 kWh. Vul de stand opnieuw in bij elke aansluiting.</p></div>`;
     jeepBody=jeepBody.replace('<div class="plan-grid">',manual+'<div class="plan-grid">');
     const jeep=card('Jeep Avenger','rechts','jeepSmart',jeepBody);
-    ui.format=ui.format.replace(controls,'').replace(planning,'').replace(oldJeep,'');
+    ui.format=ui.format.replace(controls,'').replace(planning,'').replace(oldJeep,'').replace(vehicle,'');
     ui.format=ui.format.replace('<section class="panel-grid">',`<section class="panel-grid"><div class="ess-ev-controls span-12">${audi}${jeep}</div>`);
     if(timeline)ui.format=ui.format.replace('</section>\n</div>',`<article class="panel span-12"><div class="panel-head"><b>Gezamenlijke laadplanning</b><span>Audi, Jeep en thuisaccu</span></div>${timeline}</article></section>\n</div>`);
     const getter=ui.format.match(/planTimeline\(\)\{[^\n]+/);
