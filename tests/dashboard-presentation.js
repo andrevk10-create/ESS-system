@@ -105,6 +105,10 @@ async function main() {
         }
     }
     const {vm,sent}=modelFor(componentFor(flows.find(n=>n.id==='esstpl_ev0000001')),demo(flows));
+    assert.equal(vm.jeepPlanText,'Slim laden uit','Jeep label must use its own disabled planning');
+    const autoMarkup=flows.find(n=>n.id==='esstpl_ev0000001').format;
+    assert(autoMarkup.indexOf('aria-label="Audi laadregeling"')<autoMarkup.indexOf('<b>Elektrische auto</b>'),'Charging controls belong at the top');
+    assert(autoMarkup.indexOf('aria-label="Jeep Avenger laadregeling"')<autoMarkup.indexOf('<b>Elektrische auto</b>'),'Both vehicles belong in the top row');
     vm.toggleEV();vm.toggleForceFull();vm.startClimate();vm.setWitExportMode('auto');vm.setWitGridChargeMode('on');vm.setWitEVBufferMode('eco');
     assert.deepEqual(sent,[
         {topic:'ess/audi/smart-enabled',payload:false}, {topic:'ess/audi/force-full',payload:true},

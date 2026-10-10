@@ -4706,5 +4706,6 @@ require('./lib/climate-control')(flows);
 require('./lib/wit-manual-recovery')(flows);
 require('./lib/wit-control-readback')(flows);
 require('./lib/second-ev')(flows);
+require('./lib/ev-layout')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
