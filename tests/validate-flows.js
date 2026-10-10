@@ -1385,7 +1385,7 @@ witControlStates['sensor.growatt_battery_battery_soc'] = state(89);
 witControlStates['select.growatt_grid_vpp_export_limit_enable'] = state('Disabled');
 witControlStates['number.growatt_grid_vpp_export_limit_power_rate'] = state(0);
 witOutput = runWitExportControl(witGlobalContext, flowContext, witNode, {});
-assert.strictEqual(witOutput[1].payload.value, 1, 'Onder 90% SOC moet eerst de exportgrens worden ingesteld');
+assert.strictEqual(witOutput[1].payload.value, 1, 'Onder 100% SOC moet eerst de exportgrens worden ingesteld');
 assert.strictEqual(witOutput[2], null);
 witControlStates['number.growatt_grid_vpp_export_limit_power_rate'] = state(1);
 witOutput = runWitExportControl(witGlobalContext, flowContext, witNode, {});
@@ -1412,11 +1412,15 @@ assert.strictEqual(runWitExportControl(witGlobalContext, flowContext, witNode, {
 delete witControlStates['sensor.ev_charger_status'];
 delete witControlStates['sensor.ev_state_of_charge'];
 delete witControlStates['sensor.ev_target_state_of_charge'];
-witControlStates['sensor.growatt_battery_battery_soc'] = state(90);
+for (const soc of [90,95,99,99.9]) {
+    witControlStates['sensor.growatt_battery_battery_soc'] = state(soc);
+    assert.strictEqual(runWitExportControl(witGlobalContext, flowContext, witNode, {}), null, 'De ingestelde exportbegrenzing moet tot 100% SOC actief blijven');
+}
+witControlStates['sensor.growatt_battery_battery_soc'] = state(100);
 witOutput = runWitExportControl(witGlobalContext, flowContext, witNode, {});
 assert.strictEqual(witOutput[0], null);
 assert.strictEqual(witOutput[1], null);
-assert.strictEqual(witOutput[2].payload.option, 'Disabled', 'Vanaf 90% SOC moet de exportbegrenzing worden uitgeschakeld');
+assert.strictEqual(witOutput[2].payload.option, 'Disabled', 'Bij 100% SOC moet automatische exportbegrenzing worden uitgeschakeld');
 witControlStates['sensor.growatt_battery_battery_soc'] = state(89);
 witControlStates['sensor.growatt_battery_battery_soc'].last_updated = new Date(Date.now() - 21 * 60 * 1000).toISOString();
 witControlStates['select.growatt_grid_vpp_export_limit_enable'] = state('Disabled');

@@ -118,9 +118,9 @@ function witGridTransport(flow, global, msg, reply, now) {
     } else if (stage === 'power') {
         const raw = global.get('homeassistant')?.homeAssistant?.states;
         const role = id => raw?.[mapped(id)];
-        const freshNumber = id => {
+        const freshNumber = (id,maxAge=15000) => {
             const item=role(id),stamp=new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime();
-            if (!item || ['unknown','unavailable',''].includes(String(item.state)) || now-stamp<0 || now-stamp>15000) return null;
+            if (!item || ['unknown','unavailable',''].includes(String(item.state)) || now-stamp<0 || now-stamp>maxAge) return null;
             const n=Number(item.state);return Number.isFinite(n)?n:null;
         };
         const phaseRoles=[1,2,3].map(n=>'sensor.p1_meter_vermogen_fase_'+n);
@@ -129,7 +129,7 @@ function witGridTransport(flow, global, msg, reply, now) {
         const soc=Number(socItem?.state),target=Number(flow.get('ess_wit_grid_charge_target_soc'))||80;
         const telemetryFresh = ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power'].some(id => {
             const item=role(id), stamp=new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime();
-            return item && !['unknown','unavailable',''].includes(String(item.state)) && now-stamp>=0 && now-stamp<=90000;
+            return item && !['unknown','unavailable',''].includes(String(item.state)) && now-stamp>=0 && now-stamp<=120000;
         });
         if (phase.some(n=>n===null) || !telemetryFresh || !socItem || !Number.isFinite(soc) || soc<0 || soc>=target-0.2) {
             flow.set(key,null);return [null,{payload:now}];
@@ -138,14 +138,24 @@ function witGridTransport(flow, global, msg, reply, now) {
         const limit=(Math.max(0,(Number(spec.mainFuseA)||25)-3))*(Number(spec.voltage)||230);
         // Credit only measured charging that was already on the grid. A queued
         // command is never connection headroom. Direct PV alone is not credited.
-        const power=freshNumber('sensor.growatt_battery_battery_power');
-        const pv=freshNumber('sensor.growatt_solar_solar_total_power');
+        // Growatt polling is slower than P1. Use the same two-minute telemetry
+        // window as the planner, while keeping the P1 safety check at 15 s.
+        // Power and PV must belong to a coherent poll; subtracting unrelated
+        // samples could turn direct solar charging into fictitious grid credit.
+        const growattPower = id => {
+            const n=freshNumber(id,120000),unit=String(role(id)?.attributes?.unit_of_measurement||'').toLowerCase();
+            return n===null?null:unit==='kw'?n*1000:unit==='w'?n:null;
+        };
+        const powerRole='sensor.growatt_battery_battery_power',pvRole='sensor.growatt_solar_solar_total_power';
+        const power=growattPower(powerRole),pv=growattPower(pvRole);
+        const stamp=id=>new Date(role(id)?.last_reported||role(id)?.last_updated||role(id)?.last_changed||0).getTime();
+        const coherent=Math.abs(stamp(powerRole)-stamp(pvRole))<=15000;
         const scale=Number(flow.get('ess_growatt_battery_power_scale'))===0.1?0.1:1;
-        const credited=snapshot?.remote && snapshot.percent>0 && power!==null && pv!==null ? Math.min(Math.max(0,power*scale-Math.max(0,pv)),snapshot.percent/100*rated) : 0;
+        const credited=snapshot?.remote && snapshot.percent>0 && coherent && power!==null && pv!==null ? Math.min(Math.max(0,power*scale-Math.max(0,pv)),snapshot.percent/100*rated) : 0;
         const headroom=3*Math.min(...phase.map(w=>limit-w+credited/3));
         const bmsLimit=witBatteryLimit(Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]])),config,'charge',(Number(spec.maximumBatteryChargePowerKw)||12)*1000,now);
         op.powerPercent=Math.min(op.powerPercent,Math.floor(Math.max(0,Math.min(headroom,bmsLimit))/rated*100));
-        flow.set('ess_wit_grid_applied_limit',{at:now,powerPercent:op.powerPercent,headroomW:headroom,batteryLimitW:bmsLimit});
+        flow.set('ess_wit_grid_applied_limit',{at:now,powerPercent:op.powerPercent,headroomW:headroom,batteryLimitW:bmsLimit,creditedNetChargeW:credited,phasePowerW:phase});
         if (op.powerPercent<3) {flow.set(key,null);return [null,{payload:now}];}
         // FC16 commits enable, two-minute lease and positive setpoint together.
         // This avoids activating an old negative setpoint between writes.

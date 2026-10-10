@@ -89,4 +89,41 @@ assert.equal(f.run({payload:{option:'Charge',powerPercent:25}})[0],null,'Fresh P
 f=fixture();f.states['sensor.growatt_battery_battery_soc']=f.state(100);
 f.values.ess_wit_control_readback.authority=1;f.values.ess_wit_control_readback.ac=1;
 assert.equal(f.run({payload:{option:'Charge',powerPercent:25}})[0],null,'Do not write a charge command into a full battery');
+
+// Reproduce the slower Growatt poll while P1 continues updating each second.
+const runningCharge = () => {
+    const f=fixture();
+    Object.assign(f.values.ess_wit_control_readback,{authority:1,remote:1,ac:1,percent:44});
+    for(const n of [1,2,3])f.states['sensor.p1_meter_vermogen_fase_'+n]=f.state(3000);
+    f.states['sensor.growatt_battery_battery_power']=f.state(7920);
+    for(const id of ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power'])f.states[id].last_updated=new Date(now-30000).toISOString();
+    return f;
+};
+f=runningCharge();
+assert.deepEqual(f.run({payload:{value:44}})[0].payload.data.service_data.values,[1,2,44],'A 30-second Growatt sample must not count existing charging twice and reduce 8 kW to 6 kW');
+assert.equal(f.values.ess_wit_grid_applied_limit.creditedNetChargeW,7920);
+f=runningCharge();f.states['sensor.p1_meter_vermogen_fase_3']=f.state(6000);
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],28,'A newly overloaded P1 phase still forces an immediate reduction with slower Growatt telemetry');
+f=runningCharge();f.states['sensor.growatt_battery_battery_power'].last_updated=new Date(now-120001).toISOString();
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],34,'Expired Growatt data cannot create headroom');
+f=runningCharge();f.states['sensor.growatt_solar_solar_total_power'].state='7920';
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],34,'Charging supplied entirely by direct PV creates no existing grid-charge credit');
+f=runningCharge();f.states['sensor.growatt_solar_solar_total_power'].last_updated=new Date(now).toISOString();
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],34,'Unrelated battery and PV polls cannot create imaginary grid credit');
+f=runningCharge();f.states['sensor.growatt_battery_battery_power'].state='7.92';f.states['sensor.growatt_battery_battery_power'].attributes.unit_of_measurement='kW';
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],44,'Growatt W and kW readings give the same headroom');
+f=runningCharge();
+for(const id of ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power'])f.states[id].last_updated=new Date(now-120000).toISOString();
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],44,'The planner and transport use the same inclusive two-minute Growatt window');
+f=runningCharge();f.states['sensor.growatt_solar_solar_total_power'].state='unavailable';
+assert.equal(f.run({payload:{value:44}})[0].payload.data.service_data.values[2],34,'Missing direct PV readings cannot create charging credit');
+f=runningCharge();f.states['sensor.p1_meter_vermogen_fase_1'].last_updated=new Date(now-15001).toISOString();
+assert.equal(f.run({payload:{value:44}})[0],null,'The larger Growatt window must never relax the P1 freshness requirement');
+f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
+for(const [index,w]of [-7000,0,4000].entries())f.states['sensor.p1_meter_vermogen_fase_'+(index+1)]=f.state(w);
+assert.equal(f.run({payload:{value:66}})[0].payload.data.service_data.values[2],17,'Export on one phase cannot compensate a loaded phase');
+f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
+f.values.ess_system_config={specs:{maximumBatteryChargePowerKw:18}};
+for(const [index,w]of [-1000,-2000,-3000].entries())f.states['sensor.p1_meter_vermogen_fase_'+(index+1)]=f.state(w);
+assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],100,'Export increases headroom on its own phase rather than being clamped to zero');
 console.log('WIT transport: real readback, atomic lease/setpoint, single pending request, current fuse limits, delayed acknowledgements and failed writes OK');
