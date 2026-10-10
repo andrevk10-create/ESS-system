@@ -928,7 +928,7 @@ assert(Math.abs(flowValues.ess_audi_control_status.solarForecastRemainingKwh - 1
 assert.strictEqual(flowValues.ess_audi_control_status.solarOnlyExpected, true, 'Voldoende zonverwachting moet netladen voor het vertrekdoel uitstellen');
 assert.strictEqual(flowValues.ess_audi_control_status.scheduledSlots, 0, 'Bij voldoende verwachte zon mogen geen netkwartieren worden gepland');
 assert(flowValues.ess_audi_control_status.solarEnergyReservedKwh >= flowValues.ess_audi_control_status.departureEnergyNeeded - 0.05, 'De verwachte zon moet de benodigde vertrekenergie afdekken');
-assert(flowValues.ess_audi_control_status.status.includes('alleen zonneladen'), 'Regelstatus moet uitleggen dat alleen zon wordt verwacht');
+assert(flowValues.ess_audi_control_status.status.includes('alleen zonneladen'), 'Regelstatus moet uitleggen dat alleen zon wordt verwacht: '+flowValues.ess_audi_control_status.status);
 
 states['sensor.growatt_battery_battery_soc'] = state(50);
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
@@ -1683,7 +1683,7 @@ witGridOutput = runWitGridCharge(witGridGlobalContext, flowContext, witNode, {})
 assert.strictEqual(witGridOutput[2].payload.option, 'Enabled', 'Een bevestigde eigen Charge-opdracht moet alleen de veilige lease vernieuwen');
 assert.strictEqual(flowValues.ess_wit_grid_charge_status.active, false, 'Een Charge-opdracht zonder accuvermogen is nog niet actief');
 assert.strictEqual(flowValues.ess_wit_grid_charge_status.commandConfirmed, true);
-witGridStates['sensor.growatt_battery_battery_power'] = state(11880, { unit_of_measurement:'W' });
+witGridStates['sensor.growatt_battery_battery_power'] = state(requestedChargePercent * 180, { unit_of_measurement:'W' });
 runWitGridCharge(witGridGlobalContext, flowContext, witNode, {});
 assert.strictEqual(flowValues.ess_wit_grid_charge_status.active, true, 'Dashboardstatus moet pas na gemeten acculaadvermogen actief worden');
 

@@ -43,7 +43,7 @@ const DEFAULT_SYSTEM_CONFIG = {
     batteryCapacityKwh: 30,
     inverterRatedPowerKw: 18,
     maximumBatteryPowerKw: 8,
-    maximumBatteryChargePowerKw: 12,
+    maximumBatteryChargePowerKw: 8,
     evBatteryCapacityKwh: 86,
     evMaximumCurrentA: 25,
     evGridChargePowerKw: 11,

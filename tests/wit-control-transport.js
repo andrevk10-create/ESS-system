@@ -135,5 +135,5 @@ assert.equal(f.run({payload:{value:66}})[0].payload.data.service_data.values[2],
 f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
 f.values.ess_system_config={specs:{maximumBatteryChargePowerKw:18}};
 for(const [index,w]of [-1000,-2000,-3000].entries())f.states['sensor.p1_meter_vermogen_fase_'+(index+1)]=f.state(w);
-assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],100,'Export increases headroom on its own phase rather than being clamped to zero');
+assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],44,'Even an old 18 kW setting and ample export headroom cannot exceed the 8 kW installation ceiling');
 console.log('WIT transport: real readback, atomic lease/setpoint, single pending request, current fuse limits, delayed acknowledgements and failed writes OK');

@@ -23,7 +23,7 @@
 
 ### Installation limits and optional BMS telemetry
 
-`maximumBatteryChargePowerKw` is the grid-charge ceiling (default 12 kW). `maximumBatteryPowerKw` remains the extra-discharge ceiling. Set both to verified installation limits; neither overrides the inverter/BMS.
+`maximumBatteryChargePowerKw` is the charge ceiling (default and installation maximum 8 kW). Both the planner and write transport clamp older, higher settings to 8 kW; lower configured or BMS limits take precedence. `maximumBatteryPowerKw` remains the extra-discharge ceiling. Neither overrides the inverter/BMS.
 
 Optional entity roles on Configuration:
 
