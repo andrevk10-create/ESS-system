@@ -12,6 +12,7 @@ module.exports = function applyWitRelease(flows) {
         if (begin < 0 || end < 3) throw new Error('Missing WIT stop function');
         n.func = n.func.slice(0, begin) + `function ${stop}(reason, details = {}) {
     flow.set('${id === 'esswitgrid_ctrl1' ? 'ess_wit_charge_watch' : 'ess_wit_discharge_watch'}', null);
+    ${id === 'esswitgrid_ctrl1' ? "flow.set('ess_wit_grid_transport', null);" : ''}
     if (previous.sessionOwned !== true) {
         save('blocked', { ...details, active:false, sessionOwned:false, releasing:false, powerPercent:0, targetPowerW:0, status:reason });
         return null;

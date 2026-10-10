@@ -109,6 +109,16 @@ async function main() {
         f.run('esswitgrid_ctrl1');
         assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned,condition==='matching','Ownership recovery: '+condition);
     }
+    for(const solarSafe of [true,false]){
+        f=fixture();f.values.ess_wit_command_fault={at:now-120000,reason:'WIT-opdracht blijft onderweg'};
+        f.values.ess_wit_readback_enabled=true;
+        f.values.ess_wit_control_readback={deviceId:'wit',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',authority:0,remote:solarSafe?0:1,duration:2,percent:25,ac:1,periods:0,at:now};
+        const result=f.run('esswitexport_ctrl');
+        assert.equal(!!result?.[0],solarSafe,'Solar export control requires fresh inactive remote registers after a charge fault');
+    }
+    f=fixture();f.values.ess_wit_grid_transport={id:now,startedAt:now};
+    f.run('esswitgrid_ctrl1');
+    assert.equal(f.values.ess_wit_grid_transport,null,'Stopping cancels the pending pipeline even after ownership is lost');
     f = fixture();
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'No net charge when sun covers target');
     f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]};

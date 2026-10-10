@@ -46,8 +46,13 @@ function witGridTransport(flow, global, msg, reply, now) {
     const mapped = role => mapping ? mapping[role] : role;
     let op = flow.get(key);
     if (reply && msg.witReadbackTick) {
-        if (!op || op.stage !== 'awaitReadback') return null;
+        if (!op || !['power','authorityRead','remoteRead','awaitReadback'].includes(op.stage) || !op.powerSentAt ||
+            flow.get('ess_wit_command_fault') || flow.get('ess_wit_grid_charge_status')?.releasing ||
+            !flow.get('ess_wit_grid_charge_status')?.sessionOwned) return null;
         if (!snapshot || snapshot.at < op.powerSentAt || snapshot.remoteEntity !== op.binding.remoteEntity || snapshot.authorityEntity !== op.binding.authorityEntity) return null;
+        if (now-snapshot.at<0 || now-snapshot.at>120000 || snapshot.deviceId!==op.binding.deviceId) return null;
+        if (op.stage!=='awaitReadback' && (snapshot.authority!==1 || snapshot.remote!==1 || snapshot.ac!==1 || snapshot.duration!==2 ||
+            snapshot.periods!==0 || snapshot.percent!==op.powerPercent)) return null;
         msg = {witOperationId:op.id,witReply:{success:true,values:[snapshot.remote,snapshot.duration,(snapshot.percent+65536)%65536,snapshot.ac,snapshot.periods]}};
         op.stage = 'remoteRead';
         op.authorityResult = {success:true,values:[snapshot.authority]};

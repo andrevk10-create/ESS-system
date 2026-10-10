@@ -88,7 +88,15 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     const exportControl = flows.find(n => n.id === 'esswitexport_ctrl');
     const exportGate = 'if (targetEnabled) {';
     if (!exportControl.func.includes(exportGate)) throw new Error('WIT export interlock insertion point missing');
-    exportControl.func = exportControl.func.replace(exportGate, `if (flow.get('ess_wit_command_fault')) {
+    exportControl.func = exportControl.func.replace(exportGate, `const solarReadback=flow.get('ess_wit_control_readback'), solarConfig=flow.get('ess_system_config');
+const solarRole=role=>solarConfig?.entities ? solarConfig.entities[role] : role;
+const solarSafe=solarReadback && Date.now()-solarReadback.at>=0 && Date.now()-solarReadback.at<=120000 &&
+    solarReadback.remoteEntity===solarRole('select.growatt_grid_remote_power_control_enable') &&
+    solarReadback.authorityEntity===solarRole('select.growatt_grid_control_authority') &&
+    solarReadback.remote===0 && solarReadback.periods===0 && !flow.get('ess_wit_grid_transport') &&
+    !audiDischargeBusy && !gridChargeBusy &&
+    Date.now()-Math.max(Number(flow.get('ess_wit_release_ack')?.authority)||0,Number(flow.get('ess_wit_release_ack')?.remote)||0)>=35000;
+if (flow.get('ess_wit_command_fault') && !solarSafe) {
     node.status({fill:'yellow',shape:'ring',text:'WIT-fout · exportregeling wacht op herstel'});
     return exportEnabled ? [null, null, {payload:{option:'Disabled'}}] : null;
 }

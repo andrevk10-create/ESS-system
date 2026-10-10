@@ -26,6 +26,16 @@ const fixture=()=>{
     const run=(msg,reply=false)=>witGridTransport(flow,global,msg,reply,now);
     return {values,states,flow,global,run,state};
 };
+for(const stage of ['power','authorityRead','remoteRead']){
+    const lost=fixture();lost.values.ess_wit_control_readback.authority=1;lost.values.ess_wit_control_readback.ac=1;
+    const dispatched=lost.run({payload:{option:'Charge',powerPercent:25}});
+    const op=lost.values.ess_wit_grid_transport;op.stage=stage;
+    lost.values.ess_wit_control_readback={...binding,authority:1,remote:1,duration:2,percent:25,ac:1,periods:0,at:now};
+    const confirmed=lost.run({witReadbackTick:true},true);
+    assert(confirmed[1],'Hardware readback repairs lost service reply at '+stage);
+    assert.equal(lost.values.ess_wit_grid_transport,null);
+    assert.equal(lost.run({witOperationId:dispatched[0].witOperationId,witReply:{}},true),null,'Late service response cannot reopen a completed operation');
+}
 let f=fixture(),out=f.run({payload:{option:'Charge',powerPercent:25,durationMinutes:2}}),id=out[0].witOperationId;
 assert.equal(out[0].payload.data.service,'select_option');
 assert.equal(out[0].payload.data.service_data.entity_id,authorityRole);
