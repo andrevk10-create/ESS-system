@@ -1292,13 +1292,13 @@ assert(lightingActions.every((item) => item.blockInputOverrides === false && ite
 const lightingUpstreams = flows.filter((item) => (item.wires || []).some((output) => output.some((target) => lightingActionIds.includes(target))));
 assert.deepStrictEqual(lightingUpstreams.map((item) => item.id), [lightingControl.id], 'Geen andere node mag de dynamische lichtacties aansturen');
 const runLightingControl = new Function('global', 'flow', 'node', 'msg', lightingControl.func);
-assert.strictEqual(runLightingControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'losse-lamp' } }), null, 'Onbekende of losse lamp moet worden geweigerd');
-const zone2Off = runLightingControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-2' } });
+assert.strictEqual(runLightingControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'losse-lamp' } }), null, 'Onbekende of losse lamp moet worden geweigerd');
+const zone2Off = runLightingControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-2' } });
 assert.deepStrictEqual(zone2Off[1].payload.target.entity_id, ['light.zone_2'], 'Actieve lichtzone 2 moet via de vaste uit-uitgang schakelen');
-const zone4On = runLightingControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-4' } });
+const zone4On = runLightingControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-4' } });
 assert.deepStrictEqual(zone4On[0].payload.target.entity_id, ['light.zone_4'], 'Lichtzone 4 moet rechtstreeks als kamerzone worden ingeschakeld');
 assert.strictEqual(zone4On[0].payload.brightness, 100, 'Een kamerzone zonder dimstatus moet veilig op 100% starten');
-const dimmed = runLightingControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/light/brightness', payload: { key: 'zone-1', brightness: 125 } });
+const dimmed = runLightingControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/brightness', payload: { key: 'zone-1', brightness: 125 } });
 assert.strictEqual(dimmed[0].payload.brightness, 100, 'Dimniveau moet tot 100% worden begrensd');
 assert.deepStrictEqual(dimmed[0].payload.target.entity_id, ['light.zone_1']);
 const mappedLightConfig = { modules: { lighting: true }, entities: { 'light.zone_1': 'light.woonkamer' } };
@@ -1307,16 +1307,38 @@ const mappedLightGlobal = { get: () => ({ homeAssistant: { states: {
     'light.woonkamer': { state: 'on', attributes: { brightness: 128 } },
     'light.zone_1': { state: 'off', attributes: {} }
 } } }) };
-const mappedOff = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } });
+const mappedOff = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } });
 assert.deepStrictEqual(mappedOff[1].payload.target.entity_id, ['light.woonkamer'], 'Bediening moet de status van de gekoppelde lamp gebruiken, ook bij een afwijkende standaardstatus');
-const mappedDim = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/brightness', payload: { key: 'zone-1', brightness: 42 } });
+const mappedDim = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/brightness', payload: { key: 'zone-1', brightness: 42 } });
 assert.strictEqual(mappedDim[0].payload.brightness, 42);
 assert.deepStrictEqual(mappedDim[0].payload.target.entity_id, ['light.woonkamer']);
-const mappedOn = runLightingControl({ get: () => ({ homeAssistant: { states: { 'light.woonkamer': { state: 'off', attributes: {} } } } }) }, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } });
+const mappedOn = runLightingControl({ get: () => ({ homeAssistant: { states: { 'light.woonkamer': { state: 'off', attributes: {} } } } }) }, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } });
 assert.deepStrictEqual(mappedOn[0].payload.target.entity_id, ['light.woonkamer'], 'Inschakelen moet ook zonder standaardentiteit werken');
 assert.strictEqual(mappedOn[0].payload.brightness, 100);
-assert.strictEqual(runLightingControl({ get: () => ({ homeAssistant: { states: {} } }) }, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } }), null, 'Ontbrekende gekoppelde lamp mag niet schakelen');
-assert(lightingActions.every(item => item.data.includes('"entity_id": payload.target.entity_id')), 'Lichtacties moeten het gekoppelde doel expliciet in de servicegegevens doorgeven');
+assert.strictEqual(runLightingControl({ get: () => ({ homeAssistant: { states: {} } }) }, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } }), null, 'Ontbrekende gekoppelde lamp mag niet schakelen');
+assert(lightingActions.every(item => item.data === '{}' && !item.blockInputOverrides), 'Lichtacties moeten de gevalideerde payload.data doorgeven');
+const staleLightGlobal = { get: () => ({ homeAssistant: { states: {} } }) };
+const explicitOn = runLightingControl(staleLightGlobal, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic:'ess/light/toggle', payload:{key:'zone-1',active:true} });
+assert.deepStrictEqual(explicitOn[0].payload.data, {entity_id:['light.woonkamer'],brightness_pct:100}, 'Expliciet inschakelen moet zonder statuscache de volledige servicegegevens versturen');
+const explicitOff = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic:'ess/light/toggle', payload:{key:'zone-1',active:false} });
+assert.deepStrictEqual(explicitOff[1].payload.data, {entity_id:['light.woonkamer']});
+assert.strictEqual(explicitOff[0], null);
+const dimNoCache = runLightingControl(staleLightGlobal, mappedLightFlow, { warn: () => undefined, status: () => undefined }, { topic:'ess/light/brightness', payload:{key:'zone-1',brightness:42} });
+assert.deepStrictEqual(dimNoCache[0].payload.data, {entity_id:['light.woonkamer'],brightness_pct:42});
+const disabledMappingFlow = {get:()=>({modules:{lighting:true},entities:{'light.zone_1':''}})};
+assert.strictEqual(runLightingControl(mappedLightGlobal,disabledMappingFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'zone-1',active:true}}),null);
+assert(detailTemplates.lighting.format.includes('payload:{key:item.key,active}'), 'Dashboard moet de bedoelde aan/uitstatus versturen');
+const lightScript = detailTemplates.lighting.format.match(/<script>([\s\S]*?)<\/script>/)[1];
+const lightComponent = new Function(lightScript.replace('export default', 'return'))();
+let clickMessage;
+const lightUi = {lightIsActive:item=>item.active,queueLightPending:()=>undefined,send:message=>{clickMessage=message;}};
+lightComponent.methods.toggleLight.call(lightUi,{key:'zone-1',available:true,active:false});
+const clickedOn = runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},clickMessage);
+assert.deepStrictEqual(clickedOn[0].payload.data,{entity_id:['light.woonkamer'],brightness_pct:100},'Een echte dashboardklik moet de servicegegevens bereiken zonder cache');
+lightComponent.methods.toggleLight.call(lightUi,{key:'zone-1',available:true,active:true});
+const clickedOff = runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},clickMessage);
+assert.deepStrictEqual(clickedOff[1].payload.data,{entity_id:['light.woonkamer']});
+
 
 const climateControl = flows.find((node) => node.id === 'essclimate_ctrl1');
 const climateActionIds = ['essclimate_temp1','essclimate_mode1','esswater_temp001','esswater_mode001'];

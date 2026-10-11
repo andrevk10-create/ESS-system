@@ -327,7 +327,7 @@ export default {
     lightStatus(item){return this.lightIsPending(item)?'Wachten op verlichting':item&&item.status||'Niet beschikbaar'},
     resolveLightPending(){const rooms=this.d&&this.d.lighting&&this.d.lighting.rooms||[];const next={...this.pendingLights};let changed=false;for(const item of rooms){const pending=next[item.key];if(!pending||!!item.active!==pending.active)continue;if(pending.brightness!=null&&Math.abs(Number(item.brightness)-pending.brightness)>2)continue;delete next[item.key];changed=true}if(changed)this.pendingLights=next},
     queueLightPending(item,active,brightness){const token=Date.now();this.pendingLights={...this.pendingLights,[item.key]:{active,brightness,token}};setTimeout(()=>{const pending=this.pendingLights[item.key];if(!pending||pending.token!==token)return;const next={...this.pendingLights};delete next[item.key];this.pendingLights=next},30000)},
-    toggleLight(item){if(!item||!item.available)return;const active=!this.lightIsActive(item);this.queueLightPending(item,active,null);this.send({topic:'ess/light/toggle',payload:{key:item.key}})},
+    toggleLight(item){if(!item||!item.available)return;const active=!this.lightIsActive(item);this.queueLightPending(item,active,null);this.send({topic:'ess/light/toggle',payload:{key:item.key,active}})},
     setLightBrightness(item,event){if(!item||!item.available)return;const brightness=Math.max(1,Math.min(100,Math.round(Number(event&&event.target&&event.target.value))));if(!Number.isFinite(brightness))return;item.brightness=brightness;this.queueLightPending(item,true,brightness);this.send({topic:'ess/light/brightness',payload:{key:item.key,brightness}})},
     climatePending(item){return item&&this.pendingClimate?this.pendingClimate[item.key]:null},
     climateIsPending(item){return !!this.climatePending(item)},
@@ -2227,33 +2227,43 @@ if (!entityId || !['ess/light/toggle','ess/light/brightness'].includes(msg.topic
     return null;
 }
 const ha = global.get('homeassistant');
-const states = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};
+const lightStates = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};
 const config = moduleConfig;
-const targetEntityId = config.entities && config.entities[entityId] || entityId;
+const targetEntityId = config.entities && Object.prototype.hasOwnProperty.call(config.entities, entityId) ? config.entities[entityId] : entityId;
 if (typeof targetEntityId !== 'string' || !/^light\\.[a-z0-9_]+$/.test(targetEntityId)) return null;
-const current = states[targetEntityId];
+const current = lightStates[targetEntityId];
 const state = current ? String(current.state).toLowerCase() : 'unavailable';
-if (!current || ['unknown','unavailable',''].includes(state)) return null;
+const explicitToggle = msg.topic === 'ess/light/toggle' && typeof request.active === 'boolean';
+if (msg.topic === 'ess/light/toggle' && !explicitToggle && (!current || ['unknown','unavailable',''].includes(state))) {
+    node.warn('Verlichtingsopdracht geweigerd: geen actuele status voor ' + targetEntityId);
+    return null;
+}
 const outputs = [null, null];
 if (msg.topic === 'ess/light/brightness') {
     const requested = Number(request.brightness);
     if (!Number.isFinite(requested)) return null;
     const brightness = Math.max(1, Math.min(100, Math.round(requested)));
     outputs[0] = { payload: { brightness, target: { entity_id: [targetEntityId] } } };
-} else if (state === 'on') {
+} else if (explicitToggle ? !request.active : state === 'on') {
     outputs[1] = { payload: { target: { entity_id: [targetEntityId] } } };
 } else {
-    const rawBrightness = Number(current.attributes && current.attributes.brightness);
+    const rawBrightness = Number(current && current.attributes && current.attributes.brightness);
     const brightness = Number.isFinite(rawBrightness) && rawBrightness > 0 ? Math.max(1, Math.min(100, Math.round(rawBrightness / 255 * 100))) : 100;
     outputs[0] = { payload: { brightness, target: { entity_id: [targetEntityId] } } };
 }
+for (const output of outputs) {
+    if (!output) continue;
+    output.payload.data = { entity_id: output.payload.target.entity_id };
+    if (output.payload.brightness != null) output.payload.data.brightness_pct = output.payload.brightness;
+}
+node.status({fill:'blue',shape:'dot',text:targetEntityId + (outputs[1] ? ' uit aangevraagd' : ' aan/dimmen aangevraagd')});
 return outputs;`,
   outputs: 2, timeout: 0, noerr: 0, initialize: '', finalize: '', libs: [], x: 1110, y: 420,
   wires: [[ids.lightingTurnOnAction],[ids.lightingTurnOffAction]]
 });
 for (const [id, name, service, data] of [
-  [ids.lightingTurnOnAction, 'Schakel kamerlicht in of dim', 'turn_on', '{"entity_id": payload.target.entity_id, "brightness_pct": payload.brightness}'],
-  [ids.lightingTurnOffAction, 'Schakel kamerlicht uit', 'turn_off', '{"entity_id": payload.target.entity_id}']
+  [ids.lightingTurnOnAction, 'Schakel kamerlicht in of dim', 'turn_on', '{}'],
+  [ids.lightingTurnOffAction, 'Schakel kamerlicht uit', 'turn_off', '{}']
 ]) flows.push({
   id, type: 'api-call-service', z: FLOW_ID, name, server: 'ess00000000000b', version: 7,
   debugenabled: false, action: `light.${service}`, floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
