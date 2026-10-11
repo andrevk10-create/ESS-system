@@ -12,9 +12,13 @@ Source: https://en.growatt.com/upload/file/WIT_17-25K-HU_User_Manual_EN_202606.p
 
 The current Home Assistant integration does not expose this setting, and the
 available documented register map does not identify its address for this
-installation. Therefore the enabled state remains unknown until confirmed in
-ShineTools/ShinePhone. No guessed register is written and no extra capacity is
-credited from an unverified phase-control mode. The WIT forced-charge interface
+installation. On 2026-10-11 the owner confirmed that the setting in
+ShineTools/ShinePhone is Disable / Uit. Phase-specific anti-backflow control is
+therefore currently disabled. This setting alone does not establish independent
+phase compensation during forced charging; interaction with the total-power
+interface must be verified before changing the controller's assumptions.
+No guessed register is written and no extra capacity is credited from this mode.
+The WIT forced-charge interface
 continues to receive a total power target; it is not three independent targets.
 
 For the installed 3×25 A connection the requested design ceiling is now 24 A
