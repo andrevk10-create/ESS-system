@@ -4865,5 +4865,185 @@
     ],
     "x": 150,
     "y": 2700
+  },
+  {
+    "z": "ess000000000001",
+    "x": 850,
+    "y": 2200,
+    "id": "esshk_refresh_tick",
+    "type": "inject",
+    "name": "Ververs lokale woonkamer elke 5 minuten",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "300",
+    "once": true,
+    "onceDelay": 90,
+    "wires": [
+      [
+        "esshk_refresh_request"
+      ]
+    ]
+  },
+  {
+    "z": "ess000000000001",
+    "x": 850,
+    "y": 2200,
+    "id": "esshk_refresh_request",
+    "type": "function",
+    "name": "Vraag actuele HomeKit-temperatuur",
+    "func": "function homekitRefreshRequest(flow, global, now) {\n    const c=flow.get('ess_climate_config'),h=c?.heatSource,ha=global.get('homeassistant')?.homeAssistant;\n    const registry=flow.get('ess_climate_registry');\n    if(flow.get('ess_charging_preferences_ready')!==true || !h?.enabled || h.adapter!=='homekit-room' ||\n        !c.tadoHysteresis || c.mode!=='auto' || !ha?.isConnected ||\n        !/^climate\\.[a-z0-9_]+$/.test(h.entity || '') || registry?.entities?.[h.entity]?.platform!=='homekit_controller' ||\n        now-registry.at<0 || now-registry.at>4*3600000) return null;\n    const pending=flow.get('ess_homekit_refresh_pending');\n    if(pending && now-pending.at<90000) return null;\n    const request={entity:h.entity,at:now};\n    flow.set('ess_homekit_refresh_pending',request);\n    return {refresh:request,payload:{entity:h.entity}};\n}\nreturn homekitRefreshRequest(flow,global,Date.now());",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": [
+      [
+        "esshk_refresh_update"
+      ]
+    ]
+  },
+  {
+    "z": "ess000000000001",
+    "x": 840,
+    "y": 2000,
+    "id": "esshk_refresh_update",
+    "type": "api-call-service",
+    "name": "Lees HomeKit-apparaat opnieuw uit",
+    "server": "ess00000000000b",
+    "version": 7,
+    "debugenabled": false,
+    "action": "homeassistant.update_entity",
+    "floorId": [],
+    "areaId": [],
+    "deviceId": [],
+    "entityId": [],
+    "labelId": [],
+    "dataType": "jsonata",
+    "data": "($assert(payload.entity=$flowContext('ess_climate_config').heatSource.entity and $flowContext('ess_climate_config').heatSource.adapter='homekit-room','HomeKit-koppeling gewijzigd'); {\"entity_id\":payload.entity})",
+    "mergeContext": "",
+    "mustacheAltTags": false,
+    "outputProperties": [],
+    "queue": "none",
+    "blockInputOverrides": true,
+    "domain": "homeassistant",
+    "service": "update_entity",
+    "wires": [
+      [
+        "esshk_refresh_wait"
+      ]
+    ]
+  },
+  {
+    "z": "ess000000000001",
+    "x": 850,
+    "y": 2200,
+    "id": "esshk_refresh_wait",
+    "type": "delay",
+    "name": "Wacht op HomeKit-uitlezing na debounce",
+    "pauseType": "delay",
+    "timeout": "12",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "allowrate": false,
+    "wires": [
+      [
+        "esshk_refresh_read"
+      ]
+    ]
+  },
+  {
+    "id": "esshk_refresh_read",
+    "type": "ha-api",
+    "z": "ess000000000001",
+    "name": "Lees echte HA-woonkamermeting",
+    "server": "ess00000000000b",
+    "version": 1,
+    "debugenabled": false,
+    "protocol": "http",
+    "method": "get",
+    "path": "states/{{refresh.entity}}",
+    "data": "",
+    "dataType": "jsonata",
+    "responseType": "json",
+    "outputProperties": [
+      {
+        "property": "actual",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "results"
+      }
+    ],
+    "x": 790,
+    "y": 1500,
+    "wires": [
+      [
+        "esshk_refresh_save"
+      ]
+    ],
+    "g": "esseditor_wit001"
+  },
+  {
+    "z": "ess000000000001",
+    "x": 850,
+    "y": 2200,
+    "id": "esshk_refresh_save",
+    "type": "function",
+    "name": "Beoordeel hysterese na verse uitlezing",
+    "func": "function homekitRefreshResult(flow, global, msg, now) {\n    const pending=flow.get('ess_homekit_refresh_pending'),h=flow.get('ess_climate_config')?.heatSource;\n    if(!pending || pending.at!==msg.refresh?.at || pending.entity!==msg.refresh.entity) return null;\n    flow.set('ess_homekit_refresh_pending',null);\n    const e=msg.actual,cache=global.get('homeassistant');\n    if(h?.adapter!=='homekit-room' || h.entity!==pending.entity || e?.entity_id!==pending.entity ||\n        !['off','heat'].includes(e.state) || !Number.isFinite(e.attributes?.current_temperature) ||\n        e.attributes.current_temperature< -10 || e.attributes.current_temperature>50 || !cache?.homeAssistant?.isConnected) {\n        flow.set('ess_homekit_refresh_status',{at:now,ok:false,reason:'Geen geldige lokale temperatuur ontvangen'});return null;\n    }\n    // This is the actual HA API response, including its original timestamps.\n    // Do not invent freshness or overwrite a newer push received in flight.\n    const stamp=x=>new Date(x?.last_reported||x?.last_updated||0).getTime();\n    const previous=cache.homeAssistant.states[e.entity_id];\n    if(stamp(e)>=stamp(previous)) {\n        cache.homeAssistant.states[e.entity_id]=e;global.set('homeassistant',cache);\n    }\n    flow.set('ess_homekit_refresh_status',{at:now,ok:true,entity:e.entity_id,temperature:e.attributes.current_temperature,reportedAt:e.last_reported||e.last_updated});\n    return {payload:now};\n}\nreturn homekitRefreshResult(flow,global,msg,Date.now());",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": [
+      [
+        "essclim_hyst_plan"
+      ]
+    ]
+  },
+  {
+    "z": "ess000000000001",
+    "x": 850,
+    "y": 2200,
+    "id": "esshk_refresh_catch",
+    "type": "catch",
+    "name": "Meld mislukte HomeKit-uitlezing",
+    "scope": [
+      "esshk_refresh_update",
+      "esshk_refresh_read"
+    ],
+    "uncaught": false,
+    "wires": [
+      [
+        "esshk_refresh_error"
+      ]
+    ]
+  },
+  {
+    "z": "ess000000000001",
+    "x": 850,
+    "y": 2200,
+    "id": "esshk_refresh_error",
+    "type": "function",
+    "name": "Bewaar uitleesfout zonder temperatuur te wijzigen",
+    "func": "const p=flow.get('ess_homekit_refresh_pending');if(p?.at!==msg.refresh?.at)return null;flow.set('ess_homekit_refresh_pending',null);flow.set('ess_homekit_refresh_status',{at:Date.now(),ok:false,reason:'HomeKit-uitlezing mislukt'});return null;",
+    "outputs": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": []
   }
 ]

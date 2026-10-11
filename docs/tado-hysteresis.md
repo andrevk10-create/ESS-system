@@ -47,3 +47,7 @@ Controle: de volledige testsuite inclusief tests/tado-hysteresis.js en tests/hom
 Bronnen: [HA Tado](https://www.home-assistant.io/integrations/tado/), [HomeKit Apparaat](https://www.home-assistant.io/integrations/homekit_controller/), [Tado Zone Controller](https://support.tado.com/en/articles/4689126-how-does-tado-control-heating-zones-how-can-i-change-the-zone-controller-of-a-room).
 
 HomeKit push-metingen hoeven niet iedere tien minuten te veranderen. Onveranderde lokale waarden blijven bruikbaar bij een verbonden HA-cache, actuele integratieherkomst en een beschikbare entiteit. Verbinding weg of ongeldige meting blokkeert bediening. Een ontbrekend doel in UIT wordt als ontbrekend weergegeven, niet als 0 °C. Een ongekoppelde buitenvoeler kan voor weersignalen terugvallen op de ingestelde weerentiteit.
+
+## Snellere lokale temperatuurcontrole
+
+Wanneer de HomeKit-woonkamerhysterese actief is, vraagt ESS elke 5 minuten via `homeassistant.update_entity` de lokale bridge opnieuw uit. Daarna wordt de echte HA-entiteit gelezen en de hysterese opnieuw beoordeeld. Er staat maximaal één verzoek tegelijk uit; fouten wijzigen geen temperatuur en nieuwere pushmeldingen blijven behouden. De fysieke doeltemperatuur, minimale aan/uit-tijden en kamerkoppelingen blijven leidend. Deze verversing versnelt het ophalen van beschikbare bridge-metingen; zij kan de interne meet- of radiofrequentie van Tado niet veranderen.

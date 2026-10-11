@@ -4717,5 +4717,6 @@ require('./lib/phase-limit')(flows);
 require('./lib/easee-service-compat')(flows);
 require('./lib/charging-priority')(flows);
 require('./lib/wit-fault-recovery')(flows);
+require('./lib/homekit-refresh')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
