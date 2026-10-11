@@ -4710,5 +4710,6 @@ require('./lib/ev-layout')(flows);
 require('./lib/wit-price-deadline')(flows);
 require('./lib/wit-soc')(flows);
 require('./lib/wit-direct-release')(flows);
+require('./lib/phase-limit')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

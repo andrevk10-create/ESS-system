@@ -177,7 +177,7 @@ async function main() {
     f.s['sensor.p1_meter_vermogen_fase_1'] = reading(7000, 'W', now);
     output = f.run('esswitgrid_ctrl1');
     assert(output[1].payload.value < percent);
-    assert(f.values.ess_wit_grid_charge_status.targetPowerW <= 3 * (22 * 230 - 7000 + percent * 180 / 3));
+    assert(f.values.ess_wit_grid_charge_status.targetPowerW <= 3 * (24 * 230 - 7000 + percent * 180 / 3));
     assert.deepEqual(get('esswitgrid_live1').wires, [['esswitgrid_renew']], 'Power change must renew lease after success');
     f.values.ess_wit_grid_charge_mode = 'off';
     const stopRequest = f.run('esswitgrid_ctrl1')[3].payload;
@@ -238,7 +238,7 @@ async function main() {
         }
         assert(f.run('esswitgrid_ctrl1')[0], 'Grid charge must be independent of Easee');
         f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled', '', now);
-        f.s['sensor.p1_meter_vermogen_fase_1'] = reading(5060, 'W', now);
+        f.s['sensor.p1_meter_vermogen_fase_1'] = reading(5520, 'W', now);
         assert(f.run('esswitgrid_ctrl1')[3], 'No available phase headroom must stop the owned session');
     }
     f = fixture();

@@ -1141,7 +1141,7 @@ states['sensor.p1_meter_vermogen_fase_1'] = state(3450);
 states['sensor.p1_meter_vermogen_fase_2'] = state(3450);
 states['sensor.p1_meter_vermogen_fase_3'] = state(3450);
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
-assert.strictEqual(flowValues.ess_audi_control_status.targetCurrent, 7, 'Een lagere veilige faselimiet moet ondanks de steilere curve onmiddellijk worden toegepast');
+assert.strictEqual(flowValues.ess_audi_control_status.targetCurrent, 9, '24 A ontwerpgrens min 15 A gemeten belasting moet onmiddellijk gelden');
 states['sensor.p1_meter_vermogen_fase_1'] = state(230);
 states['sensor.p1_meter_vermogen_fase_2'] = state(-460);
 states['sensor.p1_meter_vermogen_fase_3'] = state(0);

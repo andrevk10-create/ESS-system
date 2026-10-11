@@ -75,7 +75,7 @@ function climatePlan({config,system,states,prices,weather,energy,now}) {
     const phaseRoles=[1,2,3].map(i=>'sensor.p1_meter_vermogen_fase_'+i);
     const phaseReadings=phaseRoles.map(watts);
     const freshPhases=phaseRoles.every(r=>climateFresh(entity(r),now,15000));
-    const phaseLimit=(Number(specs.mainFuseA)||25)-3, volts=Number(specs.voltage)||230;
+    const phaseLimit=(Number(specs.mainFuseA)||25)-1, volts=Number(specs.voltage)||230;
     const meter=entity('sensor.flex_load_4_power'), meterUnit=String(meter?.attributes?.unit_of_measurement||'').toLowerCase();
     const meterValue=climateNumber(meter?.state);
     const measuredPowerW=climateFresh(meter,now,120000) && meterValue!==null && ['w','kw'].includes(meterUnit) ? meterValue*(meterUnit==='kw'?1000:1) : null;

@@ -52,7 +52,7 @@ if (audiDischarge.sessionOwned && now - new Date(audiDischarge.updatedAt || 0).g
     grid.func = grid.func.replace('const installationChargeLimitW = 12000;',
         "const installationChargeLimitW = Math.min(8, Number((flow.get('ess_system_config') || {}).specs?.maximumBatteryChargePowerKw) || 8) * 1000;");
     grid.func = grid.func.replace('const designPhaseCurrentA = 22;',
-        "const designPhaseCurrentA = Math.max(0, (Number((flow.get('ess_system_config') || {}).specs?.mainFuseA) || 25) - 3);");
+        "const designPhaseCurrentA = Math.max(0, (Number((flow.get('ess_system_config') || {}).specs?.mainFuseA) || 25) - 1);");
     grid.func = grid.func.replace('const nominalVoltageV = 230;',
         "const nominalVoltageV = Number((flow.get('ess_system_config') || {}).specs?.voltage) || 230;");
     // Day-ahead prices belong to explicit intervals and do not become wrong

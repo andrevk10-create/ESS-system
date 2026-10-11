@@ -97,7 +97,7 @@ const peerPower=peerPowerEntity && fresh('${peerRole}',15000) && ['w','kw'].incl
 const peerReservation=evPeerReservation(peerStatus,peerPower,Number(peerStatus?.phaseCount)||3,now,voltage);
 if(targetCurrent>0) {
     const ownMeasured=chargerStatus==='charging' ? chargerCurrent!==null ? Math.max(0,chargerCurrent) : Math.max(0,Number(chargerPowerForControl)||0)/(voltage*phases) : 0;
-    const fuseLimit=Math.max(0,(Number(essRuntimeConfig.specs?.mainFuseA)||25)-3);
+    const fuseLimit=Math.max(0,(Number(essRuntimeConfig.specs?.mainFuseA)||25)-1);
     const limits=[1,2,3].map(index=>{const role='sensor.p1_meter_vermogen_fase_'+index;
         const p=value(role),ownCredit=usedPhases(outputPhase).includes(index-1)?ownMeasured:0;
         return p===null || !fresh(role,15000)?0:Math.floor(ownCredit+fuseLimit-p/voltage-peerReservation/voltage);});

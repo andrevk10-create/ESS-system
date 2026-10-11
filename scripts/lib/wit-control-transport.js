@@ -148,7 +148,7 @@ function witGridTransport(flow, global, msg, reply, now) {
             flow.set(key,null);return [null,{payload:now}];
         }
         const spec=config.specs||{},rated=(Number(spec.inverterRatedPowerKw)||18)*1000;
-        const limit=(Math.max(0,(Number(spec.mainFuseA)||25)-3))*(Number(spec.voltage)||230);
+        const limit=(Math.max(0,(Number(spec.mainFuseA)||25)-1))*(Number(spec.voltage)||230);
         // Credit only measured charging that was already on the grid. A queued
         // command is never connection headroom. Direct PV alone is not credited.
         // Growatt polling is slower than P1. Use the same two-minute telemetry

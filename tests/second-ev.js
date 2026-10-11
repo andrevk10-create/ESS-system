@@ -49,12 +49,12 @@ for(const condition of ['missing-soc','expired-soc','unplugged','same-charger','
 }
 f=fixture();f.values.ess_audi_control_status={targetCurrent:16,phaseCount:3,updatedAt:new Clock().toISOString()};
 f.run('essjeep_ess00000000000d');
-assert.equal(f.values.ess_jeep_control_status.targetCurrent,6,'Two starts cannot each reserve the same 22 A');
+assert.equal(f.values.ess_jeep_control_status.targetCurrent,8,'Two starts share 24 A: 16 A Audi leaves 8 A Jeep');
 f=fixture();f.values.ess_audi_control_status={targetCurrent:16,phaseCount:3,updatedAt:new Clock().toISOString()};
 f.states['sensor.ev_charger_power']=reading(11040,'W');
 for(let i=1;i<=3;i++)f.states['sensor.p1_meter_vermogen_fase_'+i]=reading(3680,'W');
 f.run('essjeep_ess00000000000d');
-assert.equal(f.values.ess_jeep_control_status.targetCurrent,6,'Measured Audi load is counted exactly once');
+assert.equal(f.values.ess_jeep_control_status.targetCurrent,8,'Measured Audi load is counted exactly once');
 assert.equal(evPeerReservation({targetCurrent:16,updatedAt:new Clock().toISOString()},11040,3,now,230),0);
 f=fixture();f.run('essjeep_ess00000000000d');now+=60000;
 f.states['sensor.ev_charger_2_status'].state='charging';

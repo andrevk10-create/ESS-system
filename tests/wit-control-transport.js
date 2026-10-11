@@ -16,7 +16,7 @@ witApplyReadback(selectors,{entities:{[remoteRole]:'select.other_device',[author
 assert.equal(selectors[remoteRole].state,'unavailable','A snapshot cannot migrate to another device');
 
 const fixture=()=>{
-    const values={ess_wit_grid_charge_mode:'on',ess_wit_grid_charge_target_soc:80,
+    const values={ess_system_config:{specs:{mainFuseA:23}},ess_wit_grid_charge_mode:'on',ess_wit_grid_charge_target_soc:80,
         ess_wit_grid_charge_status:{sessionOwned:true,powerPercent:25},ess_wit_charge_watch:{attempts:1,waitingSince:now-60000},
         ess_wit_control_readback:{...binding,authority:0,remote:0,duration:2,percent:-44,ac:0,periods:0,at:now}};
     const state=n=>({state:String(n),attributes:{unit_of_measurement:'W'},last_updated:new Date(now).toISOString()});
@@ -32,6 +32,12 @@ for(const mode of ['auto','on']) {
     Object.assign(high.values.ess_wit_control_readback,{authority:1,ac:1});
     const command=high.run({payload:{value:25}});
     assert.equal(!!command?.[0],mode==='auto','Automatic charging continues beyond saved manual 80% target');
+}
+{
+    const design=fixture();design.values.ess_system_config={specs:{mainFuseA:25}};
+    Object.assign(design.values.ess_wit_control_readback,{authority:1,ac:1});
+    for(const phase of [1,2,3])design.states['sensor.p1_meter_vermogen_fase_'+phase]=design.state(4800);
+    assert.equal(design.run({payload:{value:44}})[0].payload.data.service_data.values[2],12,'25 A fuse leaves a 24 A design ceiling, checked again before writing');
 }
 for(const stage of ['power','authorityRead','remoteRead']){
     const lost=fixture();lost.values.ess_wit_control_readback.authority=1;lost.values.ess_wit_control_readback.ac=1;
