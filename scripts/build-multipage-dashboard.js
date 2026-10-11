@@ -4711,5 +4711,6 @@ require('./lib/wit-price-deadline')(flows);
 require('./lib/wit-soc')(flows);
 require('./lib/wit-direct-release')(flows);
 require('./lib/phase-limit')(flows);
+require('./lib/easee-service-compat')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
