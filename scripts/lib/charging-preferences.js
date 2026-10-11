@@ -100,7 +100,7 @@ flow.set('ess_charging_preferences_ready', true);
 flow.set('ess_charging_preferences_error', null);
 flow.set('ess_audi_force_full', false);
 flow.set('ess_jeep_force_full', false);
-return [{topic:'ess/audi/apply-defaults'}, null];`, [['essaudi_defaults1','essprefs_save'],['essprefs_backup_read']], "flow.set('ess_charging_preferences_ready', false);"),
+return [{topic:'ess/audi/apply-defaults'}, null];`, [['essaudi_defaults1','essprefs_save'],['essprefs_backup_read']], "if (flow.get('ess_charging_preferences_ready') === undefined) flow.set('ess_charging_preferences_ready', false);"),
         fn('essprefs_save','Bewaar alleen laadvoorkeuren', `${chargingPreferences.toString()}
 if (flow.get('ess_charging_preferences_ready') !== true) return null;
 return {payload:JSON.stringify(chargingPreferences(flow))};`, [['essprefs_write']]),

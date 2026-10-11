@@ -19,7 +19,7 @@ module.exports = function easeeServiceCompat(flows) {
             });
         }
         if(n.type==='function'&&['ess00000000000d','essjeep_ess00000000000d'].includes(n.id)){
-            n.func=n.func.replace('item.last_updated || item.last_changed || 0','item.last_reported || item.last_updated || item.last_changed || 0')
+            n.func=n.func.replace(/(?:item\.last_reported \|\| )*item\.last_updated \|\| item\.last_changed \|\| 0/g,'item.last_reported || item.last_updated || item.last_changed || 0')
                 .replace('Number.isFinite(timestamp) && now - timestamp <= maxAge','Number.isFinite(timestamp) && now - timestamp >= 0 && now - timestamp <= maxAge');
         }
     }

@@ -135,7 +135,7 @@ function climatePlan({config,system,states,prices,weather,energy,now}) {
     const hours=weatherFresh && Array.isArray(weather.hours) ? weather.hours.filter(h=>h.at>=now-3600000 && h.at<=now+8*3600000) : [];
     const outside=climateNumber(entity('sensor.outdoor_temperature')?.state)??climateNumber(entity('weather.home')?.attributes?.temperature);
     const coldAhead=outside!==null && hours.some(h=>h.temperature<outside-2);
-    const signals={cheap,waterCheap,solarSurplus,spareKwh:spare,soc:batteryFresh?soc:null,protectedKwh,coldAhead,outsideTemperature:outside,weatherFresh:!!weatherFresh,netReady,meterReady,measuredPowerW,meterOverLimit:measuredPowerW!==null&&measuredPowerW>c.maximumPowerW,currentPrice:current?.price??null};
+    const signals={cheap,waterCheap,solarSurplus,spareKwh:spare,soc:batteryFresh?soc:null,protectedKwh,coldAhead,outsideTemperature:outside,weatherFresh:!!weatherFresh,netReady,meterReady,measuredPowerW,meterOverLimit:c.maximumPowerW>0&&measuredPowerW!==null&&measuredPowerW>c.maximumPowerW,currentPrice:current?.price??null};
     const candidates=[];
     for (const z of c.rooms) {
         const e=entity(z.role), a=e?.attributes||{}, temp=climateNumber(a.current_temperature), target=climateNumber(a.temperature);

@@ -29,6 +29,10 @@ function fixture(water=false) {
 function command(f,ledger={}) {const plan=climatePlan(f);return {...climateDecide(plan,ledger,f.config,f.now),plan};}
 function refresh(f,at) {f.now=at;for(const s of Object.values(f.states)) s.last_updated=new Date(at).toISOString();}
 
+const unconfigured=fixture();unconfigured.config.maximumPowerW=0;
+assert.equal(climatePlan(unconfigured).signals.meterOverLimit,false,'An unset limit is not an exceeded electrical limit');
+assert.equal(climatePlan(unconfigured).signals.netReady,false,'An unset limit still blocks extra heating');
+
 let f=fixture(),r=command(f);
 assert.equal(r.actions[0].target,21.5);
 assert.equal(r.actions[0].type,'room');

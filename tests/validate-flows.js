@@ -130,7 +130,7 @@ assert(!detailTemplates.loads.format.includes('Airco appartement'), 'Een niet be
 assert(detailTemplates.lighting.format.includes('type="range"') && detailTemplates.lighting.format.includes('setLightBrightness'), 'Verlichtingspagina mist dimbediening per ruimte');
 assert(detailTemplates.lighting.format.includes('toggleLight') && detailTemplates.lighting.format.includes('lightIsPending'), 'Verlichtingspagina mist veilige aan-uitbediening met bevestiging');
 assert(detailTemplates.lighting.format.includes('Wachten op verlichting') && detailTemplates.lighting.format.includes('animation:climate-wait'), 'Verlichtingsknoppen moeten wachten op de echte Home Assistant-status');
-for (const label of ["airco's", 'verwarming', 'warmtepomp', 'drie configureerbare zones']) {
+for (const label of ["airco's", 'verwarming', 'warmtepomp']) {
     assert(detailTemplates.climate.format.toLowerCase().includes(label), `Klimaatpagina mist ${label}`);
 }
 assert(detailTemplates.climate.format.includes('changeClimateTemperature'), 'Klimaatpagina mist temperatuurbediening');

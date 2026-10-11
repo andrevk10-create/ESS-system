@@ -4718,5 +4718,6 @@ require('./lib/easee-service-compat')(flows);
 require('./lib/charging-priority')(flows);
 require('./lib/wit-fault-recovery')(flows);
 require('./lib/homekit-refresh')(flows);
+require('./lib/dashboard-copy')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

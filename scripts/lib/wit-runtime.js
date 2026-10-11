@@ -114,15 +114,20 @@ function witBatteryLimit(states, config, direction, fallbackW, now, reported) {
         : ['sensor.battery_discharge_power_limit', 'sensor.battery_discharge_current_limit'];
     let limit = fallbackW;
     const voltageItem = states['sensor.growatt_battery_battery_voltage'];
-    const voltage = voltageItem && witNumber(voltageItem.state);
+    let voltage = voltageItem && witNumber(voltageItem.state);
     // Above the old 8 kW ceiling require fresh, device-bound native/VPP limits.
     const binding = config.entities?.['select.growatt_grid_remote_power_control_enable'];
     const valid = reported && reported.remoteEntity === binding && now >= reported.at && now-reported.at <= 120000;
+    // An unchanged HA voltage may have an old timestamp while the native
+    // device-bound register scan supplies a current voltage with its limits.
+    const nativeVoltage=valid ? witNumber(reported.reportedVoltageV) : null;
+    const voltageFresh=witFresh(voltageItem,now,120000);
+    if(!voltageFresh && nativeVoltage!==null && nativeVoltage>0 && nativeVoltage<=1000) voltage=nativeVoltage;
     if (valid) {
         const power = direction === 'charge' ? reported.chargePowerW : reported.dischargePowerW;
         const amps = direction === 'charge' ? reported.chargeCurrentA : reported.dischargeCurrentA;
         if (!Number.isFinite(power) || power < 0 || !Number.isFinite(amps) || amps < 0 ||
-            voltage === null || voltage <= 0 || !witFresh(voltageItem,now,120000)) return 0;
+            voltage == null || voltage <= 0 || !(voltageFresh || nativeVoltage!==null && nativeVoltage>0 && nativeVoltage<=1000)) return 0;
         limit = Math.min(limit,power,amps*voltage);
     } else limit = Math.min(limit,8000);
     for (const role of roles) {

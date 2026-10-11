@@ -20,6 +20,8 @@ f.values.ess_wit_grid_charge_target_soc = 95;
 f.values.ess_wit_audi_buffer_mode = 'eco';
 f.values.ess_wit_export_mode = 'off';
 f.values.ess_charging_preferences_ready = true;
+f.init('essprefs_restore');
+assert.equal(f.values.ess_charging_preferences_ready,true,'A partial redeploy must not lock already restored settings');
 f.values.ess_audi_force_full = true;
 f.values.ess_wit_command_fault = {attempts:2};
 f.values.ess_wit_fault_recovery_audit = {at:1800000000000,faultAt:1799999300000,reason:'Terugmelding hersteld',deviceId:'test-device'};
