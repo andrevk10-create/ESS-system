@@ -715,6 +715,9 @@ flowValues.ess_audi_smart_enabled = smartEnabledBeforeDefaultReset;
 flowValues.ess_audi_force_full = forceFullBeforeDefaultReset;
 const runEVRegulator = new Function('global', 'flow', 'node', 'msg', audiRegulator.func);
 flowValues.ess_nordpool_forecast = [];
+// Solar-only charging now follows a full WIT battery; other scenarios below
+// explicitly set the battery SOC when they test charging priority.
+states['sensor.growatt_battery_battery_soc'] = state(100);
 states['sensor.p1_meter_vermogen'] = state(-6000);
 states['sensor.accu_vermogen'] = state(-5000);
 states['sensor.ev_charger_power'] = state(0);
@@ -919,6 +922,8 @@ flowValues.ess_nordpool_forecast = plannedPrices.map((allInPrice, index) => ({
 }));
 
 states['sensor.energy_production_today_remaining'] = state(6.8, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production remaining today' });
+flowValues.ess_audi_control_status.activeDepartureBlockStart=null;
+flowValues.ess_audi_control_status.activeDepartureBlockEnd=null;
 states['sensor.energy_production_today_remaining_2'] = state(8.2, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production remaining today' });
 states['sensor.energy_production_today_remaining_3'] = state(4.6, { unit_of_measurement: 'kWh', friendly_name: 'Estimated energy production remaining today' });
 states['sensor.growatt_battery_battery_soc'] = state(100);
@@ -946,6 +951,11 @@ states['sensor.p1_meter_vermogen'] = state(-2000);
 states['sensor.ev_charger_power'] = state(0);
 states['sensor.ev_charger_status'] = state('awaiting_start', { id: 'TEST-CHARGER', state_outputPhase: 10, config_phaseMode: 1 });
 flowValues.ess_audi_control_status = { ...flowValues.ess_audi_control_status, controlled: false, targetCurrent: 0, controlMode: 'none', pendingPhaseMode: 0, lastPhaseChangeAt: 0, solarPhaseMode: 1, solarReadySince: Date.now() - 121000 };
+regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
+assert.strictEqual(flowValues.ess_audi_control_status.targetCurrent,0,'Zonneladen wacht op de halfvolle WIT');
+assert(flowValues.ess_audi_control_status.status.includes('WIT-accu heeft voorrang'));
+states['sensor.growatt_battery_battery_soc'] = state(100);
+flowValues.ess_audi_control_status.solarReadySince=Date.now()-121000;
 regulatorOutput = runEVRegulator(globalContext, flowContext, { status: () => undefined }, {});
 assert(flowValues.ess_audi_control_status.targetCurrent >= 6, 'Zonne-overschot moet ook boven het vertrekdoel worden benut');
 assert.strictEqual(flowValues.ess_audi_control_status.controlMode, 'solar', 'Boven het vertrekdoel mag uitsluitend zonneladen actief worden');
@@ -1397,7 +1407,7 @@ witControlStates['sensor.ev_charger_status'] = state('charging');
 witControlStates['sensor.ev_state_of_charge'] = state(61);
 witControlStates['sensor.ev_target_state_of_charge'] = state(100);
 witOutput = runWitExportControl(witGlobalContext, flowContext, witNode, {});
-assert.strictEqual(witOutput[2].payload.option, 'Disabled', 'Een aangesloten EV onder de zonne-SOC moet in Automatisch voorrang krijgen op de exportbegrenzing');
+assert.strictEqual(witOutput,null,'Zonneladen van de auto mag WIT-zonneladen niet meer uitschakelen');
 runWitExportModeControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic:'ess/wit/export-mode', payload:'on' });
 witControlStates['select.growatt_grid_vpp_export_limit_enable'] = state('Disabled');
 witOutput = runWitExportControl(witGlobalContext, flowContext, witNode, {});
