@@ -13,6 +13,12 @@ assert.strictEqual(online('unknown',false,true),false);
 assert.strictEqual(online('unknown',true,false),false);
 assert.strictEqual(online('off',true,true),false);
 assert.strictEqual(online('on',false,false),true);
+const timing=[{id:'ess00000000000d',type:'function',func:"function fresh(id,maxAge){const item=entity(id);const timestamp=new Date(item.last_updated || item.last_changed || 0).getTime();return Number.isFinite(timestamp) && now - timestamp <= maxAge;} return fresh('power',30000);"}];
+apply(timing);
+const now=Date.now(), check=sample=>vm.runInNewContext('(function(){'+timing[0].func+'})()',{now,entity:()=>sample});
+assert.strictEqual(check({last_updated:new Date(now-600000).toISOString(),last_reported:new Date(now-1000).toISOString()}),true);
+assert.strictEqual(check({last_reported:new Date(now-31000).toISOString()}),false);
+assert.strictEqual(check({last_reported:new Date(now+1000).toISOString()}),false);
 console.log('Easee: HA device routing, missing mapping rejection, fresh polling fallback and offline guard OK');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

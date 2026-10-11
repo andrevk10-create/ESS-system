@@ -8,7 +8,7 @@ module.exports = function easeeServiceCompat(flows) {
     flows.push({id:ids[1],type:'function',z,name:'Bewaar actuele Easee-apparaatkoppeling',outputs:0,wires:[],func:"const entries=msg.easeeRegistry?.result||msg.easeeRegistry;const states=global.get('homeassistant')?.homeAssistant?.states;if(!Array.isArray(entries)||!states)return null;const map={};for(const e of entries){const charger=states[e.entity_id]?.attributes?.id;if(e.platform==='easee'&&!e.disabled_by&&charger&&e.device_id)map[charger]=e.device_id;}flow.set('ess_easee_device_ids',map);return null;",x:800,y:2700});
     flows.push({id:ids[2],type:'inject',z,name:'Ververs Easee-apparaatkoppeling',props:[{p:'payload'}],once:true,onceDelay:5,repeat:'300',wires:[[ids[0]]],x:150,y:2700});
     for(const n of flows){
-        if(n.type==='api-call-service'&&(n.domain==='easee'||String(n.action||'').startsWith('easee.'))&&String(n.data).includes('payload.chargerId')){
+        if(n.type==='api-call-service'&&(n.domain==='easee'||String(n.action||'').startsWith('easee.'))&&String(n.data).includes('payload.chargerId')&&!String(n.data).startsWith('($device :=')){
             n.data=n.data.replace('"charger_id": payload.chargerId','"device_id": $lookup($flowContext("ess_easee_device_ids"), payload.chargerId)');
             n.data='($device := $lookup($flowContext("ess_easee_device_ids"), payload.chargerId); $assert($type($device) = "string" and $length($device) > 0, "Easee-apparaatkoppeling ontbreekt"); '+n.data+')';
         }
@@ -17,6 +17,10 @@ module.exports = function easeeServiceCompat(flows) {
                 const second=online.includes('_2_'),power=second?'sensor.ev_charger_2_power':'sensor.ev_charger_power',status=second?'sensor.ev_charger_2_status':'sensor.ev_charger_status';
                 return `const chargerOnlineState = state('${online}');\n// An unknown stream flag can coexist with fresh successful REST polling.\n// A known offline flag or stale telemetry must still block all commands.\nconst chargerOnline = chargerOnlineState === 'on' || (['unknown','unavailable',''].includes(chargerOnlineState) && fresh('${power}',30000) && fresh('${status}',120000) && ['charging','awaiting_start','awaiting_authorization','ready_to_charge','disconnected'].includes(state('${status}')));`;
             });
+        }
+        if(n.type==='function'&&['ess00000000000d','essjeep_ess00000000000d'].includes(n.id)){
+            n.func=n.func.replace('item.last_updated || item.last_changed || 0','item.last_reported || item.last_updated || item.last_changed || 0')
+                .replace('Number.isFinite(timestamp) && now - timestamp <= maxAge','Number.isFinite(timestamp) && now - timestamp >= 0 && now - timestamp <= maxAge');
         }
     }
 };
