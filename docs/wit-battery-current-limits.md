@@ -20,3 +20,16 @@ De legacy input-registers 3219/3220 gaven beide 2400. De algemene protocolhandle
 Bron voor de door de integratie gebruikte native en VPP-registermapping: https://github.com/0xAHA/Growatt_ModbusTCP/blob/main/custom_components/growatt_modbus/profiles/wit.py
 
 Validatie: `node tests/wit-reported-limits.js`, transport-, planner- en WIT-regressietests, flowvalidatie en privacycontrole.
+
+## SOC versus firmware
+
+Een vervolguitlezing bij 91% SOC bevestigde circa 150 A toegestaan laden en 240 A toegestaan ontladen (8.145 W / 54,3 V en 13.032 W / 54,3 V). De gemelde celtemperatuur bleef 24 °C. Hoogste celspanning in legacy input 3230: 3,391 V; laagste celspanning 3231 bleef nul, zodat hieruit geen betrouwbare celspreiding kan worden bepaald. Niet alle registers hoeven door deze firmware te worden gevuld.
+
+Growatts AXE-datasheet noemt stroom-/vermogensverlaging door temperatuur en SOC. Appendix II van de AXE 5.0L-C1-handleiding van december 2024 beschrijft daarnaast opeenvolgende laadstappen op basis van de hoogste celspanning (3,5 / 3,53 / 3,55 V). Die laadprocedure is geen bewijs van een vaste 89%-drempel of de exacte stroomcurve van QAAB-10 in een installatie met twee stacks.
+
+- Fabrikantdatasheet: https://www.growatt.tech/wp-content/uploads/2024/07/AXE_5.0L_Modular_Battery_Datasheet_EN_202401.pdf
+- Fabrikanthandleiding (kopie): https://device.report/m/cc333ac38c03271801a8e21db965a51f2c33cc3aae7df67ad445cc3d8ba65cfb
+
+Conclusie: de waarnemingen passen bij SOC-afhankelijke laadbegrenzing, maar bewijzen niet of SOC, een afzonderlijke cel/module of een firmwarefout de specifieke verlaging veroorzaakt. De eerste meting was bij 79%, de volgende bij 89%; het omslagpunt is dus niet gemeten. Geen openbaar QAAB-10 wijzigingslog of bevestigde oplossing gevonden. De reactie van Growatt van 1 september kondigt R&D-navraag aan en bevestigt geen oplossing.
+
+De read-only terugmelding bewaart nu maximaal 1.440 meetpunten in lokale flow-context: SOC, spanning, temperatuur, toegestane vermogens, daaruit afgeleide stromen en ingestelde WIT-stroomgrenzen. Daarmee kan de volgende normale laadcyclus een herhaalbare SOC-drempel tonen. Context is geen gegarandeerd duurzaam archief; de Node-RED-contextopslag bepaalt of deze een herstart overleeft. Geen ontlaadproef, firmwareupdate of hardwarelimietwijziging wordt hiervoor uitgevoerd.
