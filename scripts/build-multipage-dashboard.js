@@ -2221,7 +2221,13 @@ flows.push({
 if (moduleConfig.modules && moduleConfig.modules.lighting === false) return null;
 const rooms = ${JSON.stringify(lightingControlConfig)};
 const request = msg && msg.payload && typeof msg.payload === 'object' ? msg.payload : {};
-const entityId = rooms[String(request.key || '')];
+const requestKey = String(request.key || '');
+// Older open dashboards used the configured entity name as their room key.
+// Resolve those keys only within the same eight explicitly allowed roles.
+const entityId = rooms[requestKey] || Object.values(rooms).find(role => {
+    const mapped = moduleConfig.entities && Object.prototype.hasOwnProperty.call(moduleConfig.entities, role) ? moduleConfig.entities[role] : role;
+    return typeof mapped === 'string' && mapped.startsWith('light.') && mapped.slice(6) === requestKey;
+});
 if (!entityId || !['ess/light/toggle','ess/light/brightness'].includes(msg.topic)) {
     node.warn('Onbekende verlichtingsopdracht geweigerd.');
     return null;

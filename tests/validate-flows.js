@@ -1338,6 +1338,9 @@ assert.deepStrictEqual(clickedOn[0].payload.data,{entity_id:['light.woonkamer'],
 lightComponent.methods.toggleLight.call(lightUi,{key:'zone-1',available:true,active:true});
 const clickedOff = runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},clickMessage);
 assert.deepStrictEqual(clickedOff[1].payload.data,{entity_id:['light.woonkamer']});
+const legacyLight = runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'woonkamer',active:false}});
+assert.deepStrictEqual(legacyLight[1].payload.target.entity_id,['light.woonkamer'],'An older open dashboard must resolve the configured room key within the allowlist');
+assert.strictEqual(runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'unconfigured_light',active:true}}),null);
 
 
 const climateControl = flows.find((node) => node.id === 'essclimate_ctrl1');
