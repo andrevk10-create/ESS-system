@@ -20,6 +20,17 @@ parameter setting screenshots do not expose it either.
 This setting alone does not establish independent
 phase compensation during forced charging; interaction with the total-power
 interface must be verified before changing the controller's assumptions.
+
+The owner subsequently found Power Imbalance Enable in Key parameter settings,
+corrected the installation's phase order and confirmed this option enabled.
+This is a different label from Single phase anti backflow enable; equivalence
+has not been established. A live check on 2026-10-11 during remote net charging
+showed approximately 7.4 kW battery charging, P1 phase imports of 2.9 / 2.3 /
+3.1 kW, and inverter phase currents of 9.4 / 9.3 / 9.4 A. Thus this check did
+not demonstrate asymmetric charging. Enabled status alone must not replace the
+most-loaded-phase guard with a sum-of-phase headroom calculation. The inverter
+phase power sensors can be unsigned voltage-times-current estimates, so they
+must not be treated as signed independent phase charging measurements.
 No guessed register is written and no extra capacity is credited from this mode.
 The WIT forced-charge interface
 continues to receive a total power target; it is not three independent targets.
