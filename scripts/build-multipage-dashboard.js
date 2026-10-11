@@ -2222,18 +2222,22 @@ if (moduleConfig.modules && moduleConfig.modules.lighting === false) return null
 const rooms = ${JSON.stringify(lightingControlConfig)};
 const request = msg && msg.payload && typeof msg.payload === 'object' ? msg.payload : {};
 const requestKey = String(request.key || '');
+const ha = global.get('homeassistant');
+const lightStates = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};
+const normalizeRoomKey = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g,'');
 // Older open dashboards used the configured entity name as their room key.
 // Resolve those keys only within the same eight explicitly allowed roles.
-const entityId = rooms[requestKey] || Object.values(rooms).find(role => {
+const aliases = Object.values(rooms).filter(role => {
     const mapped = moduleConfig.entities && Object.prototype.hasOwnProperty.call(moduleConfig.entities, role) ? moduleConfig.entities[role] : role;
-    return typeof mapped === 'string' && mapped.startsWith('light.') && mapped.slice(6) === requestKey;
+    if (typeof mapped !== 'string' || !mapped.startsWith('light.')) return false;
+    const name = lightStates[mapped]?.attributes?.friendly_name;
+    return normalizeRoomKey(mapped.slice(6)) === normalizeRoomKey(requestKey) || (name && normalizeRoomKey(name) === normalizeRoomKey(requestKey));
 });
+const entityId = rooms[requestKey] || (aliases.length === 1 ? aliases[0] : null);
 if (!entityId || !['ess/light/toggle','ess/light/brightness'].includes(msg.topic)) {
     node.warn('Onbekende verlichtingsopdracht geweigerd.');
     return null;
 }
-const ha = global.get('homeassistant');
-const lightStates = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};
 const config = moduleConfig;
 const targetEntityId = config.entities && Object.prototype.hasOwnProperty.call(config.entities, entityId) ? config.entities[entityId] : entityId;
 if (typeof targetEntityId !== 'string' || !/^light\\.[a-z0-9_]+$/.test(targetEntityId)) return null;

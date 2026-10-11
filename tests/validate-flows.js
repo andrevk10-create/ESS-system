@@ -1341,6 +1341,14 @@ assert.deepStrictEqual(clickedOff[1].payload.data,{entity_id:['light.woonkamer']
 const legacyLight = runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'woonkamer',active:false}});
 assert.deepStrictEqual(legacyLight[1].payload.target.entity_id,['light.woonkamer'],'An older open dashboard must resolve the configured room key within the allowlist');
 assert.strictEqual(runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'unconfigured_light',active:true}}),null);
+const namedLightFlow={get:()=>({modules:{lighting:true},entities:{'light.zone_1':'light.keuken_3','light.zone_2':'light.master_suite'}})};
+const namedLightGlobal={get:()=>({homeAssistant:{states:{'light.keuken_3':{state:'off',attributes:{friendly_name:'Keuken'}},'light.master_suite':{state:'off',attributes:{friendly_name:'Master suite'}}}}})};
+for(const [key,target] of [['keuken','light.keuken_3'],['master-suite','light.master_suite']]) {
+    const output=runLightingControl(namedLightGlobal,namedLightFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key,active:true}});
+    assert.deepStrictEqual(output[0].payload.target.entity_id,[target],'Legacy names and separator differences must resolve the configured light');
+}
+const ambiguousLightGlobal={get:()=>({homeAssistant:{states:{'light.keuken_3':{state:'off',attributes:{friendly_name:'Keuken'}},'light.master_suite':{state:'off',attributes:{friendly_name:'Keuken'}}}}})};
+assert.strictEqual(runLightingControl(ambiguousLightGlobal,namedLightFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'keuken',active:true}}),null,'Ambiguous room names must not switch a random light');
 
 
 const climateControl = flows.find((node) => node.id === 'essclimate_ctrl1');
