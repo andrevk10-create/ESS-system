@@ -2,6 +2,9 @@
 function climateDefaults() {
     return {version:1,mode:'auto',profile:'normal',tadoHysteresis:true,maximumPowerW:0,phaseWeights:[0,0,0],
         minimumBenefit:0.04,houseReserveKwh:14,batteryFloorSoc:50,manualMinutes:120,
+        heatSource:{enabled:false,adapter:'tado-zone',entity:'',roomRoles:['climate.heating_zone_1','climate.heating_zone_2','climate.heating_zone_3'],
+            heatTarget:25,minimumOnMinutes:10,minimumOffMinutes:5,leaseMinutes:20,
+            roomsDetached:false,offScheduleConfirmed:false,relayTested:false,watchdogConfirmed:false},
         rooms:[{key:'room1',label:'Woonkamer',role:'',enabled:false,comfort:21,minimum:18,maximum:22,schedule:'native',start:'07:00',end:'22:00',preheatMinutes:60},
             {key:'room2',label:'Badkamer',role:'',enabled:false,comfort:21,minimum:18,maximum:22,schedule:'native',start:'07:00',end:'09:00',preheatMinutes:60}],
         water:{enabled:false,normal:0,buffer:0,minimum:0,litres:0,lossKwhPerDay:0,boostMinutes:60,restoreAcknowledged:false}};
@@ -10,8 +13,20 @@ function climateDefaults() {
 function climateValidate(input) {
     const fail = message => { throw new Error(message); };
     if (!input || input.version !== 1) fail('Ongeldige klimaatconfiguratie');
-    const d = climateDefaults(), c = {...d,...input,water:{...d.water,...input.water}};
+    const d = climateDefaults(), c = {...d,...input,water:{...d.water,...input.water},heatSource:{...d.heatSource,...input.heatSource}};
     if (typeof c.tadoHysteresis !== 'boolean') fail('Ongeldige Tado-hysterese');
+    const h=c.heatSource;
+    if(!['tado-zone','switch'].includes(h.adapter)||['enabled','roomsDetached','offScheduleConfirmed','relayTested','watchdogConfirmed'].some(k=>typeof h[k]!=='boolean')||
+        typeof h.entity!=='string'||h.entity!==''&&!(h.adapter==='switch'?/^switch\.[a-z0-9_]+$/:/^climate\.[a-z0-9_]+$/).test(h.entity)) fail('Ongeldige aparte verwarmingsbediening');
+    if(!Array.isArray(h.roomRoles)||!h.roomRoles.length||h.roomRoles.length>3||new Set(h.roomRoles).size!==h.roomRoles.length||
+        h.roomRoles.some(r=>!d.heatSource.roomRoles.includes(r))) fail('Kies de kamers voor de gezamenlijke warmtevraag');
+    if(typeof h.heatTarget!=='number'||!Number.isFinite(h.heatTarget)||h.heatTarget<15||h.heatTarget>30||
+        !Number.isInteger(h.minimumOnMinutes)||h.minimumOnMinutes<5||h.minimumOnMinutes>30||
+        !Number.isInteger(h.minimumOffMinutes)||h.minimumOffMinutes<5||h.minimumOffMinutes>30||
+        !Number.isInteger(h.leaseMinutes)||h.leaseMinutes<15||h.leaseMinutes>30||h.leaseMinutes<=h.minimumOnMinutes)
+        fail('Controleer warmtevraagdoel en minimale schakeltijden');
+    if(h.enabled&&(!h.entity||!h.roomsDetached||!h.relayTested||!(h.adapter==='tado-zone'?h.offScheduleConfirmed:h.watchdogConfirmed)))
+        fail('Controleer eerst aparte bediening, losgekoppelde kamers, contactwerking en terugval bij uitval');
     if (!['auto','advice','off'].includes(c.mode) || !['eco','normal','comfort'].includes(c.profile)) fail('Ongeldige klimaatstand');
     const num = (v,min,max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
     if (!num(c.maximumPowerW,0,30000) || !num(c.minimumBenefit,0,2) || !num(c.houseReserveKwh,0,200) || !num(c.batteryFloorSoc,10,100) || !num(c.manualMinutes,30,1440)) fail('Ongeldige installatiegrenzen');
@@ -33,6 +48,8 @@ function climateValidate(input) {
     if (w.enabled && (!num(w.minimum,40,60) || !num(w.normal,w.minimum,60) || !num(w.buffer,w.normal,60) || !num(w.litres,30,2000) || !num(w.lossKwhPerDay,0,15) || !num(w.boostMinutes,30,180))) fail('Controleer vatinhoud en tapwatergrenzen');
     return {version:1,mode:c.mode,profile:c.profile,tadoHysteresis:c.tadoHysteresis,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
         houseReserveKwh:c.houseReserveKwh,batteryFloorSoc:c.batteryFloorSoc,manualMinutes:c.manualMinutes,rooms:c.rooms,
+        heatSource:{enabled:h.enabled,adapter:h.adapter,entity:h.entity,roomRoles:h.roomRoles.slice(),heatTarget:h.heatTarget,minimumOnMinutes:h.minimumOnMinutes,
+            minimumOffMinutes:h.minimumOffMinutes,leaseMinutes:h.leaseMinutes,roomsDetached:h.roomsDetached,offScheduleConfirmed:h.offScheduleConfirmed,relayTested:h.relayTested,watchdogConfirmed:h.watchdogConfirmed},
         water:{enabled:w.enabled,normal:w.normal,buffer:w.buffer,minimum:w.minimum,litres:w.litres,lossKwhPerDay:w.lossKwhPerDay,boostMinutes:w.boostMinutes,restoreAcknowledged:w.restoreAcknowledged}};
 }
 
@@ -41,6 +58,15 @@ function climateFresh(item, now, maxAge) {
     if (!item || ['unknown','unavailable',''].includes(String(item.state).toLowerCase())) return false;
     const age = now - new Date(item.last_reported || item.last_updated || item.last_changed || 0).getTime();
     return age >= -60000 && age <= maxAge;
+}
+function climateRoomFeedback(item,now,maxAge=600000) {
+    const a=item?.attributes||{},current=climateNumber(a.current_temperature),target=climateNumber(a.temperature);
+    const fresh=climateFresh(item,now,maxAge),mode=item?.state;
+    const validCurrent=current!==null&&current>=-10&&current<=50&&a.temperature_unit!=='°F';
+    const validTarget=target!==null&&target>=5&&target<=30;
+    const valid=fresh&&['heat','auto','off'].includes(mode)&&a.hvac_action!=='cooling'&&
+        (mode==='off'?(current===null||validCurrent):validCurrent&&validTarget);
+    return {current,target,valid,fresh,reason:!fresh?'Niet beschikbaar of meetdata te oud':!validCurrent&&mode!=='off'?'Ongeldige kamertemperatuur':a.hvac_action==='cooling'?'Onverwachte koelmelding':!valid?'Ongeldige temperatuur of verwarmingsstand':'Temperatuur en doel beschikbaar'};
 }
 function climateSchedule(z, at) {
     const d=new Date(at), t=d.getHours()*60+d.getMinutes();
@@ -114,7 +140,7 @@ function climatePlan({config,system,states,prices,weather,energy,now}) {
         const active=z.schedule==='native' ? target!==null && target>=z.comfort : climateSchedule(z,now);
         const upcoming=z.schedule==='custom' && climateSchedule(z,now+z.preheatMinutes*60000);
         let reason='Eigen Tado-regeling', requested=null, kind='native';
-        if (c.tadoHysteresis) reason='Tado-knop bepaalt doel; hysterese 0,5 °C';
+        if (c.tadoHysteresis || c.heatSource.enabled) reason='Tado-knop bepaalt doel; aparte warmtevraag met hysterese 0,5 °C';
         else if (!z.enabled) reason='Niet vrijgegeven';
         else if (!climateFresh(e,now,20*60000) || temp===null || target===null) reason='Tado-meetdata ontbreekt of is te oud';
         else if (!['heat','auto'].includes(e.state) || a.preset_mode==='away') reason='Apparaat uit/afwezig: handmatige stand respecteren';
@@ -209,4 +235,4 @@ function climateDecide(plan, ledger, config, now) {
     return {ledger:next,actions};
 }
 
-module.exports={climateDefaults,climateValidate,climateNumber,climateFresh,climateSchedule,climateCheapBlock,climatePlan,climateDecide};
+module.exports={climateDefaults,climateValidate,climateNumber,climateFresh,climateRoomFeedback,climateSchedule,climateCheapBlock,climatePlan,climateDecide};

@@ -1,3 +1,7 @@
+# Aanvulling: afzonderlijke warmtevraag en HomeKit
+
+De huidige Git-implementatie gebruikt fysieke kamerdoelen met 0,5 °C hysterese en een afzonderlijke, standaard uitgeschakelde warmtebronadapter. Zie [de actuele inrichting en terugvalvoorwaarden](tado-hysteresis.md). De oudere economische kamerboosts hieronder blijven optioneel; zij worden niet verzonden zolang hysterese of de afzonderlijke warmtebron actief is. De eerdere beschrijving van Tado als enige master en kamerboosts als primaire regeling is daarmee een historische ontwerpkeuze. Tapwater blijft apart. Geen live uitrol of fysieke commissioning is uitgevoerd.
+
 # Ontwerp: voorspellende klimaatregeling
 
 Status: ontwerp plus eerste begrensde implementatie, nog niet live vrijgegeven. Gebaseerd op een alleen-lezen inventarisatie van Home Assistant, de lokale Node-RED-context en de bestaande dashboardcode, bijgewerkt op 22 september 2026. Logica en bedienroutes worden lokaal getest; fysieke werking en terugval bij echte cloudstoringen zijn nog niet bewezen. Persoonlijke namen, locaties, apparaat-ID's en netwerkadressen zijn bewust weggelaten.

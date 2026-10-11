@@ -236,7 +236,7 @@ const states = {
     'climate.cooling_zone_4': state('off', { current_temperature: 21.8, temperature: 19, min_temp: 7, max_temp: 35 }),
     'climate.heating_zone_1': state('auto', { friendly_name: 'Verwarmingszone 1', current_temperature: 21.5, temperature: 20, current_humidity: 46, min_temp: 5, max_temp: 25 }),
     'climate.heating_zone_2': state('auto', { friendly_name: 'Verwarmingszone 2', current_temperature: 22.1, temperature: 21, current_humidity: 58, min_temp: 5, max_temp: 25 }),
-    'climate.heating_zone_3': state('off', { friendly_name: 'Verwarmingszone 3', current_temperature: 20.4, temperature: 18, current_humidity: 51, min_temp: 5, max_temp: 25 }),
+    'climate.heating_zone_3': state('off', { friendly_name: 'Verwarmingszone 3', hvac_modes: ['off','heat','auto'], current_temperature: 20.4, temperature: 18, current_humidity: 51, min_temp: 5, max_temp: 25 }),
     'climate.heat_pump': state('heat', { current_temperature: 36.7, temperature: 45, min_temp: 30, max_temp: 45 }),
     'water_heater.domestic_hot_water': state('eco', { current_temperature: 45.6, temperature: 60, min_temp: 40, max_temp: 60 }),
     'sensor.outdoor_temperature': state('unavailable', { unit_of_measurement: '°C' }),
@@ -1331,6 +1331,11 @@ assert.strictEqual(officeMode[1].payload.mode, 'off', 'Actieve airco moet via de
 const utilityMode = runClimateControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/climate/toggle', payload: { key: 'heating-zone-3' } });
 assert.strictEqual(utilityMode[1].payload.mode, 'auto', 'Uitgeschakelde Tado-zone moet naar de normale automatische zonemodus schakelen');
 assert.deepStrictEqual(utilityMode[1].payload.target.entity_id, ['climate.heating_zone_3']);
+states['climate.heating_zone_3'].attributes.hvac_modes=['off','heat'];
+assert.strictEqual(runClimateControl(globalContext,flowContext,{warn:()=>undefined},{topic:'ess/climate/toggle',payload:{key:'heating-zone-3'}})[1].payload.mode,'heat','Local thermostat without auto uses heat');
+states['climate.heating_zone_3'].attributes.current_temperature=100;
+assert.strictEqual(runClimateControl(globalContext,flowContext,{warn:()=>undefined},{topic:'ess/climate/toggle',payload:{key:'heating-zone-3'}}),null,'Invalid HomeKit reading blocks room control');
+states['climate.heating_zone_3'].attributes.current_temperature=20.4;
 const hotWaterMode = runClimateControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/climate/toggle', payload: { key: 'hot-water' } });
 assert.strictEqual(hotWaterMode[3].payload.mode, 'off', 'Actief EHS-tapwater moet via de vaste water-heater-uitgang uitschakelen');
 

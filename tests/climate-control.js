@@ -24,7 +24,7 @@ function fixture(water=false) {
     add('water_heater.domestic_hot_water','eco',{current_temperature:48,temperature:53,min_temp:40,max_temp:60});
     add('binary_sensor.dhw_hygiene_active','off');
     const prices=Array.from({length:32},(_,i)=>({start:new Date(now+i*900000).toISOString(),end:new Date(now+(i+1)*900000).toISOString(),allInPrice:i===0?.15:.35}));
-    return {config,system,states,prices,weather:{at:now,hours:[{at:now+3600000,temperature:5}]},energy:{solarStable:false},now};
+    return {config:climateValidate(config),system,states,prices,weather:{at:now,hours:[{at:now+3600000,temperature:5}]},energy:{solarStable:false},now};
 }
 function command(f,ledger={}) {const plan=climatePlan(f);return {...climateDecide(plan,ledger,f.config,f.now),plan};}
 function refresh(f,at) {f.now=at;for(const s of Object.values(f.states)) s.last_updated=new Date(at).toISOString();}
