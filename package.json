@@ -4,7 +4,7 @@
   "description": "Configureerbaar Smart ESS-dashboard en regelsysteem voor Home Assistant en Node-RED",
   "private": true,
   "scripts": {
-    "test": "node tests/validate-flows.js && node tests/wit-regression.js && node tests/wit-control-transport.js && node tests/wit-fault-recovery.js && node tests/charging-preferences.js && node tests/second-ev.js && node tests/climate-control.js && node tests/tado-hysteresis.js && node tests/homekit-climate.js && node tests/homekit-room-hysteresis.js && node tests/homekit-refresh.js && node tests/configuration-audit.js && node tests/dashboard-diagnostics.js && node tests/dashboard-presentation.js && node tests/wit-soc.js && node tests/wit-reported-limits.js && node tests/wit-price-deadline.js && node tests/charging-priority.js && node tests/easee-service-compat.js && node scripts/validate-privacy.js",
+    "test": "node tests/validate-flows.js && node tests/lighting-reliability.js && node tests/wit-regression.js && node tests/wit-control-transport.js && node tests/wit-fault-recovery.js && node tests/charging-preferences.js && node tests/second-ev.js && node tests/climate-control.js && node tests/tado-hysteresis.js && node tests/homekit-climate.js && node tests/homekit-room-hysteresis.js && node tests/homekit-refresh.js && node tests/configuration-audit.js && node tests/dashboard-diagnostics.js && node tests/dashboard-presentation.js && node tests/wit-soc.js && node tests/wit-reported-limits.js && node tests/wit-price-deadline.js && node tests/charging-priority.js && node tests/easee-service-compat.js && node scripts/validate-privacy.js",
     "preview": "node scripts/preview-dashboard.js"
   },
   "devDependencies": {

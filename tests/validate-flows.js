@@ -501,8 +501,9 @@ assert.strictEqual(dashboard.loads.find((item) => item.name === 'Flexibele last 
 assert.strictEqual(dashboard.loads.find((item) => item.name === 'Flexibele last 1').power, 850, 'De schakelbare flexibele last moet zijn vermogensmeter gebruiken');
 assert.strictEqual(dashboard.loads.find((item) => item.name === 'Flexibele last 1').controlKey, 'compressor', 'De schakelbare last moet een vaste veilige schakelroute hebben');
 assert(!dashboard.loads.some((item) => ['Airco Zone 2', 'Airco Zone 3'].includes(item.name)), 'Airco’s zonder vermogensmeter horen niet op de verbruikerspagina');
-assert.deepStrictEqual(dashboard.lighting.rooms.map((item) => item.name), ['Lichtzone 1', 'Keuken', 'Bijkeuken', 'Kantoor', 'Lichtzone 5', 'Slaapkamer Zone 2', 'Lichtzone 7', 'Voorzolder'], 'Verlichting moet uitsluitend de acht bevestigde kamerzones tonen');
+assert.deepStrictEqual(dashboard.lighting.rooms.map((item) => item.name), Array.from({length:8},(_,i)=>'Lichtzone '+(i+1)), 'Verlichting moet uitsluitend de acht bevestigde kamerzones tonen');
 assert.deepStrictEqual(dashboard.lighting.rooms.map((item) => item.entityId), ['light.zone_1', 'light.zone_2', 'light.zone_3', 'light.zone_4', 'light.zone_5', 'light.zone_6', 'light.zone_7', 'light.zone_8'], 'Verlichting mag geen losse apparaten of lampen koppelen');
+assert.deepStrictEqual(dashboard.lighting.rooms.map(item=>item.key),Array.from({length:8},(_,i)=>'zone-'+(i+1)),'Mapper en bediening moeten dezelfde stabiele zonesleutels gebruiken');
 assert.strictEqual(dashboard.lighting.onCount, 3, 'Aantal ingeschakelde kamerzones klopt niet');
 assert.strictEqual(dashboard.lighting.rooms[0].brightness, 80, 'Hue-helderheid moet naar een percentage worden omgerekend');
 assert.strictEqual(dashboard.climate.outside.temperature, 20.6, 'Buitentemperatuur moet terugvallen op de weerentiteit wanneer de EHS-buitenvoeler niet beschikbaar is');
@@ -1280,18 +1281,19 @@ const lightingActionIds = ['esslights_on001', 'esslights_off01'];
 const lightingActions = lightingActionIds.map((id) => flows.find((item) => item.id === id));
 assert(lightingControl && lightingActions.every(Boolean), 'Beveiligde verlichtingbediening ontbreekt');
 assert.deepStrictEqual(detailTemplates.lighting.wires, [[lightingControl.id]], 'Verlichtingspagina moet uitsluitend via de beveiligingsfunctie bedienen');
-assert.strictEqual(lightingControl.outputs, 2, 'Verlichting moet aparte vaste uitgangen voor inschakelen/dimmen en uitschakelen gebruiken');
+assert.strictEqual(lightingControl.outputs, 3, 'Verlichting moet aparte vaste uitgangen voor inschakelen/dimmen en uitschakelen gebruiken');
 for (const entityId of ['light.zone_1', 'light.zone_2', 'light.zone_3', 'light.zone_4', 'light.zone_5', 'light.zone_6', 'light.zone_7', 'light.zone_8']) {
     assert(lightingControl.func.includes(entityId), `Kamerzone ${entityId} ontbreekt in de vaste allowlist`);
 }
 for (const individual of ['light.bank', 'light.zone_3_1', 'light.zone_6_2', 'light.1_led_strip']) {
     assert(!lightingControl.func.includes(individual), `Los apparaat ${individual} mag niet door de verlichtingspagina worden gekoppeld`);
 }
-assert.deepStrictEqual(lightingControl.wires, lightingActionIds.map((id) => [id]), 'Verlichting mag alleen naar de twee vaste lichtacties lopen');
+assert.deepStrictEqual(lightingControl.wires.slice(0,2), lightingActionIds.map((id) => [id]), 'Verlichting mag alleen naar de twee vaste lichtacties lopen');
 assert(lightingActions.every((item) => item.blockInputOverrides === false && item.entityId.length === 0), 'Alleen de beveiligingsfunctie mag een gevalideerde kamerzone doorgeven');
 const lightingUpstreams = flows.filter((item) => (item.wires || []).some((output) => output.some((target) => lightingActionIds.includes(target))));
-assert.deepStrictEqual(lightingUpstreams.map((item) => item.id), [lightingControl.id], 'Geen andere node mag de dynamische lichtacties aansturen');
-const runLightingControl = new Function('global', 'flow', 'node', 'msg', lightingControl.func);
+assert.deepStrictEqual(lightingUpstreams.map((item) => item.id).sort(), [lightingControl.id,'esslights_retry_check'].sort(), 'Geen andere node mag de dynamische lichtacties aansturen');
+const compiledLightingControl = new Function('global', 'flow', 'node', 'msg', lightingControl.func);
+const runLightingControl = (global,flow,node,msg) => compiledLightingControl(global,typeof flow.set==='function'?flow:{get:key=>key==='ess_system_config'?flow.get(key):undefined,set:()=>undefined},node,msg);
 assert.strictEqual(runLightingControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'losse-lamp' } }), null, 'Onbekende of losse lamp moet worden geweigerd');
 const zone2Off = runLightingControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-2' } });
 assert.deepStrictEqual(zone2Off[1].payload.target.entity_id, ['light.zone_2'], 'Actieve lichtzone 2 moet via de vaste uit-uitgang schakelen');
@@ -1327,11 +1329,11 @@ const dimNoCache = runLightingControl(staleLightGlobal, mappedLightFlow, { warn:
 assert.deepStrictEqual(dimNoCache[0].payload.data, {entity_id:['light.woonkamer'],brightness_pct:42});
 const disabledMappingFlow = {get:()=>({modules:{lighting:true},entities:{'light.zone_1':''}})};
 assert.strictEqual(runLightingControl(mappedLightGlobal,disabledMappingFlow,{warn:()=>undefined,status:()=>undefined},{topic:'ess/light/toggle',payload:{key:'zone-1',active:true}}),null);
-assert(detailTemplates.lighting.format.includes('payload:{key:item.key,active}'), 'Dashboard moet de bedoelde aan/uitstatus versturen');
+assert(detailTemplates.lighting.format.includes("{key:item.key,role:item.entityId,active:active}"), 'Dashboard moet de bedoelde aan/uitstatus versturen');
 const lightScript = detailTemplates.lighting.format.match(/<script>([\s\S]*?)<\/script>/)[1];
 const lightComponent = new Function(lightScript.replace('export default', 'return'))();
 let clickMessage;
-const lightUi = {lightIsActive:item=>item.active,queueLightPending:()=>undefined,send:message=>{clickMessage=message;}};
+const lightUi = {lightIsActive:item=>item.active,queueLightPending:()=>undefined,sendLightIntent:(item,topic,payload)=>{clickMessage={topic,payload};},send:message=>{clickMessage=message;}};
 lightComponent.methods.toggleLight.call(lightUi,{key:'zone-1',available:true,active:false});
 const clickedOn = runLightingControl(staleLightGlobal,mappedLightFlow,{warn:()=>undefined,status:()=>undefined},clickMessage);
 assert.deepStrictEqual(clickedOn[0].payload.data,{entity_id:['light.woonkamer'],brightness_pct:100},'Een echte dashboardklik moet de servicegegevens bereiken zonder cache');

@@ -2233,7 +2233,7 @@ const aliases = Object.values(rooms).filter(role => {
     const name = lightStates[mapped]?.attributes?.friendly_name;
     return normalizeRoomKey(mapped.slice(6)) === normalizeRoomKey(requestKey) || (name && normalizeRoomKey(name) === normalizeRoomKey(requestKey));
 });
-const entityId = rooms[requestKey] || (aliases.length === 1 ? aliases[0] : null);
+const entityId = request.role ? (Object.values(rooms).includes(request.role) ? request.role : null) : rooms[requestKey] || (aliases.length === 1 ? aliases[0] : null);
 if (!entityId || !['ess/light/toggle','ess/light/brightness'].includes(msg.topic)) {
     node.warn('Onbekende verlichtingsopdracht geweigerd.');
     return null;
@@ -3293,6 +3293,10 @@ function audiDashboardReading(pattern) {`);
 }
 
 const nasMappingMarker = '// Bevestigde Synology DSM-entiteiten van NAS.';
+// Refresh the embedded room list on every build; an existing mapper may still
+// contain historical keys whose names no longer match the configured roles.
+mapper.func = mapper.func.replace(/(function lightingDashboardModel\(\) \{\s*const rooms = )\[[^\n]*?\](\.map\(\(room\) => lightRoom\(room.key, room.name, room.entityId\)\);)/,
+    (_,prefix,suffix) => prefix+JSON.stringify(lightRooms)+suffix);
 if (!mapper.func.includes(nasMappingMarker)) {
   mapper.func = mapper.func.replace(
     'function audiDashboardReading(pattern) {',
@@ -4740,5 +4744,6 @@ require('./lib/charging-priority')(flows);
 require('./lib/wit-fault-recovery')(flows);
 require('./lib/homekit-refresh')(flows);
 require('./lib/dashboard-copy')(flows);
+require('./lib/lighting-reliability')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
