@@ -1,6 +1,6 @@
 # Fysiek Tado-doel en afzonderlijke warmtevraag
 
-Alleen in Git voorbereid; niet live uitgerold. De fysieke Tado-knop en het eigen schema leveren de gewenste kamertemperatuur. ESS leest die instelling zonder de kamer aan of uit te zetten of haar doel te overschrijven. Bij een doel van 20 °C ontstaat warmtevraag vanaf 19,5 °C en vervalt die vanaf 20 °C. Binnen deze band blijft de vorige vraag behouden. Een gewijzigd doel wordt opnieuw beoordeeld. Geselecteerde kamers delen één warmtebron; één vragende kamer is voldoende.
+De afzonderlijke warmtebronbediening is voorbereid en staat standaard uit; fysieke commissioning is nog nodig. De lokale HomeKit-kamerkoppelingen kunnen los daarvan in gebruik worden genomen. De fysieke Tado-knop en het eigen schema leveren de gewenste kamertemperatuur. ESS leest die instelling zonder de kamer aan of uit te zetten of haar doel te overschrijven. Bij een doel van 20 °C ontstaat warmtevraag vanaf 19,5 °C en vervalt die vanaf 20 °C. Binnen deze band blijft de vorige vraag behouden. Een gewijzigd doel wordt opnieuw beoordeeld. Geselecteerde kamers delen één warmtebron; één vragende kamer is voldoende.
 
 De nieuwe warmtebron staat standaard uit. Selecteer expliciet de kamers en een aparte actuator. Normaal gelden minimaal tien minuten aan en vijf minuten uit. Ontbrekende of ongeldige kamerdata, handmatig uitschakelen en fouten stoppen een eigen warmtevraag zonder die normale wachttijd. Tapwater blijft apart geregeld. Oude economische kamerboosts worden bij deze regeling niet verzonden.
 
@@ -20,7 +20,7 @@ Gebruik een passend laagspanningscontact voor de bestaande EHS-aan/uit-ingang, m
 
 ## HomeKit in het dashboard
 
-Een alleen-lezen HA-entiteitenregister bepaalt of een kamer via HomeKit of Tado-cloud is gekoppeld. Het dashboard toont beschikbare lokale thermostaten, meetkwaliteit en de bestaande kamerkoppelingen. Er wordt niet automatisch op serienummer of volgorde gemigreerd. Controleer de identiteit met de fysieke knop voordat je een lokale entiteit koppelt. Niet beschikbaar, 100 °C, een koelmelding of verouderde data geldt niet als bruikbare verwarmingsmeting. Bestaande cloudkoppelingen blijven staan.
+Een alleen-lezen HA-entiteitenregister bepaalt of een kamer via HomeKit of Tado-cloud is gekoppeld. Het dashboard toont beschikbare lokale thermostaten, meetkwaliteit en de bestaande kamerkoppelingen. Er wordt niet automatisch op serienummer of volgorde gemigreerd. Controleer de identiteit met de fysieke knop voordat je een lokale entiteit koppelt. Niet beschikbaar, 100 °C, een koelmelding of verouderde data geldt niet als bruikbare verwarmingsmeting. De migratie verandert uitsluitend gecontroleerde kamerrollen in de private installatieconfiguratie. Internet Bridge- en thermostaatgegevens blijven buiten Git. Als alle gebruikte functies lokaal zijn overgenomen en de cloudadapter niet actief is, kan de HA Tado-cloudintegratie reversibel worden uitgeschakeld. Native Tado-schemas en de Tado-app worden daarmee niet vervangen door een lokaal schema. HomeKit biedt HEAT/OFF en geen aparte AUTO-stand of Tado-timerdienst.
 
 ## Opdrachten en storingen
 
@@ -29,3 +29,5 @@ Een intentie en eigenaarschap worden vóór verzending in de private klimaatback
 Controle: de volledige testsuite inclusief tests/tado-hysteresis.js en tests/homekit-climate.js. Deze tests verifiëren softwaregedrag; de fysieke installatie is nog niet in bedrijf gesteld.
 
 Bronnen: [HA Tado](https://www.home-assistant.io/integrations/tado/), [HomeKit Apparaat](https://www.home-assistant.io/integrations/homekit_controller/), [Tado Zone Controller](https://support.tado.com/en/articles/4689126-how-does-tado-control-heating-zones-how-can-i-change-the-zone-controller-of-a-room).
+
+HomeKit push-metingen hoeven niet iedere tien minuten te veranderen. Onveranderde lokale waarden blijven bruikbaar bij een verbonden HA-cache, actuele integratieherkomst en een beschikbare entiteit. Verbinding weg of ongeldige meting blokkeert bediening. Een ontbrekend doel in UIT wordt als ontbrekend weergegeven, niet als 0 °C. Een ongekoppelde buitenvoeler kan voor weersignalen terugvallen op de ingestelde weerentiteit.

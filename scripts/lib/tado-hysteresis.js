@@ -4,7 +4,7 @@ const source=[...Object.values(runtime),...Object.values(hysteresis)].map(f=>f.t
 module.exports=function buildTadoHysteresis(flows) {
     const get=id=>flows.find(n=>n.id===id),base={z:'ess000000000001',x:850,y:1920};
     const fn=(id,name,func,wires,initialize='')=>({...base,id,type:'function',name,func,outputs:wires.length,timeout:0,noerr:0,initialize,finalize:'',libs:[],wires});
-    const context=`const now=Date.now(),system={...(flow.get('ess_system_config')||{}),climateRegistry:flow.get('ess_climate_registry')?.entities||{}};
+    const context=`const now=Date.now(),registry=flow.get('ess_climate_registry'),system={...(flow.get('ess_system_config')||{}),climateRegistry:registry?.entities||{},localClimateConnected:global.get('homeassistant')?.homeAssistant?.isConnected===true&&now-registry?.at>=0&&now-registry?.at<=4*3600000};
 const states=global.get('homeassistant')?.homeAssistant?.states||{};
 const config=climateValidate(flow.get('ess_climate_config')||climateDefaults());
 const ledger=flow.get('ess_climate_ledger')||{};`;

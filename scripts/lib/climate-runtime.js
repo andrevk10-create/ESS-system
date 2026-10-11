@@ -59,9 +59,11 @@ function climateFresh(item, now, maxAge) {
     const age = now - new Date(item.last_reported || item.last_updated || item.last_changed || 0).getTime();
     return age >= -60000 && age <= maxAge;
 }
-function climateRoomFeedback(item,now,maxAge=600000) {
+function climateRoomFeedback(item,now,maxAge=600000,localPush=false) {
     const a=item?.attributes||{},current=climateNumber(a.current_temperature),target=climateNumber(a.temperature);
-    const fresh=climateFresh(item,now,maxAge),mode=item?.state;
+    // Local push values can remain unchanged for hours. Only callers with a
+    // connected HA cache and fresh HomeKit provenance may use this path.
+    const fresh=localPush?!!item&&!['unknown','unavailable',''].includes(String(item.state).toLowerCase()):climateFresh(item,now,maxAge),mode=item?.state;
     const validCurrent=current!==null&&current>=-10&&current<=50&&a.temperature_unit!=='°F';
     const validTarget=target!==null&&target>=5&&target<=30;
     const valid=fresh&&['heat','auto','off'].includes(mode)&&a.hvac_action!=='cooling'&&
@@ -129,7 +131,7 @@ function climatePlan({config,system,states,prices,weather,energy,now}) {
     const spare=batteryFresh && soc!==null && soc>=0 && soc<=100 && !energy?.gridChargeOwned ? Math.max(0,soc/100*capacity-protectedKwh) : 0;
     const weatherFresh=weather && now-weather.at>=0 && now-weather.at<=3*3600000 && Array.isArray(weather.hours) && weather.hours.some(h=>h.at>=now&&h.at<=now+8*3600000&&Number.isFinite(h.temperature));
     const hours=weatherFresh && Array.isArray(weather.hours) ? weather.hours.filter(h=>h.at>=now-3600000 && h.at<=now+8*3600000) : [];
-    const outside=climateNumber(entity('sensor.outdoor_temperature')?.state);
+    const outside=climateNumber(entity('sensor.outdoor_temperature')?.state)??climateNumber(entity('weather.home')?.attributes?.temperature);
     const coldAhead=outside!==null && hours.some(h=>h.temperature<outside-2);
     const signals={cheap,waterCheap,solarSurplus,spareKwh:spare,soc:batteryFresh?soc:null,protectedKwh,coldAhead,outsideTemperature:outside,weatherFresh:!!weatherFresh,netReady,meterReady,measuredPowerW,meterOverLimit:measuredPowerW!==null&&measuredPowerW>c.maximumPowerW,currentPrice:current?.price??null};
     const candidates=[];

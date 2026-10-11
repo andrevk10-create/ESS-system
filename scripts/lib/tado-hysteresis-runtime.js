@@ -9,8 +9,9 @@ function tadoHysteresis({config,system,states,ledger={},now}) {
         const current=climateNumber(a.current_temperature),target=climateNumber(a.temperature);
         const mapped=/^climate\.[a-z0-9_]+$/.test(entity||'')&&entity!==h.entity&&!seen.has(entity);
         if(mapped) seen.add(entity);
-        const feedback=climateRoomFeedback(e,now);
-        const valid=mapped&&feedback.valid;
+        const feedback=climateRoomFeedback(e,now,600000,system.localClimateConnected===true&&system.climateRegistry?.[entity]?.platform==='homekit_controller');
+        const localRoom=system.climateRegistry?.[entity]?.platform==='homekit_controller';
+        const valid=mapped&&feedback.valid&&(!localRoom||system.localClimateConnected===true);
         const previous=next.rooms[role],room=previous?.entity===entity?previous:{entity,active:false};
         if(valid) {
             if(e.state==='off'||a.preset_mode==='away') room.active=false;
@@ -23,7 +24,7 @@ function tadoHysteresis({config,system,states,ledger={},now}) {
         complete=complete&&valid;
         status.push({role,entity:entity||null,label:a.friendly_name||'Tado-zone '+role.slice(-1),current,target:e?.state==='off'?null:target,
             active:valid&&room.active,valid,mode:e?.state||null,preset:a.preset_mode||null,
-            reason:!mapped?'Kamerkoppeling ontbreekt, is dubbel of is de regelzone':!valid?feedback.reason:e.state==='off'?'Handmatig uit':a.preset_mode==='away'?'Afwezig':room.active?'Warmtevraag tot thermostaatdoel':'Wacht tot 0,5 °C onder thermostaatdoel'});
+            reason:!mapped?'Kamerkoppeling ontbreekt, is dubbel of is de regelzone':localRoom&&!system.localClimateConnected?'Lokale HA-verbinding niet bevestigd':!valid?feedback.reason:e.state==='off'?'Handmatig uit':a.preset_mode==='away'?'Afwezig':room.active?'Warmtevraag tot thermostaatdoel':'Wacht tot 0,5 °C onder thermostaatdoel'});
     }
     const e=states[h.entity],a=e?.attributes||{},local=h.adapter==='switch';
     const controlTemp=climateNumber(a.current_temperature),target=climateNumber(a.temperature);

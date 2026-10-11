@@ -1,12 +1,12 @@
 const runtime=require('./climate-runtime');
 const helpers=[runtime.climateNumber,runtime.climateFresh,runtime.climateRoomFeedback].map(f=>f.toString()).join('\n');
-function homekitClimate(states,entities,registry,now) {
+function homekitClimate(states,entities,registry,now,connected=false) {
     const records=registry?.entities||{},validRegistry=Number.isFinite(registry?.at)&&now-registry.at>=0&&now-registry.at<=4*3600000;
     const roles=['climate.heating_zone_1','climate.heating_zone_2','climate.heating_zone_3'];
     const local=Object.entries(records).filter(([id,r])=>id.startsWith('climate.')&&r.platform==='homekit_controller').map(([id])=>{
-        const e=states[id],feedback=climateRoomFeedback(e,now),role=roles.find(r=>entities[r]===id)||null;
+        const e=states[id],feedback=climateRoomFeedback(e,now,600000,connected&&validRegistry),role=roles.find(r=>entities[r]===id)||null;
         return {entity:id,label:e?.attributes?.friendly_name||'Lokale thermostaat',role,current:feedback.current,target:feedback.target,
-            valid:validRegistry&&feedback.valid,reason:!validRegistry?'Wacht op actuele integratiegegevens':feedback.reason};
+            valid:connected&&validRegistry&&feedback.valid,reason:!connected?'Home Assistant niet verbonden':!validRegistry?'Wacht op actuele integratiegegevens':feedback.reason};
     });
     const mapped=roles.filter(r=>entities[r]).map(role=>({role,entity:entities[role],platform:validRegistry?records[entities[role]]?.platform||'unknown':'unknown'}));
     return {registryReady:validRegistry,local,validCount:local.filter(r=>r.valid).length,mapped,
@@ -27,10 +27,15 @@ flow.set('ess_climate_registry',{at:Date.now(),entities});return null;`});
 ${helpers}
 ${homekitClimate.toString()}
 const climateRegistry=flow.get('ess_climate_registry');
-dashboard.climate.homekit=homekitClimate(rawStates,essRuntimeConfig.entities||{},climateRegistry,Date.now());
+const localClimateConnected=global.get('homeassistant')?.homeAssistant?.isConnected===true&&Date.now()-climateRegistry?.at>=0&&Date.now()-climateRegistry?.at<=4*3600000;
+if(!essRuntimeConfig.entities?.['sensor.outdoor_temperature']) dashboard.climate.outside.source=rawStates[essRuntimeConfig.entities?.['weather.home']]?.attributes?.friendly_name||'Weerbron';
+dashboard.climate.homekit=homekitClimate(rawStates,essRuntimeConfig.entities||{},climateRegistry,Date.now(),localClimateConnected);
 for(const zone of dashboard.climate.tado||[]) {
- const actual=essRuntimeConfig.entities?.[zone.entityId],item=rawStates[actual],feedback=climateRoomFeedback(item,Date.now());
+ const actual=essRuntimeConfig.entities?.[zone.entityId],item=rawStates[actual],feedback=climateRoomFeedback(item,Date.now(),600000,localClimateConnected&&climateRegistry?.entities?.[actual]?.platform==='homekit_controller');
  zone.connection=climateRegistry?.entities?.[actual]?.platform==='homekit_controller'?'Lokaal via HomeKit':climateRegistry?.entities?.[actual]?.platform==='tado'?'Tado-cloud':'Integratie nog niet gecontroleerd';
+ zone.target=feedback.target;
+ if(zone.connection==='Lokaal via HomeKit'&&!localClimateConnected) {feedback.valid=false;feedback.reason='Home Assistant niet verbonden of integratiegegevens te oud';}
+ if(localClimateConnected&&climateRegistry?.entities?.[actual]?.platform==='homekit_controller'&&feedback.valid) zone.name=climateRegistry.entities[actual].roomLabel||zone.name;
  if(zone.configured && !feedback.valid) {zone.available=false;zone.active=false;zone.current=null;zone.status=feedback.reason;zone.modeLabel=feedback.reason;}
 }
 // END HOMEKIT CLIMATE
@@ -39,7 +44,10 @@ for(const zone of dashboard.climate.tado||[]) {
     mapper.func=mapper.func.slice(0,pos)+code+mapper.func.slice(pos);
     const control=get('essclimate_ctrl1');
     control.func=helpers+'\n'+control.func;
-    control.func=control.func.replace("const outputs = [null, null, null, null];",`if(selected.entityId.startsWith('climate.heating_zone_')&&!climateRoomFeedback(current,Date.now()).valid) return null;
+    control.func=control.func.replace("const outputs = [null, null, null, null];",`const localRegistry=flow.get('ess_climate_registry'),actualRoom=flow.get('ess_system_config')?.entities?.[selected.entityId];
+const localPush=global.get('homeassistant')?.homeAssistant?.isConnected===true&&Date.now()-localRegistry?.at>=0&&Date.now()-localRegistry?.at<=4*3600000&&localRegistry?.entities?.[actualRoom]?.platform==='homekit_controller';
+if(localRegistry?.entities?.[actualRoom]?.platform==='homekit_controller'&&!localPush) return null;
+if(selected.entityId.startsWith('climate.heating_zone_')&&!climateRoomFeedback(current,Date.now(),600000,localPush).valid) return null;
 const outputs = [null, null, null, null];`);
     control.func=control.func.replace("const mode = String(current.state).toLowerCase() === 'off' ? selected.onMode : 'off';",`let mode = String(current.state).toLowerCase() === 'off' ? selected.onMode : 'off';
     if(selected.domain==='climate'&&selected.entityId.startsWith('climate.heating_zone_')) {

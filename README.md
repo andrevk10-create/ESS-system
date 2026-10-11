@@ -252,3 +252,5 @@ The linked technical documents are currently written in Dutch.
 ## License and use
 
 No open-source license has been added yet. Without a license, reuse remains legally restricted. Add a suitable license and liability disclaimer before broad public distribution.
+
+The configuration page audits all entity roles, including optional unconfigured sources. PV daily yield discovery follows each configured inverter rather than forecast/lifetime counters. Current WIT limits are shown from device-bound Modbus readback; unused 0xffff status words do not invalidate otherwise verified power/current fields.

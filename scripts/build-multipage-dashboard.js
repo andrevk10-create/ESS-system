@@ -4705,6 +4705,7 @@ require('./lib/charging-preferences')(flows);
 require('./lib/climate-control')(flows);
 require('./lib/tado-hysteresis')(flows);
 require('./lib/homekit-climate').apply(flows);
+require('./lib/configuration-audit').apply(flows);
 require('./lib/wit-manual-recovery')(flows);
 require('./lib/wit-control-readback')(flows);
 require('./lib/second-ev')(flows);

@@ -39,7 +39,9 @@ msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_regi
     add(api('esswit_current_api','Lees ingestelde accustroomgrenzen','',['esswit_limits_save']));
     add(fn('esswit_limits_save','Bewaar actuele accugrenzen',`if(flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;
 const p=msg.witLimits,c=msg.witReply?.response||msg.witReply;
-const words=(a,n)=>Array.isArray(a)&&a.length===n&&a.every(v=>Number.isInteger(v)&&v>=0&&v<65535);
+// Unused/status words may legally contain 0xffff. Validate the decoded power
+// and current fields below rather than rejecting the complete register block.
+const words=(a,n)=>Array.isArray(a)&&a.length===n&&a.every(v=>Number.isInteger(v)&&v>=0&&v<=65535);
 let limits=null;
 if(p?.success===true&&c?.success===true&&words(p.values,19)&&words(c.values,2)) {
  const charge=(p.values[0]*65536+p.values[1])*0.1,discharge=(p.values[2]*65536+p.values[3])*0.1;
