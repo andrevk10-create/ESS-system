@@ -14,6 +14,7 @@ module.exports = function hardenWit(flows) {
 const forecastValid = solarWindow.valid;
 const tomorrowForecastKwh = solarWindow.inputKwh;`);
         n.func = n.func.replace('const details = {', `const details = {
+    reportedBatteryLimits:flow.get('ess_wit_battery_limits') || null,
     forecastWindow:solarWindow.label,
     forecastDate:solarWindow.forecastDate,
     forecastSourceCount:solarWindow.sourceCount,
@@ -50,7 +51,7 @@ if (audiDischarge.sessionOwned && now - new Date(audiDischarge.updatedAt || 0).g
     grid.func = grid.func.replace('const reserveProfile = reserveProfiles[reserveMode];',
         "const reserveProfile = { ...reserveProfiles[reserveMode], houseReserveKwh:witHouseReserve(flow.get('ess_house_consumption_learning'), reserveProfiles[reserveMode].houseReserveKwh) };");
     grid.func = grid.func.replace('const installationChargeLimitW = 12000;',
-        "const installationChargeLimitW = Math.min(8, Number((flow.get('ess_system_config') || {}).specs?.maximumBatteryChargePowerKw) || 8) * 1000;");
+        "const installationChargeLimitW = (Number((flow.get('ess_system_config') || {}).specs?.maximumBatteryChargePowerKw) || 8) * 1000;");
     grid.func = grid.func.replace('const designPhaseCurrentA = 22;',
         "const designPhaseCurrentA = Math.max(0, (Number((flow.get('ess_system_config') || {}).specs?.mainFuseA) || 25) - 1);");
     grid.func = grid.func.replace('const nominalVoltageV = 230;',
@@ -61,7 +62,7 @@ if (audiDischarge.sessionOwned && now - new Date(audiDischarge.updatedAt || 0).g
     grid.func = grid.func.replace('priceAge <= 3 * 60 * 60 * 1000', 'priceAge <= 36 * 60 * 60 * 1000');
     grid.func = grid.func.replace(/function directBatteryLimitW\(\) \{[\s\S]*?\n\}\n\nif \(!states\)/,
         `function directBatteryLimitW() {
-    return witBatteryLimit(states, flow.get('ess_system_config') || {}, 'charge', installationChargeLimitW, now);
+    return witBatteryLimit(states, flow.get('ess_system_config') || {}, 'charge', installationChargeLimitW, now, flow.get('ess_wit_battery_limits'));
 }
 
 if (!states)`);
@@ -85,7 +86,7 @@ const currentForcedPowerW = previous.sessionOwned === true && remoteState === 'e
     ev.func = ev.func.replace('Math.abs(powerPercent - previousPowerPercent) <= 1', 'powerPercent > previousPowerPercent && powerPercent - previousPowerPercent <= 1');
     ev.func = ev.func.replace('Math.min(44, Math.floor(targetPowerW', 'Math.min(100, Math.floor(targetPowerW');
     ev.func = ev.func.replace('targetPowerW = Math.min(maximumBatteryPowerW,',
-        "targetPowerW = Math.min(witBatteryLimit(states, flow.get('ess_system_config') || {}, 'discharge', maximumBatteryPowerW, now), safeDischargeBudgetKwh * 1000 / (durationMinutes / 60),");
+        "targetPowerW = Math.min(witBatteryLimit(states, flow.get('ess_system_config') || {}, 'discharge', maximumBatteryPowerW, now, flow.get('ess_wit_battery_limits')), safeDischargeBudgetKwh * 1000 / (durationMinutes / 60),");
     ev.func = ev.func.replace('const chargerPowerW = chargerPowerKw === null ? null : chargerPowerKw * 1000;',
         "const chargerPowerW = chargerPowerKw === null ? null : chargerPowerKw * (String(entity('sensor.ev_charger_power')?.attributes?.unit_of_measurement || 'kW').toLowerCase() === 'w' ? 1 : 1000);");
     ev.func = ev.func.replace(/const currentForcedPowerW = previous.sessionOwned[\s\S]*?\n    : 0;/,

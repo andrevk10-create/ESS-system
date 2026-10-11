@@ -30,12 +30,27 @@ msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_regi
     add(api('esswit_readback_authority','Lees WIT-bedieningsbevoegdheid','',['esswit_readback_remote_prepare']));
     add(fn('esswit_readback_remote_prepare','Vraag afstandsbediening en netlaadtoestemming',`msg.witAuthority=msg.witReply?.response||msg.witReply;
 msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:msg.witBinding.deviceId,register_type:'holding',start_address:30407,count:5},return_response:true}};return msg;`,[['esswit_readback_remote']]));
-    add(api('esswit_readback_remote','Lees echte WIT-laadopdracht','',['esswit_readback_save']));
+    add(api('esswit_readback_remote','Lees echte WIT-laadopdracht','',['esswit_limits_prepare']));
+    add(fn('esswit_limits_prepare','Vraag toegestane accuvermogens',`msg.witRemote=msg.witReply?.response||msg.witReply;
+msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:msg.witBinding.deviceId,register_type:'input',start_address:31210,count:5},return_response:true}};return msg;`,[['esswit_limits_api']]));
+    add(api('esswit_limits_api','Lees toegestane accuvermogens','',['esswit_current_prepare']));
+    add(fn('esswit_current_prepare','Vraag ingestelde accustroomgrenzen',`msg.witLimits=msg.witReply?.response||msg.witReply;
+msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:msg.witBinding.deviceId,register_type:'holding',start_address:910,count:2},return_response:true}};return msg;`,[['esswit_current_api']]));
+    add(api('esswit_current_api','Lees ingestelde accustroomgrenzen','',['esswit_limits_save']));
+    add(fn('esswit_limits_save','Bewaar actuele accugrenzen',`if(flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;
+const p=msg.witLimits,c=msg.witReply?.response||msg.witReply;
+const words=(a,n)=>Array.isArray(a)&&a.length===n&&a.every(v=>Number.isInteger(v)&&v>=0&&v<65535);
+let limits=null;
+if(p?.success===true&&c?.success===true&&words(p.values,5)&&words(c.values,2)) {
+ const charge=(p.values[0]*65536+p.values[1])*0.1,discharge=(p.values[2]*65536+p.values[3])*0.1;
+ if(charge<=100000&&discharge<=100000&&c.values.every(v=>v<=4200))limits={...msg.witBinding,at:Date.now(),chargePowerW:charge,dischargePowerW:discharge,chargeCurrentA:c.values[0]*0.1,dischargeCurrentA:c.values[1]*0.1};
+}
+flow.set('ess_wit_battery_limits',limits);msg.witReply=msg.witRemote;return msg;`,[['esswit_readback_save']]));
     add(fn('esswit_readback_save','Bewaar gevalideerde WIT-registers',witReadbackResult.toString()+`
 if(flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;
 flow.set('ess_wit_control_readback',witReadbackResult(msg.witAuthority,msg.witReply?.response||msg.witReply,msg.witBinding,Date.now()));
 flow.set('ess_wit_readback_pending',null);return {payload:Date.now(),witReadbackTick:true};`,[['esswitgrid_transport_reply','esswitgrid_ctrl1']]));
-    add({id:'esswit_readback_catch',type:'catch',z,name:'WIT-terugmelding niet beschikbaar',scope:['esswit_readback_registry','esswit_readback_authority','esswit_readback_remote'],uncaught:false,wires:[['esswit_readback_error']],x:450,y:1840});
+    add({id:'esswit_readback_catch',type:'catch',z,name:'WIT-terugmelding niet beschikbaar',scope:['esswit_readback_registry','esswit_readback_authority','esswit_readback_remote','esswit_limits_api','esswit_current_api'],uncaught:false,wires:[['esswit_readback_error']],x:450,y:1840});
     add(fn('esswit_readback_error','Blokkeer bij ontbrekende WIT-registers',"flow.set('ess_wit_control_readback',null);flow.set('ess_wit_readback_pending',null);return {payload:Date.now()};",[['esswitgrid_ctrl1']]));
     for(const [id,marker] of [['esswitgrid_ctrl1',"const previous = flow.get('ess_wit_grid_charge_status')"],['esswitaudi_ctrl1',"const previous = flow.get('ess_wit_audi_discharge_status')"],['esswitexport_ctrl','const socEntity =']]) {
         const n=get(id);

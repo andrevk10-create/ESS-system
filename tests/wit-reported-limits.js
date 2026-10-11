@@ -1,0 +1,13 @@
+const assert=require('assert'),{witBatteryLimit}=require('../scripts/lib/wit-runtime');
+const now=Date.now(),config={entities:{'select.growatt_grid_remote_power_control_enable':'select.wit'}},states={'sensor.growatt_battery_battery_voltage':{state:'54.4',last_reported:new Date(now).toISOString()}};
+const limits={remoteEntity:'select.wit',at:now,chargePowerW:13056,dischargePowerW:13056,chargeCurrentA:150,dischargeCurrentA:150};
+const limit=r=>witBatteryLimit(states,config,'charge',14000,now,r);
+assert.strictEqual(limit(limits),8160);
+assert.strictEqual(limit({...limits,chargeCurrentA:240}),13056);
+assert.strictEqual(limit({...limits,chargePowerW:0}),0);
+assert.strictEqual(limit({...limits,chargeCurrentA:0}),0);
+assert.strictEqual(limit({...limits,at:now-120001}),8000);
+assert.strictEqual(limit({...limits,remoteEntity:'select.other'}),8000);
+assert.strictEqual(limit(null),8000);
+assert.strictEqual(limit({...limits,chargeCurrentA:NaN}),0);
+console.log('Reported WIT power/current limits: native 150 A, 240 A, zero, stale, binding and unavailable OK');
