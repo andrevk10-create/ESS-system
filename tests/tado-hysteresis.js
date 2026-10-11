@@ -64,9 +64,9 @@ for(const local of [false,true]) {
     const result=run(msg,flow,globalContext,clock);assert.equal(result[local?2:0][0].payload.entity,f.config.heatSource.entity);
     assert.equal(run(msg,flow,globalContext,clock),null,'Intent consumed once');
     context.ess_tado_hysteresis_outbox={at:f.now,actions:[command]};f.room(1,19.4,18);
-    assert.deepEqual(run(msg,flow,globalContext,clock),[null,null,null,null],'Last-second knob change drops queued heat');
+    assert.deepEqual(run(msg,flow,globalContext,clock),[null,null,null,null,null,null],'Last-second knob change drops queued heat');
     f.room(1,19.4,20);context.ess_tado_hysteresis_outbox={at:f.now,actions:[command]};
-    assert.deepEqual(run({payload:JSON.stringify({climate:{config:f.config,ledger:{}}})},flow,globalContext,clock),[null,null,null,null],'Primary and backup must contain intent');
+    assert.deepEqual(run({payload:JSON.stringify({climate:{config:f.config,ledger:{}}})},flow,globalContext,clock),[null,null,null,null,null,null],'Primary and backup must contain intent');
     const accepted=new Function('msg','flow',get('essclim_hyst_accepted').func);
     accepted({payload:command},flow);assert.equal(f.ledger.source.serviceAcceptedAt,command.at);
     const preferences=require('../scripts/lib/charging-preferences').chargingPreferences(flow);

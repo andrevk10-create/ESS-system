@@ -1,6 +1,6 @@
 // Pure, embedded runtime. Installation identities remain in the private profile.
 function climateDefaults() {
-    return {version:1,mode:'auto',profile:'normal',tadoHysteresis:true,maximumPowerW:0,phaseWeights:[0,0,0],
+    return {version:1,mode:'auto',profile:'normal',tadoHysteresis:true,hysteresisDegrees:0.5,maximumPowerW:0,phaseWeights:[0,0,0],
         minimumBenefit:0.04,houseReserveKwh:14,batteryFloorSoc:50,manualMinutes:120,
         heatSource:{enabled:false,adapter:'tado-zone',entity:'',roomRoles:['climate.heating_zone_1','climate.heating_zone_2','climate.heating_zone_3'],
             heatTarget:25,minimumOnMinutes:10,minimumOffMinutes:5,leaseMinutes:20,
@@ -15,8 +15,9 @@ function climateValidate(input) {
     if (!input || input.version !== 1) fail('Ongeldige klimaatconfiguratie');
     const d = climateDefaults(), c = {...d,...input,water:{...d.water,...input.water},heatSource:{...d.heatSource,...input.heatSource}};
     if (typeof c.tadoHysteresis !== 'boolean') fail('Ongeldige Tado-hysterese');
+    if(typeof c.hysteresisDegrees!=='number'||!Number.isFinite(c.hysteresisDegrees)||c.hysteresisDegrees<0.1||c.hysteresisDegrees>2) fail('Hysterese moet tussen 0,1 en 2 °C liggen');
     const h=c.heatSource;
-    if(!['tado-zone','switch'].includes(h.adapter)||['enabled','roomsDetached','offScheduleConfirmed','relayTested','watchdogConfirmed'].some(k=>typeof h[k]!=='boolean')||
+    if(!['tado-zone','switch','homekit-room'].includes(h.adapter)||['enabled','roomsDetached','offScheduleConfirmed','relayTested','watchdogConfirmed'].some(k=>typeof h[k]!=='boolean')||
         typeof h.entity!=='string'||h.entity!==''&&!(h.adapter==='switch'?/^switch\.[a-z0-9_]+$/:/^climate\.[a-z0-9_]+$/).test(h.entity)) fail('Ongeldige aparte verwarmingsbediening');
     if(!Array.isArray(h.roomRoles)||!h.roomRoles.length||h.roomRoles.length>3||new Set(h.roomRoles).size!==h.roomRoles.length||
         h.roomRoles.some(r=>!d.heatSource.roomRoles.includes(r))) fail('Kies de kamers voor de gezamenlijke warmtevraag');
@@ -25,7 +26,8 @@ function climateValidate(input) {
         !Number.isInteger(h.minimumOffMinutes)||h.minimumOffMinutes<5||h.minimumOffMinutes>30||
         !Number.isInteger(h.leaseMinutes)||h.leaseMinutes<15||h.leaseMinutes>30||h.leaseMinutes<=h.minimumOnMinutes)
         fail('Controleer warmtevraagdoel en minimale schakeltijden');
-    if(h.enabled&&(!h.entity||!h.roomsDetached||!h.relayTested||!(h.adapter==='tado-zone'?h.offScheduleConfirmed:h.watchdogConfirmed)))
+    if(h.adapter==='homekit-room'&&h.roomRoles.length!==1) fail('Kies uitsluitend de woonkamer voor directe HomeKit-hysterese');
+    if(h.enabled&&(!h.entity||h.adapter!=='homekit-room'&&(!h.roomsDetached||!h.relayTested||!(h.adapter==='tado-zone'?h.offScheduleConfirmed:h.watchdogConfirmed))))
         fail('Controleer eerst aparte bediening, losgekoppelde kamers, contactwerking en terugval bij uitval');
     if (!['auto','advice','off'].includes(c.mode) || !['eco','normal','comfort'].includes(c.profile)) fail('Ongeldige klimaatstand');
     const num = (v,min,max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
@@ -46,7 +48,7 @@ function climateValidate(input) {
     const w = c.water;
     if (typeof w.enabled !== 'boolean' || typeof w.restoreAcknowledged !== 'boolean') fail('Ongeldige tapwatertoestemming');
     if (w.enabled && (!num(w.minimum,40,60) || !num(w.normal,w.minimum,60) || !num(w.buffer,w.normal,60) || !num(w.litres,30,2000) || !num(w.lossKwhPerDay,0,15) || !num(w.boostMinutes,30,180))) fail('Controleer vatinhoud en tapwatergrenzen');
-    return {version:1,mode:c.mode,profile:c.profile,tadoHysteresis:c.tadoHysteresis,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
+    return {version:1,mode:c.mode,profile:c.profile,tadoHysteresis:c.tadoHysteresis,hysteresisDegrees:c.hysteresisDegrees,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
         houseReserveKwh:c.houseReserveKwh,batteryFloorSoc:c.batteryFloorSoc,manualMinutes:c.manualMinutes,rooms:c.rooms,
         heatSource:{enabled:h.enabled,adapter:h.adapter,entity:h.entity,roomRoles:h.roomRoles.slice(),heatTarget:h.heatTarget,minimumOnMinutes:h.minimumOnMinutes,
             minimumOffMinutes:h.minimumOffMinutes,leaseMinutes:h.leaseMinutes,roomsDetached:h.roomsDetached,offScheduleConfirmed:h.offScheduleConfirmed,relayTested:h.relayTested,watchdogConfirmed:h.watchdogConfirmed},

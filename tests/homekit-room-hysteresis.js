@@ -1,0 +1,39 @@
+const assert=require('node:assert/strict');
+Object.assign(global,require('../scripts/lib/climate-runtime'));
+const {tadoHysteresis,tadoCommandAllowed}=require('../scripts/lib/tado-hysteresis-runtime');
+const config=climateDefaults();Object.assign(config.heatSource,{enabled:true,adapter:'homekit-room',entity:'climate.living',roomRoles:['climate.heating_zone_3']});
+const f={config:climateValidate(config),now:1800000000000,ledger:{},system:{modules:{climate:true},localClimateConnected:true,climateRegistry:{'climate.living':{platform:'homekit_controller'}},entities:{'climate.heating_zone_3':'climate.living'}},states:{}};
+function state(mode,current,target){f.states['climate.living']={state:mode,last_updated:new Date(f.now).toISOString(),attributes:{current_temperature:current,temperature:target,min_temp:5,max_temp:25,hvac_modes:['heat','off']}};}
+function step(){const r=tadoHysteresis(f);f.ledger=r.ledger;return r;}
+function ack(mode,current,target){f.ledger.source.serviceAcceptedAt=f.ledger.source.pending.at;f.now+=1000;state(mode,current,target);return step();}
+state('off',20,null);assert.equal(step().actions.length,0,'No invented physical goal');
+state('heat',20,20);step();f.now+=600000;let r=step();assert.equal(r.actions[0].on,false);assert.equal(tadoCommandAllowed({...f,command:r.actions[0]}),true);
+ack('off',20,null);assert.equal(f.ledger.source.goal,20,'Keep physical goal during our OFF');
+f.ledger=JSON.parse(JSON.stringify(f.ledger));f.now+=300000;state('off',19.6,null);assert.equal(step().actions.length,0,'Deadband and saved goal survive restart');
+state('off',19.5,null);r=step();assert.equal(r.actions[0].target,20);assert.equal(tadoCommandAllowed({...f,command:r.actions[0]}),true);
+state('heat',19.5,21);assert.equal(tadoCommandAllowed({...f,command:r.actions[0]}),false,'New physical setting blocks stale restoration');
+state('off',19.5,null);ack('heat',19.5,20);
+state('heat',19.5,22);step();assert.equal(f.ledger.source.goal,22,'Physical goal wins');
+state('off',19.5,null);step();assert.equal(f.ledger.source.manualOff,true,'Manual OFF stops automatic restarts');
+f.now+=600000;assert.equal(step().actions.length,0);
+state('heat',20,21);step();f.system.localClimateConnected=false;state('heat',22,21);assert.equal(step().actions.length,0,'Disconnected HA cannot operate');
+f.system.localClimateConnected=true;f.system.climateRegistry['climate.living'].platform='tado';assert.equal(step().actions.length,0,'Only verified local HomeKit');
+assert.throws(()=>climateValidate({...config,heatSource:{...config.heatSource,roomRoles:['climate.heating_zone_1','climate.heating_zone_3']}}),'Small rooms never request this source');
+assert.throws(()=>climateValidate({...config,hysteresisDegrees:0}));
+assert.equal(climateValidate({...config,hysteresisDegrees:1}).hysteresisDegrees,1);
+f.config=climateValidate({...config,hysteresisDegrees:1});f.system.climateRegistry['climate.living'].platform='homekit_controller';
+f.ledger.source={identity:JSON.stringify(['homekit-room','climate.living',25,20]),entity:'climate.living',goal:21,autoOff:true,manualOff:false,lastSwitch:f.now-600000};
+state('off',20.4,null);assert.equal(step().actions.length,0,'Configured 1 degree band prevents early restart');
+state('off',20,null);r=step();assert.equal(r.actions[0].on,true,'Configured threshold is honoured');
+const flows=require('../flows.json'),get=id=>flows.find(n=>n.id===id),command=r.actions[0];
+const context={ess_charging_preferences_ready:true,ess_climate_config:f.config,ess_system_config:f.system,ess_climate_registry:{at:f.now,entities:f.system.climateRegistry},ess_climate_ledger:{hysteresis:f.ledger},ess_tado_hysteresis_boot:f.now-1000,ess_tado_hysteresis_outbox:{at:f.now,actions:[command]}};
+const flow={get:k=>context[k],set:(k,v)=>context[k]=v},globalContext={get:()=>({homeAssistant:{states:f.states,isConnected:true}})},clock=class extends Date{static now(){return f.now;}};
+const dispatch=new Function('msg','flow','global','Date',get('essclim_hyst_dispatch').func);
+const out=dispatch({payload:JSON.stringify({climate:{config:f.config,ledger:{hysteresis:f.ledger}}})},flow,globalContext,clock);
+assert.equal(out[4][0].payload.target,21,'Persisted ON reaches only the HomeKit route');
+assert.equal(get('essclim_hyst_room_on').action,'climate.set_temperature');
+assert.match(get('essclim_hyst_room_on').data,/"hvac_mode":"heat"/,'Goal and mode are one HomeKit request');
+assert.equal(get('essclim_hyst_room_off').action,'climate.set_hvac_mode');
+assert.ok(get('esstpl_config001').wires[0].includes('essclim_settings'),'Config page submits to validated climate preferences');
+assert.match(get('esstpl_config001').format,/ess\/climate\/hysteresis-save/);
+console.log('HomeKit living-room hysteresis regression checks passed');

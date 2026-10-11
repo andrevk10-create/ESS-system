@@ -1,5 +1,7 @@
-// Room entities are read-only. All rooms share ONE independent heat request.
+// Separate-source adapters read room goals only; homekit-room controls its room.
+const {homekitRoomHysteresis,homekitRoomCommandAllowed}=require('./homekit-room-hysteresis');
 function tadoHysteresis({config,system,states,ledger={},now}) {
+    if(config.heatSource.adapter==='homekit-room') return homekitRoomHysteresis({config,system,states,ledger,now});
     const h=config.heatSource;
     const next=ledger.version===2?JSON.parse(JSON.stringify(ledger)):{version:2,rooms:{},source:{}};
     const actions=[],status=[],seen=new Set();
@@ -15,8 +17,8 @@ function tadoHysteresis({config,system,states,ledger={},now}) {
         const previous=next.rooms[role],room=previous?.entity===entity?previous:{entity,active:false};
         if(valid) {
             if(e.state==='off'||a.preset_mode==='away') room.active=false;
-            else if(target!==room.target) room.active=current<=target-0.5;
-            else if(current<=target-0.5) room.active=true;
+            else if(target!==room.target) room.active=current<=target-(config.hysteresisDegrees??0.5);
+            else if(current<=target-(config.hysteresisDegrees??0.5)) room.active=true;
             else if(current>=target) room.active=false;
             room.target=e.state==='off'?null:target;
         }
@@ -24,7 +26,7 @@ function tadoHysteresis({config,system,states,ledger={},now}) {
         complete=complete&&valid;
         status.push({role,entity:entity||null,label:a.friendly_name||'Tado-zone '+role.slice(-1),current,target:e?.state==='off'?null:target,
             active:valid&&room.active,valid,mode:e?.state||null,preset:a.preset_mode||null,
-            reason:!mapped?'Kamerkoppeling ontbreekt, is dubbel of is de regelzone':localRoom&&!system.localClimateConnected?'Lokale HA-verbinding niet bevestigd':!valid?feedback.reason:e.state==='off'?'Handmatig uit':a.preset_mode==='away'?'Afwezig':room.active?'Warmtevraag tot thermostaatdoel':'Wacht tot 0,5 °C onder thermostaatdoel'});
+            reason:!mapped?'Kamerkoppeling ontbreekt, is dubbel of is de regelzone':localRoom&&!system.localClimateConnected?'Lokale HA-verbinding niet bevestigd':!valid?feedback.reason:e.state==='off'?'Handmatig uit':a.preset_mode==='away'?'Afwezig':room.active?'Warmtevraag tot thermostaatdoel':'Wacht tot '+(config.hysteresisDegrees??0.5)+' °C onder thermostaatdoel'});
     }
     const e=states[h.entity],a=e?.attributes||{},local=h.adapter==='switch';
     const controlTemp=climateNumber(a.current_temperature),target=climateNumber(a.temperature);
@@ -86,6 +88,7 @@ function tadoHysteresis({config,system,states,ledger={},now}) {
 }
 
 function tadoCommandAllowed({command,config,system,states,ledger,now}) {
+    if(config.heatSource.adapter==='homekit-room') return homekitRoomCommandAllowed({command,config,system,states,ledger,now});
     const h=config.heatSource,s=ledger?.source,local=h.adapter==='switch';
     if(!s||JSON.stringify(s.pending)!==JSON.stringify(command)||command.entity!==h.entity||command.adapter!==h.adapter||
         command.identity!==JSON.stringify([h.adapter,h.entity,h.heatTarget,h.leaseMinutes])||now-command.at<0||now-command.at>60000||

@@ -1,3 +1,15 @@
+# Woonkamer via HomeKit met hysterese 0,5 °C
+
+De adapter `homekit-room` schakelt uitsluitend de gekozen woonkamerthermostaat via lokale HomeKit-bediening. Alleen de woonkamer vraagt de Extension Kit om warmte; badkamer en bijkeuken houden hun eigen thermostaatbediening en starten de warmtepomp niet. De overige adapters hieronder blijven beschikbaar voor installaties met een aparte actuator.
+
+Configuratie → Verwarming · hysterese biedt een temperatuurverschil van 0,1 tot 2 °C, standaard 0,5 °C. Deze keuze wordt afzonderlijk gevalideerd en in de private klimaatvoorkeuren met reservekopie opgeslagen. De instellingen op Klimaat gebruiken dezelfde waarde. Aanpassen verandert het fysieke doel niet.
+
+De fysieke Tado-knop of het native schema bepaalt het doel. Bij bereiken van dat doel schakelt ESS de woonkamer UIT, na minimaal tien minuten aan. HomeKit verbergt in UIT het doel: ESS bewaart daarom het laatste werkelijk gelezen doel in de private klimaatbackup. Bij doel minus 0,5 °C schakelt ESS terug naar HEAT met dat bewaarde doel, na minimaal vijf minuten uit. Een nieuw zichtbaar fysiek doel of native schema krijgt voorrang; er wordt nooit een comfortdoel verzonnen. Begin daarom door de woonkamer op de fysieke knop in te stellen. UIT bij de eerste start blijft UIT.
+
+Handmatig UIT terwijl de woonkamer op HEAT staat stopt automatisch herstarten. Nogmaals fysiek UIT kiezen terwijl ESS hem al UIT heeft gezet levert via HomeKit geen onderscheidbare wijziging op: zet dan de automatische hysterese in het dashboard uit. Bij een nieuwe fysieke temperatuurinstelling wordt het doel weer gelezen. Bij uitval van HA, ongeldige metingen of een niet bevestigde opdracht worden geen nieuwe schakelopdrachten verstuurd. HomeKit biedt geen zelfstandige timer: bij uitval blijft de laatst ingestelde stand gelden, met de eigen Tado-thermostaatregeling en EHS-beveiligingen. Dit schakelt alleen warmtevraag, nooit de netvoeding of het tapwater.
+
+Controle: `tests/homekit-room-hysteresis.js` test de 0,5 °C-band, doelbehoud over herstart, fysieke wijzigingen, handmatig UIT, verbinding en integratieherkomst.
+
 # Fysiek Tado-doel en afzonderlijke warmtevraag
 
 De afzonderlijke warmtebronbediening is voorbereid en staat standaard uit; fysieke commissioning is nog nodig. De lokale HomeKit-kamerkoppelingen kunnen los daarvan in gebruik worden genomen. De fysieke Tado-knop en het eigen schema leveren de gewenste kamertemperatuur. ESS leest die instelling zonder de kamer aan of uit te zetten of haar doel te overschrijven. Bij een doel van 20 °C ontstaat warmtevraag vanaf 19,5 °C en vervalt die vanaf 20 °C. Binnen deze band blijft de vorige vraag behouden. Een gewijzigd doel wordt opnieuw beoordeeld. Geselecteerde kamers delen één warmtebron; één vragende kamer is voldoende.

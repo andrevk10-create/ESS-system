@@ -1,6 +1,6 @@
 const runtime=require('./climate-runtime');
 const hysteresis=require('./tado-hysteresis-runtime');
-const source=[...Object.values(runtime),...Object.values(hysteresis)].map(f=>f.toString()).join('\n');
+const source=[...Object.values(runtime),...Object.values(require('./homekit-room-hysteresis')),...Object.values(hysteresis)].map(f=>f.toString()).join('\n');
 module.exports=function buildTadoHysteresis(flows) {
     const get=id=>flows.find(n=>n.id===id),base={z:'ess000000000001',x:850,y:1920};
     const fn=(id,name,func,wires,initialize='')=>({...base,id,type:'function',name,func,outputs:wires.length,timeout:0,noerr:0,initialize,finalize:'',libs:[],wires});
@@ -29,16 +29,16 @@ const outbox=flow.get('ess_tado_hysteresis_outbox');
 if(!outbox||outbox.at<Number(flow.get('ess_tado_hysteresis_boot'))||now-outbox.at<0||now-outbox.at>60000) return null;
 let saved;try{saved=JSON.parse(msg.payload).climate;}catch{return null;}
 if(!saved||JSON.stringify(saved.config)!==JSON.stringify(config)) return null;
-const result=[[],[],[],[]];
+const result=[[],[],[],[],[],[]];
 for(const command of outbox.actions) {
  const persisted=saved.ledger?.hysteresis?.source?.pending;
  if(JSON.stringify(persisted)!==JSON.stringify(command)) continue;
  if(!tadoCommandAllowed({command,config,system,states,ledger:ledger.hysteresis,now})) continue;
- const index=command.adapter==='switch'?(command.on?2:3):(command.on?0:1);
+ const index=command.adapter==='homekit-room'?(command.on?4:5):command.adapter==='switch'?(command.on?2:3):(command.on?0:1);
  result[index].push({payload:{...command,duration:'00:'+String(command.leaseMinutes).padStart(2,'0')+':00'}});
 }
 flow.set('ess_tado_hysteresis_outbox',null);
-return result.map(a=>a.length?a:null);`,[['essclim_hyst_heat'],['essclim_hyst_off'],['essclim_hyst_switch_on'],['essclim_hyst_switch_off']]),
+return result.map(a=>a.length?a:null);`,[['essclim_hyst_heat'],['essclim_hyst_off'],['essclim_hyst_switch_on'],['essclim_hyst_switch_off'],['essclim_hyst_room_on'],['essclim_hyst_room_off']]),
     fn('essclim_hyst_accepted','Bewaar geaccepteerde warmteopdracht',`const ledger=flow.get('ess_climate_ledger')||{},s=ledger.hysteresis?.source;
 if(s?.pending?.at!==msg.payload?.at||s.pending.entity!==msg.payload.entity) return null;
 s.serviceAcceptedAt=msg.payload.at;flow.set('ess_climate_ledger',ledger);
@@ -48,7 +48,8 @@ const s=ledger.hysteresis?.source;
 if(s&&s.pending?.entity===msg.payload?.entity){s.fault=true;s.stopFailed=msg.payload.on===false;s.pending=null;flow.set('ess_climate_ledger',ledger);}
 return {topic:'ess/climate/persist'};`,[['essprefs_save']]),
     {...base,id:'essclim_hyst_catch',type:'catch',name:'Fout aparte verwarmingsbediening',scope:['essclim_hyst_heat','essclim_hyst_off','essclim_hyst_switch_on','essclim_hyst_switch_off'],uncaught:false,wires:[['essclim_hyst_error']]});
-    const services=[['heat','tado.set_climate_timer','tado-zone','"temperature":payload.target,"time_period":payload.duration'],
+    get('essclim_hyst_catch').scope.push('essclim_hyst_room_on','essclim_hyst_room_off');
+    const services=[['room_on','climate.set_temperature','homekit-room','"temperature":payload.target,"hvac_mode":"heat"'],['room_off','climate.set_hvac_mode','homekit-room','"hvac_mode":"off"'],['heat','tado.set_climate_timer','tado-zone','"temperature":payload.target,"time_period":payload.duration'],
         ['off','climate.set_hvac_mode','tado-zone','"hvac_mode":"off"'],
         ['switch_on','switch.turn_on','switch',''],['switch_off','switch.turn_off','switch','']];
     for(const [suffix,action,adapter,data] of services) {
@@ -58,7 +59,7 @@ return {topic:'ess/climate/persist'};`,[['essprefs_save']]),
     }
     // Reconfiguration may not orphan an active timer/contact or change its lease.
     const settings=get('essclim_settings');
-    settings.func=settings.func.replace("flow.set('ess_climate_config',config);",`const owned=flow.get('ess_climate_ledger')?.hysteresis?.source;
+    settings.func=settings.func.replaceAll("flow.set('ess_climate_config',config);",`const owned=flow.get('ess_climate_ledger')?.hysteresis?.source;
         const previous=climateValidate(flow.get('ess_climate_config')||climateDefaults());
         const identity=h=>JSON.stringify([h.adapter,h.entity,h.heatTarget,h.leaseMinutes]);
         if((owned?.owned||owned?.pending)&&identity(config.heatSource)!==identity(previous.heatSource)) throw new Error('Zet de aparte verwarmingsbediening eerst uit en wacht op bevestiging voordat je de koppeling wijzigt');
