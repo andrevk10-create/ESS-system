@@ -137,7 +137,7 @@ if (commandFault) {
         flow.set('ess_wit_charge_watch', null);
         flow.set('ess_wit_discharge_watch', null);
     } else {
-        return ${stop}('WIT reageert niet · regeling geblokkeerd; controleer BMS/Modbus en bevestig de stand opnieuw', { ...details, commandFault:true, recoveryAttempts:commandFault.attempts - 1 });
+        return ${stop}((commandFault.reason || 'WIT reageert niet')+' · sinds '+new Date(commandFault.at).toLocaleTimeString('nl-NL', {timeZone:'Europe/Amsterdam'})+' · regeling geblokkeerd; controleer BMS/Modbus en bevestig de stand opnieuw', { ...details, commandFault:true, faultReason:commandFault.reason || 'Oude opdrachtfout', faultAt:commandFault.at, recoveryAttempts:commandFault.attempts - 1 });
     }
 }
 `;
@@ -163,7 +163,7 @@ const watch = witCommandWatch(flow.get('${watchKey}'), now, commandConfirmed || 
 flow.set('${watchKey}', watch.state);
 liveDetails.recoveryAttempts = Math.max(0, watch.state.attempts - 1);
 if (watch.action === 'fault') {
-    flow.set('ess_wit_command_fault', { at:now, attempts:watch.state.attempts });
+    flow.set('ess_wit_command_fault', { at:now, attempts:watch.state.attempts, reason:'Geen laad- of ontlaadvermogen na herstelpoging' });
     return ${stop}('WIT reageert niet na herstelpoging · tijdelijke opdracht stoppen', { ...liveDetails, commandFault:true });
 }
 if (watch.action === 'start') {

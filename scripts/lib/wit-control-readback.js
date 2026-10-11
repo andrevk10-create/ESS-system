@@ -115,4 +115,7 @@ ${guardMarker}`);
     add(api('esswitgrid_transport_api','Schrijf en controleer WIT-laadregisters','',['esswitgrid_transport_reply']));
     add(fn('esswitgrid_transport_reply','Bevestig echte WIT-laadopdracht',helperSource+"\nreturn witGridTransport(flow,global,msg,true,Date.now());",[['esswitgrid_transport_api'],['esswitgrid_ctrl1']]));
     add({id:'esswitgrid_transport_catch',type:'catch',z,name:'WIT-schrijfopdracht mislukt',scope:['esswitgrid_transport_api'],uncaught:false,wires:[['esswitgrid_transport_reply']],x:450,y:1900});
+    for(const id of ['esswitgrid_transport_dispatch','esswitgrid_transport_reply']) {
+        const n=get(id); n.outputs=3;n.wires.push(['esswit_readback_request']);
+    }
 };

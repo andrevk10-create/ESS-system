@@ -16,6 +16,7 @@ function chargingPreferences(flow) {
             exportMode:choice(flow.get('ess_wit_export_mode'), ['auto','on','off'], 'auto') }
     };
     const second=flow.get('ess_jeep_settings') || {};
+    if (flow.get('ess_wit_fault_recovery_audit')) result.witRecovery = flow.get('ess_wit_fault_recovery_audit');
     result.ev2={departureSoc:soc(second.departureSoc,80),solarSoc:soc(second.solarSoc,80),
         departureTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(second.departureTime)?second.departureTime:'06:00',
         enabled:flow.get('ess_jeep_smart_enabled')===true};
@@ -81,6 +82,7 @@ try {
         ess_wit_audi_buffer_mode:saved.wit.reserve,ess_wit_export_mode:saved.wit.exportMode};
     if(saved.ev2){candidate.ess_jeep_settings=saved.ev2;candidate.ess_jeep_smart_enabled=saved.ev2.enabled;}
     const normalized = chargingPreferences({get:key=>candidate[key]});
+    if (Number.isFinite(saved.witRecovery?.at) && Number.isFinite(saved.witRecovery?.faultAt)) candidate.ess_wit_fault_recovery_audit=saved.witRecovery;
     if (!['ev','wit'].every(group => Object.entries(normalized[group]).every(([key,value]) => saved[group][key] === value))) throw new Error('Ongeldige laadvoorkeuren');
     if(saved.ev2 && !Object.entries(normalized.ev2).every(([key,value])=>saved.ev2[key]===value))throw new Error('Ongeldige Jeep-laadvoorkeuren');
     for (const [key,value] of Object.entries(candidate)) flow.set(key,value);

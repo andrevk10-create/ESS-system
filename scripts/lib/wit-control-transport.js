@@ -37,8 +37,9 @@ function witReadbackResult(authority, remote, binding, now) {
 function witGridTransport(flow, global, msg, reply, now) {
     const key = 'ess_wit_grid_transport';
     const fail = reason => {
+        const deviceId=flow.get(key)?.binding?.deviceId || flow.get('ess_wit_control_readback')?.deviceId;
         flow.set(key, null);
-        flow.set('ess_wit_command_fault', {at:now,attempts:2,reason});
+        flow.set('ess_wit_command_fault', {at:now,attempts:2,reason,deviceId});
         return [null,{payload:now}];
     };
     const config = flow.get('ess_system_config') || {};
@@ -68,16 +69,19 @@ function witGridTransport(flow, global, msg, reply, now) {
                 if (op.powerSentAt && now-op.powerSentAt>=0 && now-op.powerSentAt<90000 &&
                     !flow.get('ess_wit_command_fault') && flow.get('ess_wit_grid_charge_status')?.sessionOwned &&
                     !flow.get('ess_wit_grid_charge_status')?.releasing && flow.get('ess_wit_grid_charge_mode')!=='off') {
-                    op.stage='awaitReadback';flow.set(key,op);return null;
+                    op.stage='awaitReadback';
+                    const retry=!op.readRetryRequested;op.readRetryRequested=true;
+                    flow.set(key,op);return retry ? [null,null,{payload:now}] : null;
                 }
                 return fail('WIT-registerterugmelding ontbreekt of is ongeldig');
             }
             flow.set('ess_wit_control_readback', readback);
-            if (readback.authority !== 1 || readback.remote !== 1 || readback.ac !== 1 || readback.duration !== 2 || readback.percent !== op.powerPercent) {
+            if (readback.authority !== 1 || readback.remote !== 1 || readback.ac !== 1 || readback.duration !== 2 || readback.periods !== 0 || readback.percent !== op.powerPercent) {
                 if (now - op.powerSentAt < 90000 && !flow.get('ess_wit_command_fault') && flow.get('ess_wit_grid_charge_status')?.sessionOwned && flow.get('ess_wit_grid_charge_mode') !== 'off') {
                     op.stage = 'awaitReadback';
+                    const retry=!op.readRetryRequested;op.readRetryRequested=true;
                     flow.set(key,op);
-                    return null;
+                    return retry ? [null,null,{payload:now}] : null;
                 }
                 return fail('WIT neemt de laadopdracht niet over · registerterugmelding wijkt af');
             }

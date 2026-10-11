@@ -22,6 +22,7 @@ f.values.ess_wit_export_mode = 'off';
 f.values.ess_charging_preferences_ready = true;
 f.values.ess_audi_force_full = true;
 f.values.ess_wit_command_fault = {attempts:2};
+f.values.ess_wit_fault_recovery_audit = {at:1800000000000,faultAt:1799999300000,reason:'Terugmelding hersteld',deviceId:'test-device'};
 const saved = f.run('essprefs_save').payload;
 assert(!saved.includes('sessionOwned') && !saved.includes('force_full') && !saved.includes('command_fault'));
 const expected = chargingPreferences(f.flow);

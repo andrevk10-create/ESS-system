@@ -96,3 +96,11 @@ Bij een Node-RED-deployment waarbij de bestaande flowcontext behouden blijft, wo
 Voor problemen buiten de regelcode: controleer bij fouten in meerdere integraties eerst netwerk/DNS, bij lokale P1/Modbus-time-outs ook het LAN en bij Tado een eventuele herauthenticatie. Houd de tijdzones van HA en Node-RED gelijk. Logbestanden en persoonlijke entiteiten horen niet in de openbare repository.
 
 Na een pull moet de aangepaste flow nog via de bestaande werkwijze worden gedeployed. Deze Git-wijziging schakelt live niets. Pas na een gecontroleerde laad-/ontlaadperiode is de volledige werking op de installatie bevestigd.
+
+## Begrensd herstel van vertraagde registerterugmelding
+
+Een ontbrekende of afwijkende registerterugmelding vraagt eenmaal een nieuwe uitlezing aan, zonder de laadopdracht opnieuw te schrijven. De bestaande bevestigingstermijn van 90 seconden blijft gelden.
+
+Alleen deze terugmeldingsfouten kunnen na tien minuten automatisch vervallen. Daarvoor zijn twee onafhankelijke, verse Modbus-metingen nodig, minimaal 15 seconden uiteen: remote en authority uit, geen tijdplanning, dezelfde gekoppelde WIT en geen actieve, wachtende of vrijgevende ESS-sessie. Oude ongeclassificeerde fouten vereisen daarnaast bevestiging van beide vrijgavestappen na de fout. Hoogstens één herstel per uur; de herstelregistratie blijft bewaard in het private laadvoorkeurenbestand. Een herstart herstelt geen sessie-eigendom.
+
+Schrijffouten, onbevestigde vrijgave en uitblijvend laad- of ontlaadvermogen blijven geblokkeerd. De foutmelding toont oorzaak en tijdstip. Een gewiste terugmeldingsfout doorloopt opnieuw alle gewone SOC-, BMS-, fase- en laadplanningscontroles.

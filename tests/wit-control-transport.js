@@ -54,7 +54,8 @@ for(const stage of ['power','authorityRead','remoteRead']){
     const sent=gap.run({payload:{option:'Charge',powerPercent:25}}),operation=sent[0].witOperationId;
     gap.run({witOperationId:operation,witReply:{}},true);
     gap.run({witOperationId:operation,witReply:{success:true,values:[1]}},true);
-    gap.run({witOperationId:operation,witReply:{success:false}},true);
+    const reread=gap.run({witOperationId:operation,witReply:{success:false}},true);
+    assert(reread[2],'An invalid reply requests one fresh read without another power write');
     assert.equal(gap.values.ess_wit_grid_transport.stage,'awaitReadback');
     assert(!gap.values.ess_wit_command_fault,'One invalid read reply does not latch a permanent fault');
     gap.values.ess_wit_control_readback={...binding,authority:1,remote:1,duration:2,percent:25,ac:1,periods:0,at:now};
