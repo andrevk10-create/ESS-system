@@ -55,7 +55,7 @@ module.exports=function chargingPriority(flows){
         n.func=evPriorityDemand.toString()+'\n'+witChargingPriority.toString()+'\n'+n.func.replace(marker,marker+`
 const priorityRequest=(enabled||climatePowerSupportActive)&&!evSmartChargingActive&&chargerOnline&&!!chargerId&&chargerReadyForControl&&
     ((audiSoc!==null&&audiSoc<targetSoc&&(forceFull||deadlineCharge||ultraCheapQuarter||scheduledNow))||climatePowerSupportActive);
-flow.set('ess_${car}_priority_request',{at:now,requested:priorityRequest,currentA:Math.min(maximumCurrent,Math.floor(netChargePowerKw*1000/(230*3)))});`);
+flow.set('ess_${car}_priority_request',{at:now,requested:priorityRequest,currentA:Math.min(maximumCurrent,Math.max(6,Math.ceil(netChargePowerKw*1000/(230*3))))});`);
         n.func=n.func.replace('const solarPhaseAdjustmentAllowed = enabled',`const lowerPriorityBlocked=witChargingPriority(flow,states,now)||evPriorityDemand(flow,now,'${car}');
 const solarPhaseAdjustmentAllowed = !lowerPriorityBlocked && enabled`);
         n.func=n.func.replace('} else if (audiSoc >= solarSoc) {',`} else if (lowerPriorityBlocked) {
