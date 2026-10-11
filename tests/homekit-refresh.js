@@ -12,4 +12,11 @@ for(const change of [m=>m.actual.entity_id='climate.other',m=>m.actual.attribute
 const q=fixture(),m=request(q.flow,q.global,now);m.actual=msg.actual;
 q.g.homeassistant.homeAssistant.states[id]={last_reported:new Date(now+5000).toISOString(),attributes:{current_temperature:20.4}};
 result(q.flow,q.global,m,now+6000);assert.equal(q.g.homeassistant.homeAssistant.states[id].attributes.current_temperature,20.4,'Preserve newer push');
+const unchanged=fixture(),same=request(unchanged.flow,unchanged.global,now);
+same.actual={entity_id:id,state:'off',attributes:{current_temperature:20.9},last_reported:new Date(now-3600000).toISOString()};
+unchanged.g.homeassistant.homeAssistant.states[id]=same.actual;
+result(unchanged.flow,unchanged.global,same,now+12000);
+assert.equal(unchanged.v.ess_homekit_refresh_status.checkedAt,now+12000,'Track the actual HA check separately');
+assert.equal(unchanged.v.ess_homekit_refresh_status.changed,false);
+assert.equal(unchanged.g.homeassistant.homeAssistant.states[id].last_reported,same.actual.last_reported,'Never fabricate a new sensor timestamp');
 console.log('HomeKit refresh: local binding, one pending request, real temperatures and newer push preservation passed');

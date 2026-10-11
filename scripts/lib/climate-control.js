@@ -180,7 +180,7 @@ flow.set('ess_dashboard_live', dashboard);`);
 <p>Automatisch tapwater vereist een betrouwbaar gekoppeld signaal “hygiënecyclus actief”. Zonder dat signaal blijft de eigen EHS-tapwaterregeling actief; zet geen fictief signaal vast op uit.</p>
 <p><label><input type="checkbox" v-model="climateDraft.water.restoreAcknowledged">Bevestigd: gekozen temperatuurgrenzen zijn geschikt; bij HA/cloud-uitval kan het bufferdoel blijven staan tot de verbinding terug is. Bestaande hygiënecyclus blijft leidend.</label></p>
 <button class="touch-button" @click="saveClimate()">Opslaan en toepassen</button><button class="touch-button" @click="climateDraft=null">Annuleren</button></div></article>`;
-    ui.format=ui.format.replace('<section class="panel-grid">','<section class="panel-grid">'+panel);
+    ui.format=ui.format.replace('</section>',panel+'</section>');
     const configUi=get('esstpl_config001');
     configUi.wires[0].push('essclim_settings');
     configUi.format=configUi.format.replace('data(){return {','data(){return {hysteresisDraft:null,');

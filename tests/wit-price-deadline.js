@@ -5,6 +5,18 @@ const slots=prices=>prices.map((allInPrice,i)=>({start:now+i*3600000,end:now+(i+
 assert.equal(witPriceDeadline(slots([.40,.40,.12,.08,.10,.20,.40,.45]),now),now+6*3600000,'Skip current expensive run and include cheap night');
 assert.equal(witPriceDeadline(slots([.10,.08,.15,.40]),now),now+3*3600000);
 assert.equal(witPriceDeadline(slots([.20,.20,.20]),now),null,'Flat prices have no expensive period');
+const daily = slots([.33,.34,.45,.46,.20,.19,.18,.20,.22,.25,.46,.47]);
+const reserve = {storedKwh:23.4,capacityKwh:30,houseKwh:10,efficiency:.9,chargeKw:8};
+assert.equal(witPriceDeadline(daily,now,reserve),now+10*3600000,'Bridge morning peak and use cheaper daytime');
+assert.equal(witPriceDeadline(daily,now,{...reserve,storedKwh:11}),now+3*3600000,'Keep morning deadline when reserve is insufficient');
+assert.equal(witPriceDeadline(daily,now,{...reserve,chargeKw:.1}),now+3*3600000,'Do not postpone without enough recharge capacity');
+const {witSolarBeforeDeadline}=require('../scripts/lib/wit-price-deadline');
+const solarNow=Date.parse('2026-10-11T18:00:00Z');
+const solar={valid:true,forecastDate:'2026-10-12',tomorrowKwh:35,todayRemainingKwh:0};
+const sun={'sun.sun':{attributes:{next_rising:'2026-10-12T06:00:00Z',next_setting:'2026-10-12T16:00:00Z'}}};
+assert.equal(witSolarBeforeDeadline(solar,sun,solarNow,Date.parse('2026-10-12T04:45:00Z')),0,'No solar before sunrise');
+assert.equal(witSolarBeforeDeadline(solar,sun,solarNow,Date.parse('2026-10-12T16:00:00Z')),35,'Solar before evening counts');
+assert.equal(witSolarBeforeDeadline({...solar,valid:false},sun,solarNow,Date.parse('2026-10-12T16:00:00Z')),0,'Missing forecast gives no credit');
 const flows=require('../flows.json');
 const code=flows.find(n=>n.id==='esswitgrid_ctrl1').func;
 assert(code.includes("mode === 'auto' ? 100"));

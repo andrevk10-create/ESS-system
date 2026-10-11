@@ -28,13 +28,21 @@ function homekitRefreshResult(flow, global, msg, now) {
     if(stamp(e)>=stamp(previous)) {
         cache.homeAssistant.states[e.entity_id]=e;global.set('homeassistant',cache);
     }
-    flow.set('ess_homekit_refresh_status',{at:now,ok:true,entity:e.entity_id,temperature:e.attributes.current_temperature,reportedAt:e.last_reported||e.last_updated});
+    flow.set('ess_homekit_refresh_status',{at:now,checkedAt:now,ok:true,entity:e.entity_id,temperature:e.attributes.current_temperature,reportedAt:e.last_reported||e.last_updated,
+        changed:previous?.state!==e.state || previous?.attributes?.current_temperature!==e.attributes.current_temperature,
+        verification:'ha-state-after-update-request'});
     return {payload:now};
 }
 module.exports=function apply(flows) {
     for(let i=flows.length-1;i>=0;i--)if(flows[i].id.startsWith('esshk_refresh_'))flows.splice(i,1);
     const get=id=>flows.find(n=>n.id===id),base={z:'ess000000000001',x:850,y:2200};
     const fn=(id,name,func,wires)=>({...base,id,type:'function',name,func,outputs:wires.length,noerr:0,initialize:'',finalize:'',libs:[],wires});
+    const mapper=get('ess00000000000a');
+    const marker="flow.set('ess_dashboard_live', dashboard);";
+    mapper.func=mapper.func.replace(/if\(dashboard\.climate\) dashboard\.climate\.homekitRefresh=flow\.get\('ess_homekit_refresh_status'\)\|\|null;\n/g,'');
+    mapper.func=mapper.func.replace(marker,"if(dashboard.climate) dashboard.climate.homekitRefresh=flow.get('ess_homekit_refresh_status')||null;\n"+marker);
+    const ui=get('esstpl_climate01');
+    ui.format=ui.format.replace('<div v-if="climateDraft">',`<small v-if="d.climate&&d.climate.homekitRefresh" role="status">HomeKit-controle: {{new Date(d.climate.homekitRefresh.at).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Amsterdam'})}} · {{d.climate.homekitRefresh.ok?'HA-waarde uitgelezen':d.climate.homekitRefresh.reason}}</small><div v-if="climateDraft">`);
     flows.push({...base,id:'esshk_refresh_tick',type:'inject',name:'Ververs lokale woonkamer elke 5 minuten',props:[{p:'payload'}],payload:'',payloadType:'date',repeat:'300',once:true,onceDelay:90,wires:[['esshk_refresh_request']]},
         fn('esshk_refresh_request','Vraag actuele HomeKit-temperatuur',homekitRefreshRequest.toString()+'\nreturn homekitRefreshRequest(flow,global,Date.now());',[['esshk_refresh_update']]),
         {...get('essclim_tado'),id:'esshk_refresh_update',name:'Lees HomeKit-apparaat opnieuw uit',action:'homeassistant.update_entity',domain:'homeassistant',service:'update_entity',
