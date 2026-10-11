@@ -127,6 +127,7 @@ const climateExtraReserve=climateReservation && now-climateReservation.at>=0 && 
     mapper.func=mapper.func.replace("flow.set('ess_dashboard_live', dashboard);",`// BEGIN CLIMATE AUTOMATION
 dashboard.climate.automation=flow.get('ess_climate_status')||{zones:[]};
 dashboard.climate.preferences=flow.get('ess_climate_config')||${JSON.stringify(runtime.climateDefaults())};
+dashboard.climate.hysteresis=flow.get('ess_tado_hysteresis_status')||[];
 dashboard.climate.configurationError=flow.get('ess_climate_config_error')||null;
 if(dashboard.climate.configurationError) dashboard.alarms.push({level:'warning',text:dashboard.climate.configurationError});
 if(dashboard.climate.automation.signals?.meterOverLimit) dashboard.alarms.push({level:'warning',text:'Warmtepomp boven ingestelde elektrische regelgrens; extra voorverwarmen geblokkeerd'});
@@ -144,12 +145,14 @@ flow.set('ess_dashboard_live', dashboard);`);
     const panel=`<article class="panel span-12"><div class="panel-head"><b>Slim klimaat · woonkamer, badkamer en warm water</b><button class="touch-button" @click="editClimate()">Instellen</button></div>
 <p>Regelstand: {{d.climate&&d.climate.automation&&d.climate.automation.mode||'Wacht op instellingen'}} · Tado regelt de kamers, EHS levert warmte.</p>
 <p class="subtle">De elektrische grens is een softwarematige startvoorwaarde, geen fysieke vermogensbegrenzer. De gekoppelde warmtepompmeter en alle P1-fasen moeten actueel zijn.</p>
-<p class="subtle">Bij uitschakelen worden geen nieuwe Tado-opdrachten gegeven; een lopende timer mag nog maximaal 30 minuten aflopen. Terugzetten van tapwater vereist verbinding en een veilige hygiënestatus.</p>
+<p class="subtle">Bij uitschakelen van hysterese geeft ESS een eigen Tado-uitstand terug aan de oorspronkelijke regeling zodra verbinding en terugmelding beschikbaar zijn. Bestaande boosttimers kunnen 30 minuten doorlopen. Terugzetten van tapwater vereist verbinding en een veilige hygiënestatus.</p>
+<div class="plan-grid" v-if="d.climate&&d.climate.preferences&&d.climate.preferences.tadoHysteresis"><div class="plan-card" v-for="z in (d.climate.hysteresis||[])" :key="z.role"><span>{{z.label}}</span><b>{{temperature(z.current)}} → {{temperature(z.target)}}</b><small>{{z.reason}}</small><small>{{z.pending?'Wacht op Tado-terugmelding':z.active?'Warmtevraag vrijgegeven':'Warmtevraag gepauzeerd'}}</small></div></div>
 <p v-if="d.climate&&d.climate.automation&&d.climate.automation.signals" class="subtle">Warmtepomp gemeten: {{power(d.climate.automation.measuredPowerW)}} · {{d.climate.automation.signals.netReady?'Netruimte beschikbaar':'Geen extra warmtevraag: meter of netruimte controleren'}} · Extra accureserve: {{Number(d.climate.automation.reservationKwh||0).toFixed(1)}} kWh</p>
 <p v-if="d.climate&&d.climate.configurationError">{{d.climate.configurationError}}</p>
 <div class="plan-grid"><div class="plan-card" v-for="z in (d.climate&&d.climate.automation&&d.climate.automation.zones||[])" :key="z.key"><span>{{z.label}}</span><b>{{temperature(z.current)}} → {{temperature(z.target===null?z.observedTarget:z.target)}}</b><small>{{z.reason}}</small><small>{{z.confirmed?'Doel teruggemeld':'Geen bevestigde ESS-opdracht'}}</small><button v-if="z.fault" class="touch-button" @click="send({topic:'ess/climate/acknowledge',payload:z.key})">Opnieuw vrijgeven</button></div></div>
 <div v-if="climateDraft"><div class="config-grid">
 <label class="config-field"><span>REGELSTAND</span><select v-model="climateDraft.mode"><option value="auto">Automatisch · echt schakelen</option><option value="advice">Alleen advies</option><option value="off">Eigen apparaatregeling</option></select></label>
+<div class="config-field"><span>TADO-KNOP ALS DOEL</span><label><input type="checkbox" v-model="climateDraft.tadoHysteresis"> Hysterese 0,5 °C · aan onder doel, uit op doel</label><small>Geldt voor de gekoppelde Tado-zones. Tijdens de pauze toont Tado ‘uit’; de doeltemperatuur blijft bewaard. Kamerboosts zijn dan uitgeschakeld.</small></div>
 <label class="config-field"><span>PROFIEL</span><select v-model="climateDraft.profile"><option value="eco">Eco</option><option value="normal">Normaal</option><option value="comfort">Comfort</option></select></label>
 <label class="config-field"><span>MAXIMALE ELEKTRISCHE OPNAME EHS (W, NIET WARMTEVERMOGEN)</span><input type="number" v-model.number="climateDraft.maximumPowerW"></label>
 <label class="config-field"><span>MINIMAAL PRIJSVOORDEEL (€/kWh)</span><input type="number" min="0" step="0.01" v-model.number="climateDraft.minimumBenefit"></label>

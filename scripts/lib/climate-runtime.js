@@ -1,6 +1,6 @@
 // Pure, embedded runtime. Installation identities remain in the private profile.
 function climateDefaults() {
-    return {version:1,mode:'auto',profile:'normal',maximumPowerW:0,phaseWeights:[0,0,0],
+    return {version:1,mode:'auto',profile:'normal',tadoHysteresis:true,maximumPowerW:0,phaseWeights:[0,0,0],
         minimumBenefit:0.04,houseReserveKwh:14,batteryFloorSoc:50,manualMinutes:120,
         rooms:[{key:'room1',label:'Woonkamer',role:'',enabled:false,comfort:21,minimum:18,maximum:22,schedule:'native',start:'07:00',end:'22:00',preheatMinutes:60},
             {key:'room2',label:'Badkamer',role:'',enabled:false,comfort:21,minimum:18,maximum:22,schedule:'native',start:'07:00',end:'09:00',preheatMinutes:60}],
@@ -11,6 +11,7 @@ function climateValidate(input) {
     const fail = message => { throw new Error(message); };
     if (!input || input.version !== 1) fail('Ongeldige klimaatconfiguratie');
     const d = climateDefaults(), c = {...d,...input,water:{...d.water,...input.water}};
+    if (typeof c.tadoHysteresis !== 'boolean') fail('Ongeldige Tado-hysterese');
     if (!['auto','advice','off'].includes(c.mode) || !['eco','normal','comfort'].includes(c.profile)) fail('Ongeldige klimaatstand');
     const num = (v,min,max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
     if (!num(c.maximumPowerW,0,30000) || !num(c.minimumBenefit,0,2) || !num(c.houseReserveKwh,0,200) || !num(c.batteryFloorSoc,10,100) || !num(c.manualMinutes,30,1440)) fail('Ongeldige installatiegrenzen');
@@ -30,7 +31,7 @@ function climateValidate(input) {
     const w = c.water;
     if (typeof w.enabled !== 'boolean' || typeof w.restoreAcknowledged !== 'boolean') fail('Ongeldige tapwatertoestemming');
     if (w.enabled && (!num(w.minimum,40,60) || !num(w.normal,w.minimum,60) || !num(w.buffer,w.normal,60) || !num(w.litres,30,2000) || !num(w.lossKwhPerDay,0,15) || !num(w.boostMinutes,30,180))) fail('Controleer vatinhoud en tapwatergrenzen');
-    return {version:1,mode:c.mode,profile:c.profile,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
+    return {version:1,mode:c.mode,profile:c.profile,tadoHysteresis:c.tadoHysteresis,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
         houseReserveKwh:c.houseReserveKwh,batteryFloorSoc:c.batteryFloorSoc,manualMinutes:c.manualMinutes,rooms:c.rooms,
         water:{enabled:w.enabled,normal:w.normal,buffer:w.buffer,minimum:w.minimum,litres:w.litres,lossKwhPerDay:w.lossKwhPerDay,boostMinutes:w.boostMinutes,restoreAcknowledged:w.restoreAcknowledged}};
 }
@@ -113,7 +114,8 @@ function climatePlan({config,system,states,prices,weather,energy,now}) {
         const active=z.schedule==='native' ? target!==null && target>=z.comfort : climateSchedule(z,now);
         const upcoming=z.schedule==='custom' && climateSchedule(z,now+z.preheatMinutes*60000);
         let reason='Eigen Tado-regeling', requested=null, kind='native';
-        if (!z.enabled) reason='Niet vrijgegeven';
+        if (c.tadoHysteresis) reason='Tado-knop bepaalt doel; hysterese 0,5 °C';
+        else if (!z.enabled) reason='Niet vrijgegeven';
         else if (!climateFresh(e,now,20*60000) || temp===null || target===null) reason='Tado-meetdata ontbreekt of is te oud';
         else if (!['heat','auto'].includes(e.state) || a.preset_mode==='away') reason='Apparaat uit/afwezig: handmatige stand respecteren';
         else if (temp<z.minimum-0.1) {requested=z.minimum;reason='Onder minimumtemperatuur';kind='comfort';}

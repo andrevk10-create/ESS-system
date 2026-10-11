@@ -6,6 +6,7 @@ const now=new Date(2026,0,10,12).getTime();
 const copy=x=>JSON.parse(JSON.stringify(x));
 function fixture(water=false) {
     const config=climateDefaults();
+    config.tadoHysteresis=false; // Legacy, explicitly enabled temperature boosts.
     config.maximumPowerW=4500;config.phaseWeights=[1/3,1/3,1/3];
     config.rooms[0].role='climate.heating_zone_1';config.rooms[0].enabled=!water;
     config.water={enabled:water,normal:53,buffer:60,minimum:45,litres:260,lossKwhPerDay:1,boostMinutes:60,restoreAcknowledged:true};
