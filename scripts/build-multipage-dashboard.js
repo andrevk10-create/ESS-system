@@ -2230,7 +2230,8 @@ const ha = global.get('homeassistant');
 const states = ha && ha.homeAssistant ? ha.homeAssistant.states || {} : {};
 const config = moduleConfig;
 const targetEntityId = config.entities && config.entities[entityId] || entityId;
-const current = states[entityId];
+if (typeof targetEntityId !== 'string' || !/^light\\.[a-z0-9_]+$/.test(targetEntityId)) return null;
+const current = states[targetEntityId];
 const state = current ? String(current.state).toLowerCase() : 'unavailable';
 if (!current || ['unknown','unavailable',''].includes(state)) return null;
 const outputs = [null, null];
@@ -2251,8 +2252,8 @@ return outputs;`,
   wires: [[ids.lightingTurnOnAction],[ids.lightingTurnOffAction]]
 });
 for (const [id, name, service, data] of [
-  [ids.lightingTurnOnAction, 'Schakel kamerlicht in of dim', 'turn_on', '{"brightness_pct": payload.brightness}'],
-  [ids.lightingTurnOffAction, 'Schakel kamerlicht uit', 'turn_off', '{}']
+  [ids.lightingTurnOnAction, 'Schakel kamerlicht in of dim', 'turn_on', '{"entity_id": payload.target.entity_id, "brightness_pct": payload.brightness}'],
+  [ids.lightingTurnOffAction, 'Schakel kamerlicht uit', 'turn_off', '{"entity_id": payload.target.entity_id}']
 ]) flows.push({
   id, type: 'api-call-service', z: FLOW_ID, name, server: 'ess00000000000b', version: 7,
   debugenabled: false, action: `light.${service}`, floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],

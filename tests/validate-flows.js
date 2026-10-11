@@ -1301,6 +1301,22 @@ assert.strictEqual(zone4On[0].payload.brightness, 100, 'Een kamerzone zonder dim
 const dimmed = runLightingControl(globalContext, flowContext, { warn: () => undefined }, { topic: 'ess/light/brightness', payload: { key: 'zone-1', brightness: 125 } });
 assert.strictEqual(dimmed[0].payload.brightness, 100, 'Dimniveau moet tot 100% worden begrensd');
 assert.deepStrictEqual(dimmed[0].payload.target.entity_id, ['light.zone_1']);
+const mappedLightConfig = { modules: { lighting: true }, entities: { 'light.zone_1': 'light.woonkamer' } };
+const mappedLightFlow = { get: () => mappedLightConfig };
+const mappedLightGlobal = { get: () => ({ homeAssistant: { states: {
+    'light.woonkamer': { state: 'on', attributes: { brightness: 128 } },
+    'light.zone_1': { state: 'off', attributes: {} }
+} } }) };
+const mappedOff = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } });
+assert.deepStrictEqual(mappedOff[1].payload.target.entity_id, ['light.woonkamer'], 'Bediening moet de status van de gekoppelde lamp gebruiken, ook bij een afwijkende standaardstatus');
+const mappedDim = runLightingControl(mappedLightGlobal, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/brightness', payload: { key: 'zone-1', brightness: 42 } });
+assert.strictEqual(mappedDim[0].payload.brightness, 42);
+assert.deepStrictEqual(mappedDim[0].payload.target.entity_id, ['light.woonkamer']);
+const mappedOn = runLightingControl({ get: () => ({ homeAssistant: { states: { 'light.woonkamer': { state: 'off', attributes: {} } } } }) }, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } });
+assert.deepStrictEqual(mappedOn[0].payload.target.entity_id, ['light.woonkamer'], 'Inschakelen moet ook zonder standaardentiteit werken');
+assert.strictEqual(mappedOn[0].payload.brightness, 100);
+assert.strictEqual(runLightingControl({ get: () => ({ homeAssistant: { states: {} } }) }, mappedLightFlow, { warn: () => undefined }, { topic: 'ess/light/toggle', payload: { key: 'zone-1' } }), null, 'Ontbrekende gekoppelde lamp mag niet schakelen');
+assert(lightingActions.every(item => item.data.includes('"entity_id": payload.target.entity_id')), 'Lichtacties moeten het gekoppelde doel expliciet in de servicegegevens doorgeven');
 
 const climateControl = flows.find((node) => node.id === 'essclimate_ctrl1');
 const climateActionIds = ['essclimate_temp1','essclimate_mode1','esswater_temp001','esswater_mode001'];
