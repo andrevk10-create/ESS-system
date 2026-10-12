@@ -1,5 +1,24 @@
 # WIT 18 kW and phase loading
 
+## Automatic Power Imbalance control
+
+The flow includes a controller with a strict difference greater than 2 A
+between the highest and lowest signed P1 phase currents (or signed phase
+power divided by configured nominal voltage). Enable requires 30 seconds
+above that threshold. Disable requires 120 seconds below 1 A and at least
+five minutes enabled. Missing or stale readings never trigger a write.
+These delays limit switching; compensated net readings can still create a
+feedback cycle, so this is not proof of uncompensated household imbalance.
+
+Operation is blocked until the private system configuration explicitly maps
+`select.growatt_power_imbalance_enable` to a verified HA select entity for this
+exact setting. Its current state and Enable/Disable options must be available
+and fresh. No default entity, assumed register or Modbus write is used.
+The installed integration currently offers no such entity, so the automation
+cannot yet switch the WIT. Growatt's confirmed register/API mapping is still
+required to finish the hardware connection. Runtime diagnostics are stored in
+`ess_wit_imbalance_status`. The controller does not change fuse or charging limits.
+
 The official WIT 17–25K-HU user manual (202606), printed page 94
 (PDF pages 97–98), documents:
 Control → Single machine anti backflow setting → Single phase anti backflow enable.

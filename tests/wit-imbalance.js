@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const {imbalanceDecision}=require('../scripts/lib/wit-imbalance');
+const now=1000000;
+assert.equal(imbalanceDecision({},[3,3,5],false,now).desired,null,'Exactly 2 A must not enable');
+let p=imbalanceDecision({},[3,3,6],false,now);
+assert.equal(p.desired,null);
+assert.equal(imbalanceDecision(p,[3,3,6],false,now+30000).desired,true);
+p=imbalanceDecision({enabledSince:now},[3,3,3.5],true,now+300000);
+assert.equal(imbalanceDecision({...p,enabledSince:now},[3,3,3.5],true,now+420000).desired,false);
+assert.equal(imbalanceDecision({belowSince:now,enabledSince:now},[3,3,3.5],true,now+120000).desired,null,'Hold enabled for at least five minutes');
+assert.equal(imbalanceDecision(p,[NaN,3,3],true,now+420000).desired,null);
+assert.equal(imbalanceDecision({},[-2,0,1],false,now).difference,3,'Signed import and export are distinguished');
+const f=require('../flows.json');
+const fn=new Function('flow','global','msg',f.find(n=>n.id==='essimbalance_control').func);
+const values={};assert.equal(fn({get:k=>values[k],set:(k,v)=>values[k]=v},{get:()=>({homeAssistant:{states:{}}})},{}),null);
+assert.equal(values.ess_wit_imbalance_status.blocked,true,'No guessed entity or register writes');
+console.log('WIT imbalance: strict 2 A threshold, debounce, hysteresis, minimum on-time, signed phases and missing binding passed');

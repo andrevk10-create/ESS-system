@@ -4746,5 +4746,6 @@ require('./lib/homekit-refresh')(flows);
 require('./lib/dashboard-copy')(flows);
 require('./lib/lighting-reliability')(flows);
 require('./lib/easee-equalizer-control')(flows);
+require('./lib/wit-imbalance')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

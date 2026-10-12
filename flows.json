@@ -5090,5 +5090,63 @@
       ]
     ],
     "func": "const commands=flow.get('ess_light_commands')||{};\nconst command=commands[msg.lightEntity];\nif (!command || command.token!==msg.lightToken || command.status!=='pending') return null;\nconst config=flow.get('ess_system_config')||{};\nconst mapped=config.entities?.[command.role]??command.role;\nif (config.modules?.lighting===false || mapped!==command.entity) return null;\nconst item=global.get('homeassistant')?.homeAssistant?.states?.[command.entity];\nconst state=item?.state;\nconst brightness=Number(item?.attributes?.brightness)/255*100;\nconst confirmed=state===(command.active?'on':'off') && (command.brightness===null || Math.abs(brightness-command.brightness)<=2);\nif (confirmed) {command.status='confirmed';command.confirmedAt=Date.now();flow.set('ess_light_commands',commands);return null;}\nif (command.attempts>=3) {command.status='failed';flow.set('ess_light_commands',commands);node.warn('Lichtopdracht niet bevestigd: '+command.entity);return null;}\ncommand.attempts++;\nflow.set('ess_light_commands',commands);\nconst outputs=[null,null,{lightEntity:command.entity,lightToken:command.token}];\noutputs[command.active?0:1]={payload:command.payload};\nreturn outputs;"
+  },
+  {
+    "id": "essimbalance_tick",
+    "type": "inject",
+    "z": "ess000000000001",
+    "name": "WIT faseverschil elke 10 seconden",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "10",
+    "once": false,
+    "wires": [
+      [
+        "essimbalance_control"
+      ]
+    ]
+  },
+  {
+    "id": "essimbalance_control",
+    "type": "function",
+    "z": "ess000000000001",
+    "name": "WIT Power Imbalance > 2 A",
+    "outputs": 1,
+    "wires": [
+      [
+        "essimbalance_action"
+      ]
+    ],
+    "func": "function imbalanceDecision(previous, currents, enabled, now) {\n    if(!currents || currents.some(v=>!Number.isFinite(v))) return {desired:null,aboveSince:0,belowSince:0,reason:'Fasemetingen ontbreken of zijn te oud'};\n    const difference=Math.max(...currents)-Math.min(...currents);\n    const aboveSince=difference>2?(previous.aboveSince||now):0;\n    const belowSince=difference<1?(previous.belowSince||now):0;\n    let desired=null;\n    if(!enabled && aboveSince && now-aboveSince>=30000) desired=true;\n    if(enabled && belowSince && now-belowSince>=120000 && now-(previous.enabledSince||now)>=300000) desired=false;\n    return {difference,aboveSince,belowSince,desired,reason:desired===null?'Wacht op stabiel faseverschil':desired?'Faseverschil groter dan 2 A':'Faseverschil langdurig kleiner dan 1 A'};\n}\nconst now=Date.now(),config=flow.get('ess_system_config')||{};\nconst states=global.get('homeassistant')?.homeAssistant?.states||{};\nconst previous=flow.get('ess_wit_imbalance_status')||{};\nconst fresh=e=>e && !['unknown','unavailable',''].includes(String(e.state)) && now-Date.parse(e.last_reported||e.last_updated||e.last_changed)>=0 && now-Date.parse(e.last_reported||e.last_updated||e.last_changed)<=30000;\nconst currents=[1,2,3].map(i=>{const role='sensor.p1_meter_vermogen_fase_'+i;\nconst e=states[config.entities?.[role]||role];\nif(!fresh(e)||!Number.isFinite(Number(e.state)))return NaN;\nconst unit=String(e.attributes?.unit_of_measurement||'').toLowerCase();\nreturn unit==='a'?Number(e.state):unit==='w'?Number(e.state)/(Number(config.specs?.voltage)||230):unit==='kw'?Number(e.state)*1000/(Number(config.specs?.voltage)||230):NaN;});\nconst binding=config.entities?.['select.growatt_power_imbalance_enable'];\nconst entity=binding && states[binding];\nconst options=entity?.attributes?.options||[];\nconst on=options.find(v=>['enable','enabled','on'].includes(String(v).toLowerCase()));\nconst off=options.find(v=>['disable','disabled','off'].includes(String(v).toLowerCase()));\nconst bound=typeof binding==='string'&&/^select\\.[a-z0-9_]+$/.test(binding)&&fresh(entity)&&on!==undefined&&off!==undefined&&[on,off].includes(entity.state);\nconst enabled=bound&&entity.state===on;\nconst enabledSince=enabled?(previous.entity===binding&&previous.enabled?previous.enabledSince||now:now):0;\nconst base=previous.entity===binding?{...previous,enabledSince}:{};\nconst decision=imbalanceDecision(base,currents,enabled,now);\nconst status={...decision,entity:binding||null,enabled,enabledSince,at:now,blocked:!bound,commandAt:previous.entity===binding?previous.commandAt||0:0};\nif(!bound){status.reason='Power Imbalance-bediening ontbreekt of is niet bevestigd';status.aboveSince=0;status.belowSince=0;}\nflow.set('ess_wit_imbalance_status',status);\nif(!bound||decision.desired===null||config.modules?.inverter===false)return null;\nif(previous.entity===binding&&previous.commandAt&&now-previous.commandAt<60000)return null;\nstatus.commandAt=now;flow.set('ess_wit_imbalance_status',status);\nreturn {payload:{target:{entity_id:[binding]},data:{entity_id:binding,option:decision.desired?on:off}}};"
+  },
+  {
+    "id": "essimbalance_action",
+    "type": "api-call-service",
+    "z": "ess000000000001",
+    "name": "Stel bevestigde WIT-onbalansoptie in",
+    "server": "ess00000000000b",
+    "version": 7,
+    "action": "select.select_option",
+    "domain": "select",
+    "service": "select_option",
+    "entityId": [],
+    "floorId": [],
+    "areaId": [],
+    "deviceId": [],
+    "labelId": [],
+    "data": "{}",
+    "dataType": "json",
+    "mergeContext": "",
+    "blockInputOverrides": false,
+    "queue": "none",
+    "outputProperties": [],
+    "wires": [
+      []
+    ]
   }
 ]
