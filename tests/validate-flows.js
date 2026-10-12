@@ -147,7 +147,7 @@ for (const label of ['Synology NAS', 'OPSLAG', 'SCHIJF 2', 'SYSTEEM', 'BELASTING
 }
 assert(detailTemplates.system.format.includes('d.nas&&d.nas.volume') && detailTemplates.system.format.includes('d.nas&&d.nas.drive'), 'Systeempagina mist live Synology-volume- of schijfdata');
 assert(!detailTemplates.system.format.includes('button.nas_restart') && !detailTemplates.system.format.includes('button.nas_shutdown'), 'NAS-overzicht mag geen risicovolle herstart- of uitschakknop bevatten');
-assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 10, 'Autopagina moet per auto gecombineerde klimaat- en slotknoppen tonen, met twee extra Jeep-knoppen in het uitklapmenu');
+assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 12, 'Autopagina heeft per auto een expliciet wisbare handmatige noodstand');
 for (const template of Object.values(detailTemplates)) {
     assert.strictEqual(template.height, '0', 'Iedere detailpagina moet meegroeien met de inhoud');
     assert(!template.format.includes('Aanvullende systeemdiagnose') && !template.format.includes('Aanvullende verbruikssensoren') && !template.format.includes('Extra zonnesensoren'), 'Detailpagina bevat nog onnodige sensorinventarisatie');
@@ -612,7 +612,7 @@ runMapper(globalContext, flowContext, { status: () => undefined }, {});
 const audiControl = flows.find((node) => node.id === 'ess00000000000c');
 assert(audiControl, 'Veilige EV-hoofdschakelaar ontbreekt');
 assert.strictEqual((audiControl.func.match(/msg\.topic === 'ess\/audi\/solar-soc'/g) || []).length, 1, 'De EV-regeling mag de zonne-SOC-instelling maar één keer verwerken');
-assert.deepStrictEqual(detailTemplates.ev.wires, [[audiControl.id,'essjeep_settings','essjvehicle_request']], 'EV-bediening moet naar de afzonderlijke Audi-, Jeep-laad- en Jeep-voertuigfuncties gaan');
+assert.deepStrictEqual(detailTemplates.ev.wires, [[audiControl.id,'essjeep_settings','essjvehicle_request','essmanualsoc_set']], 'EV-bediening scheidt laden, voertuigacties en expliciete noodstand');
 assert.deepStrictEqual(ui.wires, [[audiControl.id]], 'EV-snelbediening op het overzicht moet naar de beveiligingsfunctie gaan');
 const runEVControl = new Function('global', 'flow', 'node', 'msg', audiControl.func);
 const rejected = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'verboden', payload: true });

@@ -3,6 +3,7 @@ const path = require('path');
 
 const flowPath = path.join(__dirname, '..', 'flows.json');
 const flows = JSON.parse(fs.readFileSync(flowPath, 'utf8'));
+require('./lib/ev-manual-soc').unapply(flows);
 
 function sanitizePublicFlowText(input) {
   return String(input);
@@ -4749,5 +4750,6 @@ require('./lib/easee-equalizer-control')(flows);
 require('./lib/wit-imbalance')(flows);
 require('./lib/jeep-vehicle')(flows);
 require('./lib/ev-climate-power')(flows);
+require('./lib/ev-manual-soc')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

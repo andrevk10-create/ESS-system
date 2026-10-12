@@ -96,4 +96,16 @@ for(const n of flows.filter(n=>n.id.startsWith('essjeep_'))){
     climate.run('essjeep_ess00000000000d');
     assert.equal(climate.values.ess_jeep_control_status.targetCurrent,0,'Stopping climate releases the temporary request');
 }
-console.log('Second EV: last reported Jeep SOC, rejected manual input, charger isolation and climate-only power OK');
+{
+    const backup=fixture();
+    backup.values.ess_jeep_explicit_soc={soc:75,at:now,anchor:'sensor.jeep_test_hvbattery_charge'};
+    backup.run('essjeep_ess00000000000d');
+    assert.equal(backup.values.ess_jeep_control_status.reportedEVSoc,75);
+    now+=60000;
+    backup.states['sensor.jeep_test_hvbattery_charge']=reading(99,'%');
+    backup.states['sensor.jeep_test_last_info_update_at']=reading(new Clock().toISOString());
+    backup.run('essjeep_ess00000000000d');
+    assert.equal(backup.values.ess_jeep_control_status.reportedEVSoc,99);
+    assert.equal(backup.values.ess_jeep_explicit_soc,null,'Real online SOC permanently retires explicit input');
+}
+console.log('Second EV: remembered SOC, explicit backup handover, charger isolation and climate-only power OK');
