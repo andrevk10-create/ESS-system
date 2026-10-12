@@ -37,7 +37,7 @@ f.run('essjeep_settings',{topic:'ess/jeep/manual-soc',payload:''});
 assert.equal(f.values.ess_jeep_manual_soc.soc,40,'Empty SOC is not zero');
 f.run('essjeep_settings',{topic:'ess/jeep/manual-soc',payload:0});
 assert.equal(f.values.ess_jeep_manual_soc.soc,0,'A real zero is allowed');
-for(const condition of ['missing-soc','expired-soc','unplugged','same-charger','stale-p1']){
+for(const condition of ['missing-soc','expired-soc','unplugged','same-charger']){
     f=fixture();
     if(condition==='missing-soc')delete f.values.ess_jeep_manual_soc;
     if(condition==='expired-soc')f.values.ess_jeep_manual_soc.at=now-43200001;
@@ -47,14 +47,15 @@ for(const condition of ['missing-soc','expired-soc','unplugged','same-charger','
     f.run('essjeep_ess00000000000d');
     assert.equal(f.values.ess_jeep_control_status.targetCurrent,0,condition+' prevents charging');
 }
+f=fixture();delete f.states['sensor.p1_meter_vermogen'];for(let i=1;i<=3;i++)delete f.states['sensor.p1_meter_vermogen_fase_'+i];f.run('essjeep_ess00000000000d');assert.equal(f.values.ess_jeep_control_status.targetCurrent,16,'Direct charging does not require P1 phase data when Easee owns protection');
 f=fixture();f.values.ess_audi_control_status={targetCurrent:16,phaseCount:3,updatedAt:new Clock().toISOString()};
 f.run('essjeep_ess00000000000d');
-assert.equal(f.values.ess_jeep_control_status.targetCurrent,8,'Two starts share 24 A: 16 A Audi leaves 8 A Jeep');
+assert.equal(f.values.ess_jeep_control_status.targetCurrent,16,'Both charging intents are sent; Easee allocates the phase capacity');
 f=fixture();f.values.ess_audi_control_status={targetCurrent:16,phaseCount:3,updatedAt:new Clock().toISOString()};
 f.states['sensor.ev_charger_power']=reading(11040,'W');
 for(let i=1;i<=3;i++)f.states['sensor.p1_meter_vermogen_fase_'+i]=reading(3680,'W');
 f.run('essjeep_ess00000000000d');
-assert.equal(f.values.ess_jeep_control_status.targetCurrent,8,'Measured Audi load is counted exactly once');
+assert.equal(f.values.ess_jeep_control_status.targetCurrent,16,'Measured Audi load does not create a second ESS phase limit');
 assert.equal(evPeerReservation({targetCurrent:16,updatedAt:new Clock().toISOString()},11040,3,now,230),0);
 f=fixture();f.run('essjeep_ess00000000000d');now+=60000;
 f.states['sensor.ev_charger_2_status'].state='charging';
