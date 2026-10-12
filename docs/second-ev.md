@@ -6,12 +6,12 @@ De rechter laadpaal heeft een eigen regeling, naast de Audi op links. Beide gebr
 
 1. Koppel op Configuratie de rollen `sensor.ev_charger_2_status`, `sensor.ev_charger_2_power`, `sensor.ev_charger_2_current`, `binary_sensor.ev_charger_2_online` en eventueel `sensor.ev_charger_2_energy_today` aan Easee rechts. Controleer dat de statusentiteit een andere Easee-ID bevat dan links.
 2. Sla de configuratie op. De regeling voor rechts begint uitgeschakeld.
-3. Sluit de Jeep aan en vul op Auto de actuele accustand in.
+3. Koppel de Jeep via Uconnect in Home Assistant. De regeling neemt de gemelde accustand over.
 4. Kies vertrek-SOC, vertrektijd en maximale SOC voor extra laden op zon. Zet daarna slim laden aan of kies direct laden tot 100%.
 
-Jeep-inloggegevens zijn niet nodig. De accustand is een schatting op basis van de ingevulde stand en het gemeten laadvermogen, met 92% laadefficiëntie. Vul bij elke aansluiting een nieuwe stand in. Loskoppelen wist de stand; na 12 uur moet deze opnieuw worden bevestigd. Ook na een koude Node-RED-herstart is een nieuwe stand nodig. De laadgrens in de auto blijft leidend: de regeling past geen Jeep-instellingen aan.
+De regeling onthoudt uitsluitend de laatst door de Jeep gemelde accustand. Handmatige invoer, een handmatige terugvalwaarde en berekende SOC-toename zijn verwijderd. De stand vervalt niet na een bepaalde tijd of bij loskoppelen. Een nieuwere echte meting vervangt hem; onbekende, onbeschikbare en oudere berichten doen dat niet. De oorspronkelijke meettijd blijft zichtbaar. Zolang nog nooit een geldige stand is ontvangen, wacht normaal laden op de eerste meting. Een gewijzigde voertuigkoppeling gebruikt geen meting van de vorige auto. De laadgrens in de auto blijft leidend.
 
-Vertrekdoel, zonne-SOC, vertrektijd en de keuze voor slim laden worden per auto buiten Git opgeslagen in het bestaande laadvoorkeurenbestand. Oudere bestanden zonder tweede auto blijven bruikbaar. De tijdelijke 100%-modus en de handmatige SOC worden niet op schijf bewaard.
+Vertrekdoel, zonne-SOC, vertrektijd, de keuze voor slim laden en de laatst gemelde Jeep-stand met bron en meettijd worden buiten Git opgeslagen in het bestaande laadvoorkeurenbestand. De stand blijft daardoor ook na een herstart beschikbaar. Oudere bestanden zonder tweede auto of accustand blijven bruikbaar. De tijdelijke 100%-modus wordt niet op schijf bewaard.
 
 ## Beide auto's tegelijk
 

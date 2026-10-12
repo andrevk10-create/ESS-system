@@ -15,6 +15,7 @@ f.values.ess_audi_settings = {departureSoc:95,solarSoc:90,departureTime:'09:35'}
 f.values.ess_audi_smart_enabled = false;
 f.values.ess_jeep_settings={departureSoc:85,solarSoc:95,departureTime:'07:30'};
 f.values.ess_jeep_smart_enabled=true;
+f.values.ess_jeep_last_soc={anchor:'sensor.jeep_test_hvbattery_charge',soc:99,reportedAt:Date.parse('2026-10-12T15:26:31Z')};
 f.values.ess_wit_grid_charge_mode = 'off';
 f.values.ess_wit_grid_charge_target_soc = 95;
 f.values.ess_wit_audi_buffer_mode = 'eco';
@@ -47,6 +48,8 @@ for (const id of ['esswitgrid_ctrl1','esswitaudi_ctrl1','esswitexport_ctrl','ess
     assert.equal(f.run(id),null,'No actuator commands while loading preferences');
 }
 output = f.run('essprefs_restore',{payload:saved});
+assert.equal(f.values.ess_jeep_last_soc.soc,99,'Last actual Jeep SOC survives preference restoration');
+assert.equal(f.values.ess_jeep_last_soc.anchor,'sensor.jeep_test_hvbattery_charge');
 assert.equal(f.values.ess_charging_preferences_ready,true);
 assert.deepEqual(chargingPreferences(f.flow),expected);
 f.run('essaudi_defaults1',output[0]);

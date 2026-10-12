@@ -8,11 +8,13 @@ class Clock extends Date {constructor(...args){super(...(args.length?args:[now])
 const reading=(state,unit='',attributes={})=>({state:String(state),attributes:{unit_of_measurement:unit,...attributes},last_updated:new Clock().toISOString()});
 function fixture(){
     const values={ess_charging_preferences_ready:true,ess_jeep_smart_enabled:true,ess_jeep_force_full:true,
-        ess_jeep_manual_soc:{soc:40,at:now},ess_jeep_settings:{departureSoc:80,solarSoc:90,departureTime:'07:00'},
+        ess_jeep_settings:{departureSoc:80,solarSoc:90,departureTime:'07:00'},
         ess_system_config:{specs:{ev2BatteryCapacityKwh:54,ev2MaximumCurrentA:16,mainFuseA:25,voltage:230}},
         ess_nordpool_forecast:[{start:new Clock().toISOString(),end:new Clock(now+900000).toISOString(),allInPrice:.1,marketPrice:.02}]
     };
     const states={
+        'sensor.jeep_test_hvbattery_charge':reading(40,'%'),
+        'sensor.jeep_test_last_info_update_at':reading(new Clock().toISOString()),
         'sensor.ev_charger_status':reading('ready_to_charge','',{id:'left'}),
         'sensor.ev_charger_2_status':reading('ready_to_charge','',{id:'right',state_outputPhase:30,config_phaseMode:3}),
         'sensor.ev_charger_2_power':reading(0,'kW'),'sensor.ev_charger_2_current':reading(0,'A'),
@@ -40,19 +42,18 @@ assert.equal(f.values.ess_audi_control_status,undefined,'Jeep never changes Audi
     assert(live.run('essjeep_guard_ess00000000000f',{payload:{chargerId:'right',command:'start'}}),'Real SOC also passes the dispatch guard');
     live.states['sensor.jeep_test_last_info_update_at'].state=new Clock(now-1800001).toISOString();
     live.run('essjeep_ess00000000000d');
-    assert.equal(live.values.ess_jeep_control_status.targetCurrent,0,'Old vehicle data without manual fallback stops charging');
+    assert.equal(live.values.ess_jeep_control_status.estimatedEVSoc,65,'Older reports cannot replace the last known level');
 }
 f.run('essjeep_settings',{topic:'ess/jeep/departure-soc',payload:85});
 assert.equal(f.values.ess_jeep_settings.departureSoc,85);
 assert.equal(chargingPreferences(f.flow).ev2.departureSoc,85);
 f.run('essjeep_settings',{topic:'ess/jeep/manual-soc',payload:''});
-assert.equal(f.values.ess_jeep_manual_soc.soc,40,'Empty SOC is not zero');
+assert.equal(f.values.ess_jeep_manual_soc,undefined,'Manual input is rejected');
 f.run('essjeep_settings',{topic:'ess/jeep/manual-soc',payload:0});
-assert.equal(f.values.ess_jeep_manual_soc.soc,0,'A real zero is allowed');
-for(const condition of ['missing-soc','expired-soc','unplugged','same-charger']){
+assert.equal(f.values.ess_jeep_manual_soc,undefined,'Manual zero is also rejected');
+for(const condition of ['missing-soc','unplugged','same-charger']){
     f=fixture();
-    if(condition==='missing-soc')delete f.values.ess_jeep_manual_soc;
-    if(condition==='expired-soc')f.values.ess_jeep_manual_soc.at=now-43200001;
+    if(condition==='missing-soc')delete f.states['sensor.jeep_test_hvbattery_charge'];
     if(condition==='unplugged')f.states['sensor.ev_charger_2_status'].state='disconnected';
     if(condition==='same-charger')f.states['sensor.ev_charger_2_status'].attributes.id='left';
     if(condition==='stale-p1')f.states['sensor.p1_meter_vermogen_fase_1'].last_updated=new Clock(now-15001).toISOString();
@@ -74,8 +75,7 @@ f.states['sensor.ev_charger_2_status'].state='charging';
 f.states['sensor.ev_charger_2_current']=reading(16,'A');f.states['sensor.ev_charger_2_power']=reading(11.04,'kW');
 for(const id of Object.keys(f.states))f.states[id].last_updated=new Clock().toISOString();
 f.run('essjeep_ess00000000000d');
-assert(f.values.ess_jeep_control_status.estimatedEVSoc>40,'Manual SOC advances using measured charging');
-assert(Math.abs(f.values.ess_jeep_control_status.estimatedEVSoc-(40+11.04/60*.92/54*100))<.0001,'SOC estimation uses the Jeep’s 54 kWh battery');
+assert.equal(f.values.ess_jeep_control_status.estimatedEVSoc,40,'SOC remains exactly the last reported level, without extrapolation');
 assert(f.run('essjeep_guard_ess00000000000f',{payload:{chargerId:'right',command:'start'}}));
 assert.equal(f.run('essjeep_guard_ess00000000000f',{payload:{chargerId:'left',command:'start'}}),null,'A queued command cannot switch cars');
 f.values.ess_jeep_smart_enabled=false;
@@ -96,4 +96,4 @@ for(const n of flows.filter(n=>n.id.startsWith('essjeep_'))){
     climate.run('essjeep_ess00000000000d');
     assert.equal(climate.values.ess_jeep_control_status.targetCurrent,0,'Stopping climate releases the temporary request');
 }
-console.log('Second EV: independent Jeep controls, manual SOC lifecycle, 54 kWh estimation, charger isolation and shared phase reservations OK');
+console.log('Second EV: last reported Jeep SOC, rejected manual input, charger isolation and climate-only power OK');

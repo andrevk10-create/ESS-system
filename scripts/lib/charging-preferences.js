@@ -16,6 +16,8 @@ function chargingPreferences(flow) {
             exportMode:choice(flow.get('ess_wit_export_mode'), ['auto','on','off'], 'auto') }
     };
     const second=flow.get('ess_jeep_settings') || {};
+    const lastSoc=flow.get('ess_jeep_last_soc');
+    if(lastSoc&&typeof lastSoc.anchor==='string'&&/^sensor\..*_hvbattery_charge$/.test(lastSoc.anchor)&&Number.isFinite(lastSoc.soc)&&lastSoc.soc>=0&&lastSoc.soc<=100&&Number.isFinite(lastSoc.reportedAt))result.jeepLastSoc={anchor:lastSoc.anchor,soc:lastSoc.soc,reportedAt:lastSoc.reportedAt};
     if (flow.get('ess_wit_fault_recovery_audit')) result.witRecovery = flow.get('ess_wit_fault_recovery_audit');
     result.ev2={departureSoc:soc(second.departureSoc,80),solarSoc:soc(second.solarSoc,80),
         departureTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(second.departureTime)?second.departureTime:'06:00',
@@ -81,6 +83,7 @@ try {
         ess_wit_grid_charge_mode:saved.wit.mode,ess_wit_grid_charge_target_soc:saved.wit.targetSoc,
         ess_wit_audi_buffer_mode:saved.wit.reserve,ess_wit_export_mode:saved.wit.exportMode};
     if(saved.ev2){candidate.ess_jeep_settings=saved.ev2;candidate.ess_jeep_smart_enabled=saved.ev2.enabled;}
+    if(saved.jeepLastSoc&&/^sensor\..*_hvbattery_charge$/.test(saved.jeepLastSoc.anchor)&&Number.isFinite(saved.jeepLastSoc.soc)&&saved.jeepLastSoc.soc>=0&&saved.jeepLastSoc.soc<=100&&Number.isFinite(saved.jeepLastSoc.reportedAt))candidate.ess_jeep_last_soc=saved.jeepLastSoc;
     const normalized = chargingPreferences({get:key=>candidate[key]});
     if (Number.isFinite(saved.witRecovery?.at) && Number.isFinite(saved.witRecovery?.faultAt)) candidate.ess_wit_fault_recovery_audit=saved.witRecovery;
     if (!['ev','wit'].every(group => Object.entries(normalized[group]).every(([key,value]) => saved[group][key] === value))) throw new Error('Ongeldige laadvoorkeuren');
