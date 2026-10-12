@@ -1,18 +1,18 @@
 function imbalanceDecision(previous, currents, enabled, now) {
     if(!currents || currents.some(v=>!Number.isFinite(v))) return {desired:null,aboveSince:0,belowSince:0,reason:'Fasemetingen ontbreken of zijn te oud'};
     const difference=Math.max(...currents)-Math.min(...currents);
-    const aboveSince=difference>2?(previous.aboveSince||now):0;
-    const belowSince=difference<1?(previous.belowSince||now):0;
+    const aboveSince=difference>4?(previous.aboveSince||now):0;
+    const belowSince=difference<2?(previous.belowSince||now):0;
     let desired=null;
     if(!enabled && aboveSince && now-aboveSince>=30000) desired=true;
     if(enabled && belowSince && now-belowSince>=120000 && now-(previous.enabledSince||now)>=300000) desired=false;
-    return {difference,aboveSince,belowSince,desired,reason:desired===null?'Wacht op stabiel faseverschil':desired?'Faseverschil groter dan 2 A':'Faseverschil langdurig kleiner dan 1 A'};
+    return {difference,aboveSince,belowSince,desired,reason:desired===null?'Wacht op stabiel faseverschil':desired?'Faseverschil groter dan 4 A':'Faseverschil langdurig kleiner dan 2 A'};
 }
 module.exports=function apply(flows) {
     for(let i=flows.length-1;i>=0;i--)if(flows[i].id.startsWith('essimbalance_'))flows.splice(i,1);
     const z='ess000000000001';
     flows.push({id:'essimbalance_tick',type:'inject',z,name:'WIT faseverschil elke 10 seconden',props:[{p:'payload'}],payload:'',payloadType:'date',repeat:'10',once:false,wires:[['essimbalance_registry']]});
-    flows.push({id:'essimbalance_control',type:'function',z,name:'WIT Power Imbalance > 2 A',outputs:1,wires:[['essimbalance_action']],func:imbalanceDecision.toString()+`
+    flows.push({id:'essimbalance_control',type:'function',z,name:'WIT Power Imbalance > 4 A',outputs:1,wires:[['essimbalance_action']],func:imbalanceDecision.toString()+`
 const now=Date.now(),config=flow.get('ess_system_config')||{};
 const states=global.get('homeassistant')?.homeAssistant?.states||{};
 const previous=flow.get('ess_wit_imbalance_status')||{};

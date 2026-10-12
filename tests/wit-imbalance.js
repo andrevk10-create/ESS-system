@@ -1,15 +1,16 @@
 const assert=require('node:assert/strict');
 const {imbalanceDecision}=require('../scripts/lib/wit-imbalance');
 const now=1000000;
-assert.equal(imbalanceDecision({},[3,3,5],false,now).desired,null,'Exactly 2 A must not enable');
-let p=imbalanceDecision({},[3,3,6],false,now);
+assert.equal(imbalanceDecision({},[3,3,7],false,now).desired,null,'Exactly 4 A must not enable');
+let p=imbalanceDecision({},[3,3,8],false,now);
 assert.equal(p.desired,null);
-assert.equal(imbalanceDecision(p,[3,3,6],false,now+30000).desired,true);
-p=imbalanceDecision({enabledSince:now},[3,3,3.5],true,now+300000);
-assert.equal(imbalanceDecision({...p,enabledSince:now},[3,3,3.5],true,now+420000).desired,false);
-assert.equal(imbalanceDecision({belowSince:now,enabledSince:now},[3,3,3.5],true,now+120000).desired,null,'Hold enabled for at least five minutes');
+assert.equal(imbalanceDecision(p,[3,3,8],false,now+30000).desired,true);
+p=imbalanceDecision({enabledSince:now},[3,3,4.5],true,now+300000);
+assert.equal(imbalanceDecision({...p,enabledSince:now},[3,3,4.5],true,now+420000).desired,false);
+assert.equal(imbalanceDecision({belowSince:now,enabledSince:now},[3,3,4.5],true,now+120000).desired,null,'Hold enabled for at least five minutes');
 assert.equal(imbalanceDecision(p,[NaN,3,3],true,now+420000).desired,null);
 assert.equal(imbalanceDecision({},[-2,0,1],false,now).difference,3,'Signed import and export are distinguished');
+assert.equal(imbalanceDecision({belowSince:now-200000,enabledSince:now-400000},[3,3,5],true,now).desired,null,'Exactly 2 A must not disable');
 const f=require('../flows.json');
 const fn=new Function('flow','global','msg',f.find(n=>n.id==='essimbalance_control').func);
 const values={};assert.equal(fn({get:k=>values[k],set:(k,v)=>values[k]=v},{get:()=>({homeAssistant:{states:{}}})},{}),null);
@@ -20,7 +21,7 @@ const execute=new Function('flow','global','msg','Date',f.find(n=>n.id==='essimb
 const config={entities:{'select.growatt_grid_remote_power_control_enable':'select.own_remote','select.growatt_grid_control_authority':'select.own_authority'},specs:{voltage:230}};
 const memory={ess_system_config:config,ess_wit_imbalance_status:{entity:'own:holding947',aboveSince:clock-30000}};
 const flow={get:k=>memory[k],set:(k,v)=>memory[k]=v};
-const states=Object.fromEntries([1,2,3].map((i)=>['sensor.p1_meter_vermogen_fase_'+i,{state:i===3?'920':'230',attributes:{unit_of_measurement:'W'},last_updated:new Date(clock).toISOString()}]));
+const states=Object.fromEntries([1,2,3].map((i)=>['sensor.p1_meter_vermogen_fase_'+i,{state:i===3?'1380':'230',attributes:{unit_of_measurement:'W'},last_updated:new Date(clock).toISOString()}]));
 const global={get:()=>({homeAssistant:{states}})};
 const message={imbalanceBinding:{deviceId:'own',remoteEntity:'select.own_remote',authorityEntity:'select.own_authority'}};
 message.witImbalanceNative={binding:message.imbalanceBinding,at:clock,value:0};
@@ -32,4 +33,4 @@ assert.equal(execute(flow,global,message,DateStub),null,'Write verification must
 assert.equal(memory.ess_wit_imbalance_status.commandConfirmed,true);
 message.witImbalanceNative.binding.remoteEntity='select.other';delete message.imbalanceVerify;
 assert.equal(execute(flow,global,message,DateStub),null,'Wrong inverter binding must block');
-console.log('WIT imbalance: strict 2 A threshold, debounce, hysteresis, minimum on-time, signed phases and missing binding passed');
+console.log('WIT imbalance: strict 4 A threshold, debounce, hysteresis, minimum on-time, signed phases and missing binding passed');

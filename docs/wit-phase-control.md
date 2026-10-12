@@ -2,10 +2,10 @@
 
 ## Automatic Power Imbalance control
 
-The flow includes a controller with a strict difference greater than 2 A
+The flow includes a controller with a strict difference greater than 4 A
 between the highest and lowest signed P1 phase currents (or signed phase
 power divided by configured nominal voltage). Enable requires 30 seconds
-above that threshold. Disable requires 120 seconds below 1 A and at least
+above that threshold. Disable requires 120 seconds below 2 A and at least
 five minutes enabled. Missing or stale readings never trigger a write.
 These delays limit switching; compensated net readings can still create a
 feedback cycle, so this is not proof of uncompensated household imbalance.
