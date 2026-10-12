@@ -13,4 +13,15 @@ const stored={},flow={get:()=>({}),set:(k,v)=>stored[k]=v},global={get:()=>({hom
 const run=new Function('msg','flow','global',dispatch.func);
 assert.equal(run({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'doors_lock',jeepReply:[{entity_id:'sensor.jeep_test_hvbattery_charge',platform:'audiconnect',device_id:'wrong'}]},flow,global),null);
 assert.equal(run({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'doors_lock',jeepReply:[{entity_id:'sensor.jeep_test_hvbattery_charge',platform:'uconnect',device_id:'jeep-only'}]},flow,global).payload.data.service_data.device_id,'jeep-only');
+const context={},requestFlow={get:k=>context[k],set:(k,v)=>context[k]=v};
+const result=new Function('msg','flow',flows.find(n=>n.id==='essjvehicle_result').func);
+result({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'precond_on'},requestFlow);
+assert.equal(context.ess_jeep_climate_power_support.minimumPowerW,1000);
+assert.equal(context.ess_jeep_climate_power_support.minimumCurrentA,6);
+result({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'precond_off'},requestFlow);
+assert.equal(context.ess_jeep_climate_power_support,null);
+result({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'doors_lock'},requestFlow);
+assert.equal(context.ess_jeep_vehicle_requested.locked,true);
+result({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'doors_unlock'},requestFlow);
+assert.equal(context.ess_jeep_vehicle_requested.locked,false);
 console.log('Jeep vehicle: real SOC, stale fallback, ambiguous discovery and device isolation OK');

@@ -147,7 +147,7 @@ for (const label of ['Synology NAS', 'OPSLAG', 'SCHIJF 2', 'SYSTEEM', 'BELASTING
 }
 assert(detailTemplates.system.format.includes('d.nas&&d.nas.volume') && detailTemplates.system.format.includes('d.nas&&d.nas.drive'), 'Systeempagina mist live Synology-volume- of schijfdata');
 assert(!detailTemplates.system.format.includes('button.nas_restart') && !detailTemplates.system.format.includes('button.nas_shutdown'), 'NAS-overzicht mag geen risicovolle herstart- of uitschakknop bevatten');
-assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 12, 'Autopagina moet Audi- en Jeep-laadbediening plus zes Uconnect-knoppen tonen');
+assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 10, 'Autopagina moet per auto gecombineerde klimaat- en slotknoppen tonen, met twee extra Jeep-knoppen in het uitklapmenu');
 for (const template of Object.values(detailTemplates)) {
     assert.strictEqual(template.height, '0', 'Iedere detailpagina moet meegroeien met de inhoud');
     assert(!template.format.includes('Aanvullende systeemdiagnose') && !template.format.includes('Aanvullende verbruikssensoren') && !template.format.includes('Extra zonnesensoren'), 'Detailpagina bevat nog onnodige sensorinventarisatie');
@@ -1199,7 +1199,7 @@ assert.deepStrictEqual(audiControl.wires[2], [climateDevice.id], 'Klimaatopdrach
 assert.deepStrictEqual(audiControl.wires[3], [vehicleDevice.id], 'Voertuigopdracht moet eerst het actuele EV-device-ID ophalen');
 assert.deepStrictEqual(climateDevice.wires, [[climateDeviceGuard.id]], 'Klimaatopdracht moet een ontbrekend Audi-apparaat veilig blokkeren');
 assert.deepStrictEqual(vehicleDevice.wires, [[vehicleDeviceGuard.id]], 'Voertuigopdracht moet een ontbrekend Audi-apparaat veilig blokkeren');
-assert.deepStrictEqual(climateDeviceGuard.wires, [[climateAction.id]]);
+assert.deepStrictEqual(climateDeviceGuard.wires, [[climateAction.id],['essclimateev_audi_stop']]);
 assert.deepStrictEqual(climateAction.wires, [[climatePowerSupport.id]], 'Na een geslaagde klimaatopdracht moet de tijdelijke netvoeding worden geactiveerd');
 assert.deepStrictEqual(climatePowerSupport.wires, [[audiRegulator.id]], 'De tijdelijke klimaatvoeding moet de EV-regelaar direct opnieuw uitvoeren');
 assert.deepStrictEqual(vehicleDeviceGuard.wires, [[vehicleAction.id]]);
@@ -1225,6 +1225,16 @@ const runClimatePowerSupport = new Function('flow', 'node', 'msg', climatePowerS
 const climateSupportTrigger = runClimatePowerSupport(flowContext, { status: () => undefined }, {});
 const climateSupportLease = flowValues.ess_audi_climate_power_support;
 assert.strictEqual(climateSupportLease.minimumCurrentA, 6, 'Audi-klimaat moet minimaal 6 A netvoeding reserveren');
+assert.strictEqual(climateSupportLease.minimumPowerW,1000);
+assert(climateSupportLease.minimumCurrentA*230>=1000,'Audi reserves at least 1 kW even on one phase');
+const stoppedClimate=runClimateDeviceGuard(flowContext,{status:()=>undefined},{climateStop:true,payload:{deviceId:'0123456789abcdef0123456789abcdef'}});
+assert.equal(stoppedClimate[0],null,'Stop must not reach the start action');
+assert(stoppedClimate[1]);
+const climateStopAction=flows.find(n=>n.id==='essclimateev_audi_stop');
+const stopRequest=new Function('msg',climateStopAction.func)({payload:{deviceId:'audi-only'}});
+assert.equal(stopRequest.payload.data.service,'execute_vehicle_action');
+assert.equal(stopRequest.payload.data.service_data.action,'stop_climatisation');
+assert.equal(stopRequest.payload.data.service_data.device_id,'audi-only');
 assert(climateSupportLease.expiresAt - climateSupportLease.requestedAt === 30 * 60 * 1000, 'De tijdelijke Audi-klimaatvoeding moet na dertig minuten verlopen');
 assert.strictEqual(climateSupportTrigger.topic, 'ess/audi/climate-power-support', 'Klimaatstart moet de EV-regelaar direct activeren');
 

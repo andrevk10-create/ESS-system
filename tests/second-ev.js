@@ -84,4 +84,16 @@ assert(f.run('essjeep_guard_ess00000000000f',{payload:{chargerId:'right',command
 for(const n of flows.filter(n=>n.id.startsWith('essjeep_'))){
     assert(!n.wires.flat().some(id=>['ess00000000000e','ess00000000000f','ess000000000017','essaudi_climate01','essaudi_vehicle01'].includes(id)),'Jeep commands never enter Audi adapters');
 }
+{
+    const climate=fixture();delete climate.values.ess_jeep_manual_soc;
+    climate.values.ess_jeep_smart_enabled=false;climate.values.ess_jeep_force_full=false;
+    climate.values.ess_jeep_climate_power_support={requestedAt:now,expiresAt:now+1800000,minimumCurrentA:6,minimumPowerW:1000};
+    climate.run('essjeep_ess00000000000d');
+    const amps=climate.values.ess_jeep_control_status.targetCurrent;
+    assert(amps>=6&&amps*230>=1000,'Jeep climate-only request reserves at least 1 kW without SOC or smart charging');
+    assert(climate.run('essjeep_guard_ess00000000000f',{payload:{chargerId:'right',command:'start'}}),'Climate-only dispatch is permitted');
+    climate.values.ess_jeep_climate_power_support=null;
+    climate.run('essjeep_ess00000000000d');
+    assert.equal(climate.values.ess_jeep_control_status.targetCurrent,0,'Stopping climate releases the temporary request');
+}
 console.log('Second EV: independent Jeep controls, manual SOC lifecycle, 54 kWh estimation, charger isolation and shared phase reservations OK');

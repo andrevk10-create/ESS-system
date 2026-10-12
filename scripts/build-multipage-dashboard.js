@@ -4748,5 +4748,6 @@ require('./lib/lighting-reliability')(flows);
 require('./lib/easee-equalizer-control')(flows);
 require('./lib/wit-imbalance')(flows);
 require('./lib/jeep-vehicle')(flows);
+require('./lib/ev-climate-power')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
