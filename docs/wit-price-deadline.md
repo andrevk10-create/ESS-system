@@ -1,4 +1,4 @@
-# Vol vóór dure uren
+# Laden met reserve, zon en stroomprijs
 
 In Automatisch is het WIT-doel 100%. De planner bepaalt de volgende dure
 periode uit het bovenste kwart van de beschikbare all-in kwartierprijzen,
@@ -7,11 +7,24 @@ goedkopere kwartieren en daarna een volgende dure periode beschikbaar zijn.
 Bij vrijwel vlakke prijzen (spreiding minder dan 1 cent/kWh) wacht hij op een
 duidelijke volgende dure periode.
 
-Alle kwartieren vóór die periode worden op prijs gesorteerd, ook nachturen.
-Het tekort tot 100%, laadverlies en de naar de eindtijd geschaalde woningreserve
-bepalen de netbehoefte. Dagtotalen voor verwachte zon worden niet vooraf
-afgetrokken: ze bewijzen niet wanneer die energie beschikbaar komt. Gemeten
-zonnelading verhoogt de SOC en verlaagt bij iedere nieuwe berekening het tekort.
+Een ochtendpiek verplicht niet langer tot nachtelijk laden naar 100%. De planner
+controleert of de huidige energie, verminderd met het verwachte woningverbruik
+tot het volgende laadmoment, boven de reserve blijft. Die reserve is het hoogste
+van 30% accucapaciteit en de woningreserve van het gekozen profiel.
+
+Bij voldoende reserve mag hij wachten op dagkwartieren tussen 08:00 en 18:00
+die minimaal 1 cent/kWh goedkoper zijn dan de goedkoopste voorafgaande uren,
+of op voldoende conservatief berekende zon. Voor wachten op zon gebruikt hij
+een geldig gedateerd forecast en bekende zonopkomst en zonsondergang; de
+verwachting moet twee uur na zonsopkomst minimaal 1 kWh bruikbare acculading
+opleveren. Ook controleert hij of zon en goedkopere laadruimte samen voldoende
+zijn om het latere doel te halen. Een tweede grote prijspiek is daarvoor niet nodig.
+
+Bij uitstel worden alle kwartieren vóór het gekozen dagmoment uitgesloten.
+De nieuwe eindtijd ligt binnen de beschikbare prijzen en maximaal 24 uur vooruit.
+Alleen zon vóór die eindtijd telt mee, met de veiligheidsfactor van het profiel
+en laadverlies. Bij een reservetekort, onbetrouwbare zon zonder bruikbare
+goedkopere uren of te weinig bijlaadcapaciteit blijft tijdig laden gepland.
 
 Nu laden behoudt het handmatig gekozen SOC-doel. Uit blijft uit.
 BMS-limieten, laadstop-SOC, actuele fasebelasting en bevestigde WIT-bediening
