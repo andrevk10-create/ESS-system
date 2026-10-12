@@ -30,6 +30,18 @@ assert.equal(out[0].payload.chargerId,'right');
 assert.equal(out[1].payload.chargerId,'right');
 assert.equal(f.values.ess_jeep_control_status.estimatedEVSoc,40);
 assert.equal(f.values.ess_audi_control_status,undefined,'Jeep never changes Audi state');
+{
+    const live=fixture();delete live.values.ess_jeep_manual_soc;
+    live.states['sensor.jeep_test_hvbattery_charge']=reading(65,'%');
+    live.states['sensor.jeep_test_last_info_update_at']=reading(new Clock().toISOString());
+    live.run('essjeep_ess00000000000d');
+    assert.equal(live.values.ess_jeep_control_status.estimatedEVSoc,65,'Real vehicle SOC replaces manual input');
+    assert.equal(live.values.ess_jeep_control_status.targetCurrent,16);
+    assert(live.run('essjeep_guard_ess00000000000f',{payload:{chargerId:'right',command:'start'}}),'Real SOC also passes the dispatch guard');
+    live.states['sensor.jeep_test_last_info_update_at'].state=new Clock(now-1800001).toISOString();
+    live.run('essjeep_ess00000000000d');
+    assert.equal(live.values.ess_jeep_control_status.targetCurrent,0,'Old vehicle data without manual fallback stops charging');
+}
 f.run('essjeep_settings',{topic:'ess/jeep/departure-soc',payload:85});
 assert.equal(f.values.ess_jeep_settings.departureSoc,85);
 assert.equal(chargingPreferences(f.flow).ev2.departureSoc,85);

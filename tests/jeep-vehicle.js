@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+const {jeepVehicle,jeepSoc}=require('../scripts/lib/jeep-vehicle');
+const now=Date.parse('2026-10-12T13:00:00Z');
+const states={'sensor.jeep_test_hvbattery_charge':{state:'95'},'sensor.jeep_test_last_info_update_at':{state:new Date(now-60000).toISOString()}};
+assert.equal(jeepSoc(states,{},null,now).soc,95);
+assert.equal(jeepSoc(states,{},null,now).source,'auto');
+assert.equal(jeepSoc(states,{},null,now+1800000),null);
+assert.equal(jeepSoc(states,{}, {soc:42,at:now},now+1800000).source,'manual');
+assert.equal(jeepVehicle({...states,'sensor.jeep_other_hvbattery_charge':{state:'50'}},{},now).available,false);
+assert.equal(jeepSoc({...states,'sensor.jeep_test_hvbattery_charge':{state:'unavailable'}},{},null,now),null);
+const flows=require('../flows.json'),dispatch=flows.find(n=>n.id==='essjvehicle_dispatch');
+const stored={},flow={get:()=>({}),set:(k,v)=>stored[k]=v},global={get:()=>({homeAssistant:{states}})};
+const run=new Function('msg','flow','global',dispatch.func);
+assert.equal(run({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'doors_lock',jeepReply:[{entity_id:'sensor.jeep_test_hvbattery_charge',platform:'audiconnect',device_id:'wrong'}]},flow,global),null);
+assert.equal(run({jeepAnchor:'sensor.jeep_test_hvbattery_charge',jeepAction:'doors_lock',jeepReply:[{entity_id:'sensor.jeep_test_hvbattery_charge',platform:'uconnect',device_id:'jeep-only'}]},flow,global).payload.data.service_data.device_id,'jeep-only');
+console.log('Jeep vehicle: real SOC, stale fallback, ambiguous discovery and device isolation OK');

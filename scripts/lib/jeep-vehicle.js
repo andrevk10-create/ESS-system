@@ -1,0 +1,74 @@
+// Resolve one vehicle only; ambiguous discovery must never address another car.
+function jeepVehicle(states, entities = {}, now = Date.now()) {
+    const configured = entities['sensor.ev_2_state_of_charge'];
+    const candidates = Object.keys(states).filter(id => /^sensor\..*jeep.*_hvbattery_charge$/.test(id));
+    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;
+    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };
+    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');
+    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];
+    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };
+    const updatedAt = entity('last_info_update_at')?.state;
+    const age = now-Date.parse(updatedAt);
+    const soc=read('hvbattery_charge');
+    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;
+    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');
+    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};
+}
+function jeepSoc(states, entities, manual, now) {
+    const vehicle=jeepVehicle(states,entities,now);
+    if(vehicle.fresh)return {soc:vehicle.soc,at:Date.parse(vehicle.updatedAt),source:'auto'};
+    return manual && Number.isFinite(manual.soc)&&manual.soc>=0&&manual.soc<=100&&now-manual.at>=0&&now-manual.at<=43200000 ? {...manual,source:'manual'} : null;
+}
+module.exports=function apply(flows) {
+    const helper=jeepVehicle.toString()+'\n'+jeepSoc.toString()+'\n';
+    const mapper=flows.find(n=>n.id==='ess00000000000a');
+    mapper.func=mapper.func.replace(/\/\/ BEGIN JEEP VEHICLE[\s\S]*?\/\/ END JEEP VEHICLE\n/g,'');
+    mapper.func=mapper.func.replace("flow.set('ess_dashboard_live', dashboard);",`// BEGIN JEEP VEHICLE
+${helper}
+dashboard.jeepVehicle=jeepVehicle(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{});
+const jeepServices=global.get('homeassistant')?.homeAssistant?.services?.uconnect||{};
+dashboard.jeepVehicle.actions=['update','precond_on','precond_off','doors_lock','doors_unlock','lights'].filter(action=>jeepServices[action]);
+dashboard.jeepVehicle.command=flow.get('ess_jeep_vehicle_command')||null;
+// END JEEP VEHICLE
+flow.set('ess_dashboard_live', dashboard);`);
+    for(const n of flows.filter(n=>n.id.startsWith('essjeep_')&&n.func)) {
+        if(!n.func.includes("flow.get('ess_jeep_manual_soc')"))continue;
+        n.func=helper+n.func;
+        // The controller estimates from the real sample until the next vehicle report.
+        n.func=n.func.replaceAll("flow.get('ess_jeep_manual_soc')","jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_manual_soc'),Date.now())");
+    }
+    for(let i=flows.length-1;i>=0;i--)if(flows[i].id.startsWith('essjvehicle_'))flows.splice(i,1);
+    const z='ess000000000001',ui=flows.find(n=>n.id==='esstpl_ev0000001');
+    ui.wires[0].push('essjvehicle_request');
+    const fn=(id,name,func,next)=>({id,type:'function',z,name,func,outputs:1,wires:[[next]]});
+    const api=(id,data,next)=>({id,type:'ha-api',z,name:'Jeep Uconnect',server:'ess00000000000b',version:1,protocol:'websocket',method:'get',path:'',data,dataType:'json',responseType:'json',outputProperties:[{property:'jeepReply',propertyType:'msg',value:'',valueType:'results'}],wires:[[next]]});
+    flows.push(fn('essjvehicle_request','Controleer Jeep-bediening',helper+`
+if(msg.topic!=='ess/jeep/vehicle-action')return null;
+const action=String(msg.payload),ha=global.get('homeassistant')?.homeAssistant;
+const vehicle=jeepVehicle(ha?.states||{},flow.get('ess_system_config')?.entities||{});
+if(!vehicle.anchor||!['update','precond_on','precond_off','doors_lock','doors_unlock','lights'].includes(action)||!ha?.services?.uconnect?.[action])return null;
+const previous=flow.get('ess_jeep_vehicle_command');
+if(previous&&Date.now()-previous.at<10000)return null;
+msg.jeepAction=action;msg.jeepAnchor=vehicle.anchor;
+flow.set('ess_jeep_vehicle_command',{action,at:Date.now(),status:'Verzenden…'});return msg;`,'essjvehicle_registry'));
+    flows.push(api('essjvehicle_registry','{"type":"config/entity_registry/list"}','essjvehicle_dispatch'));
+    flows.push(fn('essjvehicle_dispatch','Adresseer uitsluitend deze Jeep',helper+`
+const vehicle=jeepVehicle(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{});
+const entry=Array.isArray(msg.jeepReply)?msg.jeepReply.find(e=>e.entity_id===msg.jeepAnchor&&e.platform==='uconnect'&&!e.disabled_by):null;
+if(!entry?.device_id||vehicle.anchor!==msg.jeepAnchor){flow.set('ess_jeep_vehicle_command',{action:msg.jeepAction,at:Date.now(),status:'Jeep-koppeling niet bevestigd'});return null;}
+msg.payload={data:{type:'call_service',domain:'uconnect',service:msg.jeepAction,service_data:{device_id:entry.device_id}}};return msg;`,'essjvehicle_action'));
+    flows.push(api('essjvehicle_action','','essjvehicle_result'));
+    flows.push(fn('essjvehicle_result','Jeep-opdracht geaccepteerd',`flow.set('ess_jeep_vehicle_command',{action:msg.jeepAction,at:Date.now(),status:'Opdracht geaccepteerd · wacht op auto'});return null;`, 'ess00000000000a'));
+    flows.push({id:'essjvehicle_catch',type:'catch',z,name:'Jeep-opdracht mislukt',scope:['essjvehicle_registry','essjvehicle_action'],uncaught:false,wires:[['essjvehicle_error']]});
+    flows.push(fn('essjvehicle_error','Toon Jeep-fout',`flow.set('ess_jeep_vehicle_command',{action:msg.jeepAction,at:Date.now(),status:'Opdracht mislukt · controleer Uconnect'});return null;`,'ess00000000000a'));
+    const manual=ui.format.match(/<div class="ess-ev-manual">[\s\S]*?<\/div>/)?.[0];
+    if(!manual)throw Error('Missing Jeep manual SOC panel');
+    const metrics=[['ACCUSTAND','soc','%'],['BEREIK','range',' km'],['KILOMETERSTAND','odometer',' km'],['12V-ACCU','battery12v',' V']].map(([label,key,unit])=>`<div><span>${label}</span><b>{{d.jeepVehicle?.${key}==null?'—':d.jeepVehicle.${key}+'${unit}'}}</b></div>`).join('');
+    const labels={update:'Verversen',precond_on:'Klimaat starten',precond_off:'Klimaat stoppen',doors_lock:'Vergrendelen',doors_unlock:'Ontgrendelen',lights:'Lichtsignaal'};
+    const buttons=Object.entries(labels).map(([action,label])=>`<button class="touch-button" v-if="d.jeepVehicle?.actions?.includes('${action}')" @click="send({topic:'ess/jeep/vehicle-action',payload:'${action}'})">${label}</button>`).join('');
+    const vehicle=`<div class="vehicle" v-if="d.jeepVehicle?.available"><div class="vehicle-main">${metrics}<div><span>AUTO</span><b>{{d.jeepVehicle.charging?'Laadt':d.jeepVehicle.plugged?'Aangesloten':d.jeepVehicle.ignition?'Contact aan':'Niet aangesloten'}}</b></div><div v-if="d.jeepVehicle.charging&&d.jeepVehicle.remainingMinutes!=null"><span>RESTERENDE LAADTIJD · AUTO</span><b>{{d.jeepVehicle.remainingMinutes}} min</b></div><div><span>VANDAAG GELADEN</span><b>{{energy(d.ev?.[1]?.today)}}</b></div><div><span>LAADVERMOGEN · EASEE</span><b>{{power(d.ev?.[1]?.power)}}</b></div></div><small>Autogegevens: {{d.jeepVehicle.updatedAt?new Date(d.jeepVehicle.updatedAt).toLocaleString('nl-NL'):'Onbekend'}}{{d.jeepVehicle.fresh?'':' · verouderd'}}</small><p v-if="d.jeepVehicle.tireWarningCount">Bandenspanning: {{d.jeepVehicle.tireWarningCount}} waarschuwing(en)</p><details><summary>Onderhoud</summary>{{d.jeepVehicle.serviceKm??'—'}} km / {{d.jeepVehicle.serviceDays??'—'}} dagen tot onderhoud</details><div class="quick-actions">${buttons}</div><small v-if="d.jeepVehicle.command">{{d.jeepVehicle.command.status}}</small></div>`;
+    ui.format=ui.format.replace(manual,manual.replace('class="ess-ev-manual"','class="ess-ev-manual" v-if="!d.jeepVehicle?.fresh"'));
+    ui.format=ui.format.replace('<b>Jeep Avenger</b><span>Easee rechts</span></div>','<b>Jeep Avenger</b><span>Easee rechts</span></div>'+vehicle);
+};
+module.exports.jeepVehicle=jeepVehicle;
+module.exports.jeepSoc=jeepSoc;
