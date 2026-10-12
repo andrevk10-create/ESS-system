@@ -17,3 +17,12 @@ assert.equal(values.ess_jeep_explicit_soc,undefined,'Audi and Jeep inputs are in
 run({topic:'ess/audi/explicit-soc',payload:null},flow,global);
 assert.equal(values.ess_audi_explicit_soc,null);
 console.log('Explicit SOC: user opt-in, stale cache rejection, online handover, clearing and vehicle isolation OK');
+const {integrateManualSoc}=require('../scripts/lib/ev-manual-soc');
+let estimate=integrateManualSoc(manual,6000,now,54);
+for(let i=1;i<=60;i++)estimate=integrateManualSoc(estimate,6000,now+i*60000,54);
+assert(Math.abs(estimate.estimatedSoc-(75+6*.92/54*100))<1e-8,'One hour at 6 kW includes 92% efficiency and 54 kWh capacity');
+assert.equal(integrateManualSoc(estimate,6000,now+3600000,54).estimatedSoc,estimate.estimatedSoc,'Repeated reads do not double count');
+assert.equal(integrateManualSoc(estimate,null,now+3660000,54).estimatedSoc,estimate.estimatedSoc,'Unknown telemetry contributes no energy');
+assert.equal(integrateManualSoc(estimate,6000,now+7200000,54).estimatedSoc,estimate.estimatedSoc,'Long gaps are not extrapolated');
+assert.equal(integrateManualSoc({...estimate,estimatedSoc:99.9},8000,now+3660000,54).estimatedSoc,100);
+assert(f.find(n=>n.id==='esstpl_ev0000001').format.includes('d.manualSoc.audi.estimatedSoc'));
