@@ -1,8 +1,25 @@
 // Recover an orphaned optimistic remote selector only in manual charge mode.
 // Automatic planning never takes over an external session.
+function witManualRecoveryReady(flow,now){
+    const config=flow.get('ess_system_config')||{},rb=flow.get('ess_wit_control_readback');
+    const statuses=['ess_wit_grid_charge_status','ess_wit_audi_discharge_status'].map(k=>flow.get(k)||{});
+    const safe=flow.get('ess_wit_grid_charge_mode')==='on'&&rb?.deviceId&&
+        rb.remoteEntity===(config.entities?.['select.growatt_grid_remote_power_control_enable']||'select.growatt_grid_remote_power_control_enable')&&
+        rb.authorityEntity===(config.entities?.['select.growatt_grid_control_authority']||'select.growatt_grid_control_authority')&&
+        now-rb.at>=0&&now-rb.at<=120000&&rb.remote===1&&rb.periods===0&&rb.duration===2&&
+        !flow.get('ess_wit_grid_transport')&&!flow.get('ess_wit_manual_recovery')&&
+        !statuses.some(s=>s.sessionOwned||s.active||s.releasing||s.pendingUntil>now);
+    if(!safe){flow.set('ess_wit_orphan_probe',null);return false;}
+    const signature=JSON.stringify([rb.deviceId,rb.remoteEntity,rb.authorityEntity,rb.authority,rb.remote,rb.duration,rb.percent,rb.ac,rb.periods]);
+    const previous=flow.get('ess_wit_orphan_probe');
+    if(!previous||previous.signature!==signature||now-previous.lastAt>120000){flow.set('ess_wit_orphan_probe',{signature,since:rb.at,lastAt:rb.at});return false;}
+    flow.set('ess_wit_orphan_probe',{...previous,lastAt:rb.at});
+    return rb.at-previous.since>=180000;
+}
 module.exports = function applyManualRecovery(flows) {
     const grid = flows.find(n => n.id === 'esswitgrid_ctrl1');
     const setter = flows.find(n => n.id === 'esswitgrid_set01');
+    grid.func=witManualRecoveryReady.toString()+'\n'+grid.func;
     const marker = "const commandFault = flow.get('ess_wit_command_fault');";
     if (!grid.func.includes(marker)) throw new Error('WIT recovery insertion point missing');
     grid.func = grid.func.replace(marker, `const recovery = flow.get('ess_wit_manual_recovery');
@@ -64,7 +81,8 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     });
     // An old selector is not proof of a running hardware lease. Free both
     // control layers and require new Disabled observations before any start.
-    if (mode === 'on' && staleControls && !flow.get('ess_wit_manual_recovery_attempted')) {
+    const hardwareRecoveryReady=witManualRecoveryReady(flow,now);
+    if (mode === 'on' && (hardwareRecoveryReady||flow.get('ess_wit_readback_enabled')!==true&&staleControls) && !flow.get('ess_wit_manual_recovery_attempted')) {
         flow.set('ess_wit_manual_recovery_attempted', true);
         flow.set('ess_wit_manual_recovery', { startedAt:now, sentSteps:['authority'] });
         save('blocked', { ...details, sessionOwned:false, pendingUntil:now + 90000, status:'Achtergebleven WIT-sessie vrijgeven voor Nu laden' });
@@ -103,3 +121,4 @@ if (flow.get('ess_wit_command_fault') && !solarSafe) {
 }
 ${exportGate}`);
 };
+module.exports.witManualRecoveryReady=witManualRecoveryReady;

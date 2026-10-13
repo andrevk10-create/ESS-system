@@ -31,6 +31,13 @@ no extra command is queued and persistent failures still stop the session.
 Release writes zero directly to 30100 (authority) and then 30407 (remote), on
 the device proven by a fresh readback matching both configured control entities.
 The existing release order and hardware confirmation checks remain mandatory.
+Bij expliciet **Nu laden** mag een niet door ESS gereserveerde twee-minutenopdracht
+begrensd worden vrijgegeven nadat de echte registerwaarden drie minuten stabiel
+zijn teruggelezen. Verse HA-tijdstempels door Modbus-polling blokkeren dit herstel
+niet meer. De terugmelding moet bij de gekoppelde WIT horen; een extern
+tijdschema, een lopende schrijfactie of een actieve ESS-sessie blokkeert herstel.
+Automatisch laden neemt externe bediening niet over. Dit is een expliciete
+handmatige overname, geen bewijs dat een andere regelaar niet meer actief is.
 An explicit fault reset starts a bounded release recovery even if an earlier
 cleanup attempt has already completed.
 
