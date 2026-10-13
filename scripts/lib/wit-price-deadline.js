@@ -59,29 +59,42 @@ const reserveProfile = {...reserveProfiles[reserveMode],houseReserveKwh:houseCon
 };
 const originalDeadline=witPriceDeadline(slots,now,reserveInputs);
 const reserveWait=mode==='auto'?witReserveOpportunity(slots,now,originalDeadline,reserveInputs,solarWindow,states):null;
-const expensivePeriodStart=reserveWait?.deadline??originalDeadline;
+const bridgeDeadline=reserveWait?.bridge?reserveWait.deadline:null;
+const refillDeadline=bridgeDeadline===null?null:(witPriceDeadline(slots,bridgeDeadline)||Math.min(now+86400000,...slots.map(s=>s.end)));
+const expensivePeriodStart=refillDeadline??reserveWait?.deadline??originalDeadline;
 const configuredTargetSoc=targetSoc;
-if(reserveWait?.bridge)targetSoc=Math.min(targetSoc,reserveWait.targetSoc);
 const deadlineHouseKwh = expensivePeriodStart === null ? 0 : reserveProfile.houseReserveKwh * Math.max(0, expensivePeriodStart-now) / 86400000;
-const solarBeforeDeadlineKwh = witSolarBeforeDeadline(solarWindow, states, now, expensivePeriodStart) * reserveProfile.conservativeForecastFactor * chargeEfficiency;
+const solarBeforeDeadlineKwh = witSolarBeforeDeadline(solarWindow, states, now, expensivePeriodStart) * Math.min(.35,reserveProfile.conservativeForecastFactor) * chargeEfficiency;
 if (mode === 'auto') gridEnergyNeededKwh = currentStoredKwh === null || expensivePeriodStart === null ? null
     : Math.max(0, targetSoc/100*batteryCapacityKwh-currentStoredKwh+deadlineHouseKwh-solarBeforeDeadlineKwh) / chargeEfficiency;
-if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=Math.max(0,targetSoc/100*batteryCapacityKwh-currentStoredKwh)/chargeEfficiency;
+if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=Math.max(gridEnergyNeededKwh,Math.max(0,Math.min(configuredTargetSoc,reserveWait.targetSoc)/100*batteryCapacityKwh-currentStoredKwh)/chargeEfficiency);
 const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot.start < expensivePeriodStart && slot.end <= expensivePeriodStart && (!reserveWait||slot.start>=reserveWait.waitUntil)
     && priceBenchmark!==null && priceBenchmark-slot.allInPrice/chargeEfficiency-wearCostPerKwh>=minimumBenefitPerKwh)
     .sort((a,b)=>a.allInPrice-b.allInPrice || a.start-b.start);
 `+grid.func.slice(end);
     const allocationStart=grid.func.indexOf("    for (const slot of economicSlots) {");
     const allocationEnd=grid.func.indexOf("} else if (mode === 'on'",allocationStart);
-    grid.func=grid.func.slice(0,allocationStart)+`    selectedSlots=witReserveSlots(economicSlots,remainingEnergyKwh,planLimitW/1000,now,expensivePeriodStart,currentStoredKwh,batteryCapacityKwh,reserveProfile.houseReserveKwh,chargeEfficiency);
+    grid.func=grid.func.slice(0,allocationStart)+`    if(reserveWait?.bridge){
+        const bridgeEnergy=Math.min(remainingEnergyKwh,Math.max(0,Math.min(configuredTargetSoc,reserveWait.targetSoc)/100*batteryCapacityKwh-currentStoredKwh)/chargeEfficiency);
+        selectedSlots=witReserveSlots(economicSlots.filter(s=>s.end<=bridgeDeadline),bridgeEnergy,planLimitW/1000,now,bridgeDeadline,currentStoredKwh,batteryCapacityKwh,reserveProfile.houseReserveKwh,chargeEfficiency);
+        const already=selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0);
+        selectedSlots.push(...witReserveSlots(economicSlots.filter(s=>s.start>=bridgeDeadline),Math.max(0,remainingEnergyKwh-already),planLimitW/1000,now,expensivePeriodStart,0,0,0,chargeEfficiency));
+        const uncovered=remainingEnergyKwh-selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0);
+        if(uncovered>.01){
+            const spare=economicSlots.filter(s=>s.end<=bridgeDeadline).map(s=>({...s,start:Math.max(s.start,...selectedSlots.filter(p=>p.start<s.end&&p.end>s.start).map(p=>p.end))})).filter(s=>s.end>s.start);
+            selectedSlots.push(...witReserveSlots(spare,uncovered,planLimitW/1000,now,bridgeDeadline,0,0,0,chargeEfficiency));
+        }
+        selectedSlots.sort((a,b)=>a.start-b.start);
+    }else selectedSlots=witReserveSlots(economicSlots,remainingEnergyKwh,planLimitW/1000,now,expensivePeriodStart,currentStoredKwh,batteryCapacityKwh,reserveProfile.houseReserveKwh,chargeEfficiency);
     remainingEnergyKwh=Math.max(0,remainingEnergyKwh-selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0));
 `+grid.func.slice(allocationEnd);
     grid.func=grid.func.replace('    reserveMode,', `    houseConsumptionSource:houseConsumption.source,
     houseConsumptionDays:houseConsumption.days,
+    bridgeDeadline:bridgeDeadline===null?null:new Date(bridgeDeadline).toISOString(),
     configuredTargetSoc,
     reserveTargetLimited:reserveWait?.bridge===true&&reserveWait.targetSoc>configuredTargetSoc,
     chargeDeadline:expensivePeriodStart === null ? null : new Date(expensivePeriodStart).toISOString(),
-    planningGoal:reserveWait?.bridge?'Alleen reservetekort tot het volgende goedkopere moment laden':reserveWait?'Voldoende reserve · wacht op zon of goedkopere uren':'Laden vóór de dure periode',
+    planningGoal:reserveWait?.bridge?'Overbrugging en daarna naar het ingestelde SOC-doel vóór de dure periode':reserveWait?'Voldoende reserve · wacht op zon of goedkopere uren':'Laden vóór de dure periode',
     reserveWaitUntil:reserveWait?new Date(reserveWait.waitUntil).toISOString():null,
     reserveBridge:reserveWait?.bridge===true,
     projectedReserveKwh:reserveWait?round(reserveWait.projectedReserveKwh):null,

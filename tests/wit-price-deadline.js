@@ -20,7 +20,8 @@ assert.equal(witSolarBeforeDeadline({...solar,valid:false},sun,solarNow,Date.par
 const flows=require('../flows.json');
 const code=flows.find(n=>n.id==='esswitgrid_ctrl1').func;
 assert(!code.includes("mode === 'auto' ? 100"),'Automatic charging respects the configured SOC');
-assert(code.includes('Math.min(targetSoc,reserveWait.targetSoc)'),'Bridge charging cannot raise the user SOC target');
+assert(code.includes('Math.min(configuredTargetSoc,reserveWait.targetSoc)'),'Bridge charging cannot raise the user SOC target');
+assert(code.includes('const refillDeadline=')&&code.includes('Math.min(.35,reserveProfile.conservativeForecastFactor)'),'Plan final refill after the bridge and credit solar conservatively');
 assert(code.includes('targetSoc/100*batteryCapacityKwh-currentStoredKwh'),'Grid energy uses the selected target');
 assert(!flows.find(n=>n.id==='esstpl_battery01').format.includes(':disabled="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.mode'),'SOC remains editable in automatic mode');
 assert(code.includes('slot.end <= expensivePeriodStart'));

@@ -31,6 +31,14 @@ laden nodig is. Zonder betrouwbaar volgend laadmoment of met te weinig
 bijlaadcapaciteit blijft de oorspronkelijke tijdige planning gelden.
 
 Automatisch en Nu laden gebruiken het door de gebruiker gekozen SOC-doel.
+Een reserve-overbrugging is slechts de eerste fase. De planner rekent tegelijk
+door tot de eerstvolgende dure periode ná het goedkoopste vervolgmoment en
+reserveert dan ook goedkope laadruimte voor het ingestelde einddoel. Voor die
+eindfase telt maximaal 35% van de zonverwachting mee, vóór laadverlies.
+Als de middag niet genoeg rendabele laadruimte biedt, wordt het resterende
+tekort in nog ongebruikte goedkope nachtkwartieren geplaatst. Dure kwartieren
+worden daarvoor niet toegevoegd. Het doel blijft instelbaar; bij 100% wordt
+dus niet gestopt op het lagere tijdelijke overbruggingsniveau.
 Voor automatisch netladen geldt de rendabiliteitstoets ook bij reservetekort:
 de kwartierprijs na laadverlies, plus slijtage en minimale marge, moet gunstiger
 zijn dan de prijsreferentie van de beschikbare verwachting. Een reservevraag
