@@ -129,7 +129,8 @@ async function main() {
     f = fixture();
     assert(f.run('esswitgrid_ctrl1')[0], 'Future sun cannot postpone filling before expensive prices');
     const priorNeed=f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh;
-    f.values.ess_house_consumption_learning = {schemaVersion:2, forecastKwh:29, recentDays:[{kwh:29}]};
+    const previousHouseDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now-86400000));
+    f.values.ess_house_consumption_learning = {schemaVersion:2, updatedAt:new Date(now).toISOString(), forecastKwh:29, recentDays:[{date:previousHouseDay,kwh:29}]};
     f.run('esswitgrid_ctrl1');
     assert(f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh > priorNeed);
 

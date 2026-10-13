@@ -54,6 +54,13 @@ const cheapestWait=witReserveOpportunity(cheaperNight,evening,firstDeadline,actu
 assert.equal(cheapestWait.waitUntil,cheaperNight[15].start,'Choose the cheapest reachable refill instead of the first cheaper hour');
 const allocationCode=code.slice(code.indexOf('let remainingEnergyKwh ='),code.indexOf('const scheduledSlot ='));
 const {witReserveSlots}=require('../scripts/lib/wit-price-deadline');
+const {witLearnedHouse}=require('../scripts/lib/wit-price-deadline');
+const learned={schemaVersion:2,updatedAt:new Date(evening).toISOString(),recentDays:[{date:'2026-10-10',kwh:24},{date:'2026-10-11',kwh:28},{date:'2026-10-12',kwh:26}]};
+assert.equal(witLearnedHouse(learned,evening,10).kwh,26,'Higher winter household consumption increases WIT planning demand');
+assert.equal(witLearnedHouse({...learned,schemaVersion:1},evening,10).kwh,10,'Legacy history which could include EV charging is rejected');
+assert.equal(witLearnedHouse({...learned,updatedAt:new Date(evening-3*3600000).toISOString()},evening,10).kwh,10,'Stale model uses the profile reserve');
+assert.equal(witLearnedHouse({...learned,recentDays:[{date:'2026-10-10',kwh:4}]},evening,10).kwh,10,'Learning never lowers the profile reserve');
+assert(code.includes("witLearnedHouse(flow.get('ess_house_consumption_learning'),now"),'WIT controller consumes the cleaned learning model');
 const allocate=(mode,energy,slots,start,end,power)=>witReserveSlots(slots,energy,power/1000,start,end,30,30,10,.9);
 const quarter={start:evening,end:evening+900000,allInPrice:.20,marketPrice:.10};
 const shortCharge=allocate('auto',.4,[quarter],evening,evening+86400000,8000,[quarter]);

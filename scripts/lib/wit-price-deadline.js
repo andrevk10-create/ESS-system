@@ -38,7 +38,11 @@ function witPriceDeadline(slots, now, reserve) {
 
 module.exports = function applyDeadline(flows) {
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
-    grid.func=witReserveSlots.toString()+'\n'+witSolarBeforeDeadline.toString()+'\n'+witReserveOpportunity.toString()+'\n'+witPriceDeadline.toString()+'\n'+grid.func;
+    grid.func=witLearnedHouse.toString()+'\n'+witReserveSlots.toString()+'\n'+witSolarBeforeDeadline.toString()+'\n'+witReserveOpportunity.toString()+'\n'+witPriceDeadline.toString()+'\n'+grid.func;
+    const reserveAnchor="const reserveProfile = { ...reserveProfiles[reserveMode], houseReserveKwh:witHouseReserve(flow.get('ess_house_consumption_learning'), reserveProfiles[reserveMode].houseReserveKwh) + climateExtraReserve };";
+    if(!grid.func.includes(reserveAnchor))throw Error('WIT learned reserve anchor missing');
+    grid.func=grid.func.replace(reserveAnchor, `const houseConsumption=witLearnedHouse(flow.get('ess_house_consumption_learning'),now,reserveProfiles[reserveMode].houseReserveKwh);
+const reserveProfile = {...reserveProfiles[reserveMode],houseReserveKwh:houseConsumption.kwh+climateExtraReserve};`);
     grid.func=grid.func.replace('const targetSoc = Math.max(20,', 'let targetSoc = Math.max(20,');
     // Credit only a conservative daylight fraction before the deadline.
     grid.func=grid.func.replace('const gridEnergyNeededKwh = mode', 'let gridEnergyNeededKwh = mode');
@@ -71,7 +75,9 @@ const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot
     grid.func=grid.func.slice(0,allocationStart)+`    selectedSlots=witReserveSlots(economicSlots,remainingEnergyKwh,planLimitW/1000,now,expensivePeriodStart,currentStoredKwh,batteryCapacityKwh,reserveProfile.houseReserveKwh,chargeEfficiency);
     remainingEnergyKwh=Math.max(0,remainingEnergyKwh-selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0));
 `+grid.func.slice(allocationEnd);
-    grid.func=grid.func.replace('    reserveMode,', `    configuredTargetSoc,
+    grid.func=grid.func.replace('    reserveMode,', `    houseConsumptionSource:houseConsumption.source,
+    houseConsumptionDays:houseConsumption.days,
+    configuredTargetSoc,
     reserveTargetLimited:reserveWait?.bridge===true&&reserveWait.targetSoc>configuredTargetSoc,
     chargeDeadline:expensivePeriodStart === null ? null : new Date(expensivePeriodStart).toISOString(),
     planningGoal:reserveWait?.bridge?'Alleen reservetekort tot het volgende goedkopere moment laden':reserveWait?'Voldoende reserve · wacht op zon of goedkopere uren':'Laden vóór de dure periode',
@@ -187,3 +193,18 @@ function witReserveSlots(slots,budget,powerKw,now,deadline,stored,capacity,house
     return [...chosen].map(([s,energyKwh])=>({...s,start:Math.max(now,s.start),end:Math.max(now,s.start)+energyKwh/powerKw*3600000,energyKwh,powerKw})).sort((a,b)=>a.start-b.start);
 }
 module.exports.witReserveSlots=witReserveSlots;
+
+function witLearnedHouse(model,now,fallback){
+    const initial={kwh:fallback,days:0,source:'Startwaarde reserveprofiel'};
+    const age=now-Date.parse(model?.updatedAt);
+    if(model?.schemaVersion!==2||!Number.isFinite(age)||age< -60000||age>7200000)return initial;
+    const day=t=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));
+    const today=day(now),cutoff=day(now-7*86400000);
+    const values=[...new Map((Array.isArray(model.recentDays)?model.recentDays:[])
+        .filter(d=>d&&/^\d{4}-\d{2}-\d{2}$/.test(d.date)&&d.date>=cutoff&&d.date<today&&typeof d.kwh==='number'&&Number.isFinite(d.kwh)&&d.kwh>=.5&&d.kwh<=200)
+        .map(d=>[d.date,d.kwh])).values()].sort((a,b)=>a-b);
+    if(!values.length)return initial;
+    const middle=Math.floor(values.length/2),median=values.length%2?values[middle]:(values[middle-1]+values[middle])/2;
+    return {kwh:Math.max(fallback,median),days:values.length,source:'Geleerd woningverbruik zonder beide laadpunten; minimaal reserveprofiel'};
+}
+module.exports.witLearnedHouse=witLearnedHouse;

@@ -31,6 +31,13 @@ laden nodig is. Zonder betrouwbaar volgend laadmoment of met te weinig
 bijlaadcapaciteit blijft de oorspronkelijke tijdige planning gelden.
 
 Automatisch en Nu laden gebruiken het door de gebruiker gekozen SOC-doel.
+De woningraming komt uit de mediaan van geldige afgeronde dagen in de laatste
+zeven dagen van leermodel versie 2. Dat model trekt het gemeten laadvermogen
+van zowel Audi als Jeep af. Oudere modellen en ongeldige of verouderde gegevens
+worden niet gebruikt; zonder bruikbare historie geldt de reserveprofielwaarde.
+Die profielwaarde blijft ook de ondergrens. Hoger gemiddeld winterverbruik verhoogt
+dus de laadbehoefte en de tussenliggende reserveberekeningen. De planner bewaart
+de gebruikte bron en het aantal geleerde dagen in zijn status.
 Bij de verdeling van automatisch netladen controleert de planner ook tussenliggende
 laadmomenten: hij reserveert 20% SOC en rekent met 25% extra woningverbruik.
 Benodigde energie wordt eerst in de goedkoopste beschikbare kwartieren vóór
