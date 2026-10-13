@@ -1,6 +1,14 @@
 const {witApplyReadback,witReadbackResult,witGridTransport}=require('./wit-control-transport');
 const runtime=require('./wit-runtime');
 const {witChargeSoc}=require('./wit-soc');
+function witReadbackFailure(flow,msg,now){
+    if(!Number.isFinite(msg.witReadId)||flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;
+    flow.set('ess_wit_control_readback',null);
+    flow.set('ess_wit_battery_limits',null);
+    flow.set('ess_wit_readback_pending',null);
+    flow.set('ess_wit_readback_health',{at:now,ok:false,reason:'WIT-registeruitlezing mislukt'});
+    return {payload:now};
+}
 module.exports=function applyWitControlReadback(flows) {
     const get=id=>flows.find(n=>n.id===id),grid=get('esswitgrid_ctrl1'),z=grid.z;
     // A nodes/full deployment retains flow context. Do not orphan a hardware
@@ -57,10 +65,15 @@ if(p?.success===true&&c?.success===true&&words(p.values,19)&&words(c.values,2)) 
 flow.set('ess_wit_battery_limits',limits);msg.witReply=msg.witRemote;return msg;`,[['esswit_readback_save']]));
     add(fn('esswit_readback_save','Bewaar gevalideerde WIT-registers',witReadbackResult.toString()+`
 if(flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;
-flow.set('ess_wit_control_readback',witReadbackResult(msg.witAuthority,msg.witReply?.response||msg.witReply,msg.witBinding,Date.now()));
+const readback=witReadbackResult(msg.witAuthority,msg.witReply?.response||msg.witReply,msg.witBinding,Date.now());
+flow.set('ess_wit_control_readback',readback);
+flow.set('ess_wit_readback_health',{at:Date.now(),ok:!!readback,reason:readback?'Echte WIT-registers bevestigd':'WIT-registerwaarden ongeldig'});
 flow.set('ess_wit_readback_pending',null);return {payload:Date.now(),witReadbackTick:true};`,[['esswitgrid_transport_reply','esswitgrid_ctrl1']]));
     add({id:'esswit_readback_catch',type:'catch',z,name:'WIT-terugmelding niet beschikbaar',scope:['esswit_readback_registry','esswit_readback_authority','esswit_readback_remote','esswit_limits_api','esswit_current_api'],uncaught:false,wires:[['esswit_readback_error']],x:450,y:1840});
-    add(fn('esswit_readback_error','Blokkeer bij ontbrekende WIT-registers',"flow.set('ess_wit_control_readback',null);flow.set('ess_wit_readback_pending',null);return {payload:Date.now()};",[['esswitgrid_ctrl1']]));
+    add(fn('esswit_readback_error','Blokkeer bij ontbrekende WIT-registers',witReadbackFailure.toString()+"\nreturn witReadbackFailure(flow,msg,Date.now());",[['esswitgrid_ctrl1']]));
+    for(const id of ['esswit_readback_prepare','esswit_readback_remote_prepare','esswit_limits_prepare','esswit_current_prepare']){
+        const n=get(id);n.func="if(flow.get('ess_wit_readback_pending')!==msg.witReadId)return null;\n"+n.func;
+    }
     for(const [id,marker] of [['esswitgrid_ctrl1',"const previous = flow.get('ess_wit_grid_charge_status')"],['esswitaudi_ctrl1',"const previous = flow.get('ess_wit_audi_discharge_status')"],['esswitexport_ctrl','const socEntity =']]) {
         const n=get(id);
         if(!n.func.includes(marker))throw new Error('WIT readback insertion point missing: '+id);
@@ -119,3 +132,4 @@ ${guardMarker}`);
         const n=get(id); n.outputs=3;n.wires.push(['esswit_readback_request']);
     }
 };
+module.exports.witReadbackFailure=witReadbackFailure;

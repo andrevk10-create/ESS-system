@@ -111,3 +111,17 @@ Een ontbrekende of afwijkende registerterugmelding vraagt eenmaal een nieuwe uit
 Alleen deze terugmeldingsfouten kunnen na tien minuten automatisch vervallen. Daarvoor zijn twee onafhankelijke, verse Modbus-metingen nodig, minimaal 15 seconden uiteen: remote en authority uit, geen tijdplanning, dezelfde gekoppelde WIT en geen actieve, wachtende of vrijgevende ESS-sessie. Oude ongeclassificeerde fouten vereisen daarnaast bevestiging van beide vrijgavestappen na de fout. Hoogstens één herstel per uur; de herstelregistratie blijft bewaard in het private laadvoorkeurenbestand. Een herstart herstelt geen sessie-eigendom.
 
 Schrijffouten, onbevestigde vrijgave en uitblijvend laad- of ontlaadvermogen blijven geblokkeerd. De foutmelding toont oorzaak en tijdstip. Een gewiste terugmeldingsfout doorloopt opnieuw alle gewone SOC-, BMS-, fase- en laadplanningscontroles.
+### Betrouwbare uitleesrondes en SOC-stop
+
+Elke native WIT-uitleesronde heeft een eigen aanvraagnummer. Late tussenantwoorden
+en fouten van een eerdere ronde worden genegeerd en kunnen een nieuwere ronde
+niet annuleren of extra Modbus-verzoeken starten. Een actuele uitleesfout maakt
+de registerterugmelding en BMS-grenzen ongeldig; de bestaande periodieke uitlezing
+kan ze daarna opnieuw bevestigen. `ess_wit_readback_health` bewaart de echte uitkomst.
+
+De laatste vermogenscontrole vóór een laadsetpoint respecteert zowel het ingestelde
+SOC-doel als een lager tijdelijk reserve-doel van de automatische planner.
+Dit voorkomt dat de transportlaag nog 100% als doel gebruikt. Bevestiging van
+registers blijft gescheiden van werkelijk gemeten laadvermogen. Hardwarefouten
+en het uitblijven van laadvermogen worden niet onbeperkt opnieuw geprobeerd.
+

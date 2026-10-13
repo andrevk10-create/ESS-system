@@ -31,7 +31,30 @@ for(const mode of ['auto','on']) {
     high.states['sensor.growatt_battery_battery_soc']=high.state(85);
     Object.assign(high.values.ess_wit_control_readback,{authority:1,ac:1});
     const command=high.run({payload:{value:25}});
-    assert.equal(!!command?.[0],mode==='auto','Automatic charging continues beyond saved manual 80% target');
+    assert.equal(!!command?.[0],false,'Both modes stop at the configured 80% target');
+}
+{
+ const f=fixture();f.values.ess_wit_grid_charge_mode='auto';f.values.ess_wit_grid_charge_status.targetSoc=40;
+ Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
+ f.states['sensor.growatt_battery_battery_soc']=f.state(41);
+ assert.equal(f.run({payload:{value:25}})?.[0],null,'Transport respects a lower temporary reserve target');
+}
+{
+ const {witReadbackFailure}=require('../scripts/lib/wit-control-readback');
+ const f=fixture();f.values.ess_wit_readback_pending=now;
+ const original=f.values.ess_wit_control_readback;
+ assert.equal(witReadbackFailure(f.flow,{witReadId:now-60000},now),null,'Old failed read cannot cancel a newer request');
+ assert.equal(f.values.ess_wit_readback_pending,now);
+ assert.equal(f.values.ess_wit_control_readback,original);
+ assert(witReadbackFailure(f.flow,{witReadId:now},now));
+ assert.equal(f.values.ess_wit_readback_pending,null);
+ assert.equal(f.values.ess_wit_control_readback,null);
+ assert.equal(f.values.ess_wit_readback_health.ok,false);
+ for(const id of ['esswit_readback_prepare','esswit_readback_remote_prepare','esswit_limits_prepare','esswit_current_prepare']){
+  const code=require('../flows.json').find(n=>n.id===id).func;
+  f.values.ess_wit_readback_pending=now;
+  assert.equal(new Function('flow','msg',code)(f.flow,{witReadId:now-60000}),null,'Late intermediate reply must not start another register request: '+id);
+ }
 }
 {
     const design=fixture();design.values.ess_system_config={specs:{mainFuseA:25}};
