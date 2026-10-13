@@ -31,6 +31,11 @@ laden nodig is. Zonder betrouwbaar volgend laadmoment of met te weinig
 bijlaadcapaciteit blijft de oorspronkelijke tijdige planning gelden.
 
 Automatisch en Nu laden gebruiken het door de gebruiker gekozen SOC-doel.
+Bij de verdeling van automatisch netladen controleert de planner ook tussenliggende
+laadmomenten: hij reserveert 20% SOC en rekent met 25% extra woningverbruik.
+Benodigde energie wordt eerst in de goedkoopste beschikbare kwartieren vóór
+elk reservemoment geplaatst. De overige energie gaat naar de goedkoopste latere
+kwartieren. Deze buffer blijft afhankelijk van voldoende laadruimte en het gekozen SOC-doel.
 De keuzelijst blijft in beide standen beschikbaar en toont de opgeslagen instelling.
 Een tijdelijke reserve-overbrugging mag een lager doel gebruiken, maar verhoogt
 het gekozen doel nooit. Uit blijft uit.

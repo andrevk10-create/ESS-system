@@ -53,9 +53,16 @@ const cheaperNight=tomorrow.map((s,i)=>({...s,allInPrice:i===15?.18:s.allInPrice
 const cheapestWait=witReserveOpportunity(cheaperNight,evening,firstDeadline,actualReserve,{...forecast,valid:false},tomorrowSun);
 assert.equal(cheapestWait.waitUntil,cheaperNight[15].start,'Choose the cheapest reachable refill instead of the first cheaper hour');
 const allocationCode=code.slice(code.indexOf('let remainingEnergyKwh ='),code.indexOf('const scheduledSlot ='));
-const allocate=new Function('mode','gridEnergyNeededKwh','economicSlots','now','horizonEnd','planLimitW','slots',allocationCode+'return selectedSlots;');
+const {witReserveSlots}=require('../scripts/lib/wit-price-deadline');
+const allocate=(mode,energy,slots,start,end,power)=>witReserveSlots(slots,energy,power/1000,start,end,30,30,10,.9);
 const quarter={start:evening,end:evening+900000,allInPrice:.20,marketPrice:.10};
 const shortCharge=allocate('auto',.4,[quarter],evening,evening+86400000,8000,[quarter]);
 assert.equal(shortCharge[0].powerKw,8,'Partial final quarter still uses maximum configured power');
 assert.equal(shortCharge[0].end-evening,180000,'Only three minutes are required for 0.4 kWh at 8 kW');
 assert.equal(shortCharge[0].energyKwh,.4,'Full power must not increase planned energy');
+const reservePlan=witReserveSlots(tomorrow,12,8,evening,evening+19*3600000,9.9,30,10,.9);
+for(const hours of [8,12,19]){
+    const point=evening+hours*3600000;
+    const charged=reservePlan.filter(s=>s.end<=point).reduce((sum,s)=>sum+s.energyKwh*.9,0);
+    assert(9.9+charged-10*1.25*hours/24>=6-.001,'Keep 20% reserve with 25% consumption margin at intermediate deadlines');
+}

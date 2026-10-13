@@ -38,7 +38,7 @@ function witPriceDeadline(slots, now, reserve) {
 
 module.exports = function applyDeadline(flows) {
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
-    grid.func=witSolarBeforeDeadline.toString()+'\n'+witReserveOpportunity.toString()+'\n'+witPriceDeadline.toString()+'\n'+grid.func;
+    grid.func=witReserveSlots.toString()+'\n'+witSolarBeforeDeadline.toString()+'\n'+witReserveOpportunity.toString()+'\n'+witPriceDeadline.toString()+'\n'+grid.func;
     grid.func=grid.func.replace('const targetSoc = Math.max(20,', 'let targetSoc = Math.max(20,');
     // Credit only a conservative daylight fraction before the deadline.
     grid.func=grid.func.replace('const gridEnergyNeededKwh = mode', 'let gridEnergyNeededKwh = mode');
@@ -66,6 +66,11 @@ if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=Math.max(0,targetSoc/1
 const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot.start < expensivePeriodStart && slot.end <= expensivePeriodStart && (!reserveWait||slot.start>=reserveWait.waitUntil))
     .sort((a,b)=>a.allInPrice-b.allInPrice || a.start-b.start);
 `+grid.func.slice(end);
+    const allocationStart=grid.func.indexOf("    for (const slot of economicSlots) {");
+    const allocationEnd=grid.func.indexOf("} else if (mode === 'on'",allocationStart);
+    grid.func=grid.func.slice(0,allocationStart)+`    selectedSlots=witReserveSlots(economicSlots,remainingEnergyKwh,planLimitW/1000,now,expensivePeriodStart,currentStoredKwh,batteryCapacityKwh,reserveProfile.houseReserveKwh,chargeEfficiency);
+    remainingEnergyKwh=Math.max(0,remainingEnergyKwh-selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0));
+`+grid.func.slice(allocationEnd);
     grid.func=grid.func.replace('    reserveMode,', `    configuredTargetSoc,
     reserveTargetLimited:reserveWait?.bridge===true&&reserveWait.targetSoc>configuredTargetSoc,
     chargeDeadline:expensivePeriodStart === null ? null : new Date(expensivePeriodStart).toISOString(),
@@ -155,3 +160,30 @@ function witReserveOpportunity(slots,now,firstDeadline,reserve,solar,states) {
     return null;
 }
 module.exports.witReserveOpportunity=witReserveOpportunity;
+
+// Meet each intermediate reserve deadline before allocating the remaining cheapest energy.
+function witReserveSlots(slots,budget,powerKw,now,deadline,stored,capacity,house,efficiency){
+    const chosen=new Map();
+    let remaining=budget;
+    const allocate=(eligible,needed)=>{
+        for(const s of eligible.slice().sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start)){
+            const start=Math.max(now,s.start),used=chosen.get(s)||0;
+            const available=Math.max(0,(s.end-start)/3600000*powerKw-used);
+            const add=Math.min(available,remaining,needed);
+            if(add<=0)continue;
+            chosen.set(s,used+add);remaining-=add;needed-=add;
+            if(needed<=.001||remaining<=.001)break;
+        }
+    };
+    const floor=capacity*.20;
+    const checkpoints=[...new Set(slots.map(s=>s.start).filter(t=>t>now).concat(deadline))].sort((a,b)=>a-b);
+    for(const t of checkpoints){
+        const eligible=slots.filter(s=>s.end<=t);
+        const credited=[...chosen].filter(([s])=>s.end<=t).reduce((sum,[s,e])=>sum+e,0);
+        const required=Math.max(0,(floor+house*1.25*(t-now)/86400000-stored)/efficiency-credited);
+        allocate(eligible,required);
+    }
+    allocate(slots,remaining);
+    return [...chosen].map(([s,energyKwh])=>({...s,start:Math.max(now,s.start),end:Math.max(now,s.start)+energyKwh/powerKw*3600000,energyKwh,powerKw})).sort((a,b)=>a.start-b.start);
+}
+module.exports.witReserveSlots=witReserveSlots;
