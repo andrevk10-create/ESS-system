@@ -1908,7 +1908,11 @@ for (const entityId of [
 }
 
 const editorGroups = flows.filter((item) => item.type === 'group' && item.id.startsWith('esseditor_'));
-assert.strictEqual(editorGroups.length, 9, 'De Node-RED-editor moet negen duidelijke functiegroepen tonen');
+assert.strictEqual(editorGroups.length, 15, 'De Node-RED-editor moet vijftien duidelijke functiegroepen tonen');
+const editorNodes=flows.filter(n=>n.z==='ess000000000001'&&n.type!=='group');
+assert(editorNodes.every(n=>Number.isFinite(n.x)&&Number.isFinite(n.y)&&n.g),'Alle editornodes moeten zichtbaar gegroepeerd en geplaatst zijn');
+assert.strictEqual(new Set(editorNodes.map(n=>`${n.x},${n.y}`)).size,editorNodes.length,'Editornodes mogen niet op elkaar liggen');
+assert.strictEqual(flows.find(n=>n.id==='esshk_refresh_read').g,'esseditor_homekit','HomeKit-uitlezing hoort bij HomeKit, niet bij WIT');
 assert(editorGroups.every((group) => group.style.label === true && group.nodes.length > 0), 'Iedere editorgroep moet een zichtbaar label en nodes hebben');
 for (const group of editorGroups) {
     for (const nodeId of group.nodes) {

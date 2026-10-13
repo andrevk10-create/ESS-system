@@ -17,8 +17,8 @@
     "once": true,
     "onceDelay": "1",
     "topic": "",
-    "x": 160,
-    "y": 105,
+    "x": 350,
+    "y": 120,
     "wires": [
       [
         "ess00000000000a",
@@ -47,8 +47,8 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 280,
-    "y": 555,
+    "x": 350,
+    "y": 1320,
     "wires": [
       [
         "ess000000000021"
@@ -68,8 +68,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 560,
-    "y": 555,
+    "x": 1390,
+    "y": 1410,
     "wires": [
       [
         "ess00000000000f"
@@ -89,8 +89,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 420,
-    "y": 105,
+    "x": 870,
+    "y": 120,
     "wires": [
       [
         "ess000000000003"
@@ -110,8 +110,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 690,
-    "y": 105,
+    "x": 1390,
+    "y": 120,
     "wires": [
       [
         "ess000000000004",
@@ -145,8 +145,8 @@
     "resendOnRefresh": true,
     "templateScope": "local",
     "className": "ess-dashboard-widget",
-    "x": 990,
-    "y": 80,
+    "x": 1910,
+    "y": 120,
     "wires": [
       [
         "ess00000000000c"
@@ -166,8 +166,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1220,
-    "y": 450,
+    "x": 350,
+    "y": 2390,
     "wires": [
       [
         "ess00000000000a",
@@ -198,8 +198,8 @@
     "initialize": "if (flow.get('ess_audi_smart_enabled') === undefined) flow.set('ess_audi_smart_enabled', true); flow.set('ess_audi_restart_grace_until', Date.now() + 120000);",
     "finalize": "",
     "libs": [],
-    "x": 280,
-    "y": 485,
+    "x": 870,
+    "y": 1500,
     "wires": [
       [
         "ess00000000000e",
@@ -231,8 +231,8 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 560,
-    "y": 625,
+    "x": 350,
+    "y": 1590,
     "wires": [
       [
         "ess000000000019"
@@ -252,8 +252,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 800,
-    "y": 625,
+    "x": 1390,
+    "y": 1590,
     "wires": [
       [
         "ess00000000000f"
@@ -290,8 +290,8 @@
     "blockInputOverrides": true,
     "domain": "easee",
     "service": "set_charger_phase_mode",
-    "x": 800,
-    "y": 570,
+    "x": 870,
+    "y": 1590,
     "wires": [
       []
     ],
@@ -320,8 +320,8 @@
     "blockInputOverrides": true,
     "domain": "easee",
     "service": "set_charger_dynamic_limit",
-    "x": 800,
-    "y": 470,
+    "x": 1910,
+    "y": 1500,
     "wires": [
       []
     ],
@@ -350,8 +350,8 @@
     "blockInputOverrides": true,
     "domain": "easee",
     "service": "action_command",
-    "x": 800,
-    "y": 520,
+    "x": 870,
+    "y": 1680,
     "wires": [
       []
     ],
@@ -363,8 +363,8 @@
     "z": "ess000000000001",
     "name": "EV slim laden: vertrekdoel, goedkoopste kwartieren en maximaal zongebruik",
     "info": "De eigen regeling gebruikt HomeWizard P1, per-fasebewaking, EV-SOC, Nord Pool-kwartierprijzen en Easee Links. EV Smart Charging moet uitstaan. De thuisaccu regelt zelfstandig nul-op-de-meter en wordt niet meegenomen in de laadbeslissing.",
-    "x": 350,
-    "y": 415,
+    "x": 870,
+    "y": 1320,
     "wires": [],
     "g": "esseditor_audi01"
   },
@@ -380,8 +380,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 560,
-    "y": 450,
+    "x": 1390,
+    "y": 1320,
     "wires": [
       []
     ],
@@ -412,8 +412,8 @@
     "blockInputOverrides": true,
     "domain": "input_datetime",
     "service": "set_datetime",
-    "x": 1580,
-    "y": 410,
+    "x": 1390,
+    "y": 2480,
     "wires": [
       []
     ],
@@ -548,8 +548,8 @@
     "once": true,
     "onceDelay": "2",
     "topic": "",
-    "x": 170,
-    "y": 820,
+    "x": 350,
+    "y": 1100,
     "wires": [
       [
         "ess000000000014"
@@ -569,8 +569,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 410,
-    "y": 820,
+    "x": 870,
+    "y": 1100,
     "wires": [
       [
         "ess000000000015"
@@ -594,8 +594,8 @@
     "authType": "",
     "senderr": true,
     "headers": [],
-    "x": 660,
-    "y": 820,
+    "x": 1390,
+    "y": 1100,
     "wires": [
       [
         "ess000000000016"
@@ -615,8 +615,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 880,
-    "y": 820,
+    "x": 1910,
+    "y": 1100,
     "wires": [
       [
         "ess00000000000d"
@@ -641,13 +641,14 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 690,
-    "y": 325,
+    "x": 350,
+    "y": 6620,
     "wires": [
       [
         "essp1hist_prepare"
       ]
-    ]
+    ],
+    "g": "esseditor_history"
   },
   {
     "id": "esswit_release_ack",
@@ -661,8 +662,9 @@
     "finalize": "",
     "libs": [],
     "wires": [],
-    "x": 1050,
-    "y": 1200
+    "x": 350,
+    "y": 6000,
+    "g": "esseditor_witwrite"
   },
   {
     "id": "esswit_readback_inj",
@@ -682,8 +684,9 @@
         "esswit_readback_request"
       ]
     ],
-    "x": 150,
-    "y": 1800
+    "x": 350,
+    "y": 5510,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_request",
@@ -701,8 +704,9 @@
         "esswit_readback_registry"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 1390,
+    "y": 5510,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_registry",
@@ -731,8 +735,9 @@
         "esswit_readback_prepare"
       ]
     ],
-    "x": 450,
-    "y": 1800
+    "x": 350,
+    "y": 5600,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_prepare",
@@ -750,8 +755,9 @@
         "esswit_readback_authority"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 870,
+    "y": 5600,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_authority",
@@ -780,8 +786,9 @@
         "esswit_readback_remote_prepare"
       ]
     ],
-    "x": 450,
-    "y": 1800
+    "x": 1390,
+    "y": 5600,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_remote_prepare",
@@ -799,8 +806,9 @@
         "esswit_readback_remote"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 1910,
+    "y": 5600,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_remote",
@@ -829,8 +837,9 @@
         "esswit_limits_prepare"
       ]
     ],
-    "x": 450,
-    "y": 1800
+    "x": 350,
+    "y": 5690,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_save",
@@ -849,8 +858,9 @@
         "esswitgrid_ctrl1"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 1390,
+    "y": 5780,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_catch",
@@ -870,8 +880,9 @@
         "esswit_readback_error"
       ]
     ],
-    "x": 450,
-    "y": 1840
+    "x": 870,
+    "y": 5510,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_readback_error",
@@ -889,8 +900,9 @@
         "esswitgrid_ctrl1"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 1910,
+    "y": 5510,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswitgrid_transport_dispatch",
@@ -914,8 +926,9 @@
         "esswit_readback_request"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 870,
+    "y": 6000,
+    "g": "esseditor_witwrite"
   },
   {
     "id": "esswitgrid_transport_api",
@@ -944,8 +957,9 @@
         "esswitgrid_transport_reply"
       ]
     ],
-    "x": 450,
-    "y": 1800
+    "x": 1910,
+    "y": 6000,
+    "g": "esseditor_witwrite"
   },
   {
     "id": "esswitgrid_transport_reply",
@@ -969,8 +983,9 @@
         "esswit_readback_request"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 350,
+    "y": 6090,
+    "g": "esseditor_witwrite"
   },
   {
     "id": "esswitgrid_transport_catch",
@@ -986,8 +1001,9 @@
         "esswitgrid_transport_reply"
       ]
     ],
-    "x": 450,
-    "y": 1900
+    "x": 1390,
+    "y": 6000,
+    "g": "esseditor_witwrite"
   },
   {
     "id": "esswit_limits_prepare",
@@ -1005,8 +1021,9 @@
         "esswit_limits_api"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 870,
+    "y": 5690,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_limits_api",
@@ -1035,8 +1052,9 @@
         "esswit_current_prepare"
       ]
     ],
-    "x": 450,
-    "y": 1800
+    "x": 1390,
+    "y": 5690,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_current_prepare",
@@ -1054,8 +1072,9 @@
         "esswit_current_api"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 1910,
+    "y": 5690,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_current_api",
@@ -1084,8 +1103,9 @@
         "esswit_limits_save"
       ]
     ],
-    "x": 450,
-    "y": 1800
+    "x": 350,
+    "y": 5780,
+    "g": "esseditor_witread"
   },
   {
     "id": "esswit_limits_save",
@@ -1103,8 +1123,9 @@
         "esswit_readback_save"
       ]
     ],
-    "x": 750,
-    "y": 1800
+    "x": 870,
+    "y": 5780,
+    "g": "esseditor_witread"
   },
   {
     "id": "esspage_energy01",
@@ -1176,8 +1197,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 990,
-    "y": 125,
+    "x": 350,
+    "y": 210,
     "wires": [
       []
     ],
@@ -1253,8 +1274,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 990,
-    "y": 170,
+    "x": 870,
+    "y": 210,
     "wires": [
       [
         "esswitexport_mode",
@@ -1334,8 +1355,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 990,
-    "y": 215,
+    "x": 1390,
+    "y": 210,
     "wires": [
       [
         "ess00000000000c",
@@ -1416,8 +1437,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 1250,
-    "y": 80,
+    "x": 1910,
+    "y": 210,
     "wires": [
       [
         "essloads_control1"
@@ -1495,8 +1516,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 1250,
-    "y": 125,
+    "x": 350,
+    "y": 300,
     "wires": [
       [
         "esslights_ctrl01"
@@ -1574,8 +1595,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 1250,
-    "y": 170,
+    "x": 870,
+    "y": 300,
     "wires": [
       [
         "essclimate_ctrl1",
@@ -1654,8 +1675,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 1250,
-    "y": 215,
+    "x": 1390,
+    "y": 300,
     "wires": [
       []
     ],
@@ -1731,8 +1752,8 @@
     "className": "ess-dashboard-widget",
     "topic": "topic",
     "topicType": "msg",
-    "x": 2080,
-    "y": 100,
+    "x": 350,
+    "y": 520,
     "wires": [
       [
         "essconfig_control",
@@ -1753,8 +1774,8 @@
     "initialize": "const current = flow.get('ess_system_config');\nif (!current) {\n    flow.set('ess_system_config', {\"version\":2,\"siteName\":\"Smart ESS\",\"modules\":{\"energy\":true,\"battery\":true,\"inverter\":true,\"ev\":true,\"loads\":false,\"lighting\":false,\"climate\":false,\"nas\":false},\"specs\":{\"phases\":3,\"voltage\":230,\"mainFuseA\":25,\"batteryCapacityKwh\":30,\"inverterRatedPowerKw\":18,\"maximumBatteryPowerKw\":8,\"maximumBatteryChargePowerKw\":8,\"evBatteryCapacityKwh\":86,\"evMaximumCurrentA\":25,\"evGridChargePowerKw\":11,\"ev2BatteryCapacityKwh\":54,\"ev2MaximumCurrentA\":16,\"ev2GridChargePowerKw\":11,\"gridImportBufferW\":200},\"entities\":{\"sensor.battery_charge_power_limit\":\"\",\"sensor.growatt_battery_battery_voltage\":\"\",\"sensor.battery_charge_current_limit\":\"\",\"sensor.battery_discharge_power_limit\":\"\",\"sensor.battery_discharge_current_limit\":\"\",\"sensor.p1_meter_vermogen\":\"sensor.p1_meter_vermogen\",\"sensor.p1_meter_vermogen_fase_1\":\"sensor.p1_meter_vermogen_fase_1\",\"sensor.p1_meter_vermogen_fase_2\":\"sensor.p1_meter_vermogen_fase_2\",\"sensor.p1_meter_vermogen_fase_3\":\"sensor.p1_meter_vermogen_fase_3\",\"sensor.p1_meter_energie_import\":\"sensor.p1_meter_energie_import\",\"sensor.p1_meter_energie_export\":\"sensor.p1_meter_energie_export\",\"sensor.growatt_battery_battery_soc\":\"sensor.growatt_battery_battery_soc\",\"sensor.growatt_battery_battery_power\":\"sensor.growatt_battery_battery_power\",\"sensor.growatt_load_house_consumption\":\"sensor.growatt_load_house_consumption\",\"sensor.growatt_solar_solar_total_power\":\"sensor.growatt_solar_solar_total_power\",\"sensor.growatt_solar_system_output_power\":\"sensor.growatt_solar_system_output_power\",\"sensor.growatt_solar_energy_today\":\"sensor.growatt_solar_energy_today\",\"sensor.growatt_grid_grid_power\":\"sensor.growatt_grid_grid_power\",\"sensor.ev_charger_status\":\"sensor.ev_charger_status\",\"sensor.ev_charger_power\":\"sensor.ev_charger_power\",\"sensor.ev_charger_current\":\"sensor.ev_charger_current\",\"sensor.ev_charger_energy_today\":\"sensor.ev_charger_energy_today\",\"binary_sensor.ev_charger_online\":\"binary_sensor.ev_charger_online\",\"sensor.ev_state_of_charge\":\"sensor.ev_state_of_charge\",\"sensor.ev_target_state_of_charge\":\"sensor.ev_target_state_of_charge\",\"device_tracker.ev_position\":\"device_tracker.ev_position\",\"lock.ev\":\"lock.ev\",\"sensor.ev_climate_state\":\"sensor.ev_climate_state\",\"sensor.ev_charger_2_status\":\"sensor.ev_charger_2_status\",\"sensor.ev_charger_2_current\":\"sensor.ev_charger_2_current\",\"binary_sensor.ev_charger_2_online\":\"binary_sensor.ev_charger_2_online\",\"sensor.ev_charger_2_power\":\"sensor.ev_charger_2_power\",\"sensor.ev_charger_2_energy_today\":\"sensor.ev_charger_2_energy_today\",\"sensor.energy_production_today\":\"sensor.energy_production_today\",\"sensor.energy_production_today_2\":\"sensor.energy_production_today_2\",\"sensor.energy_production_today_3\":\"sensor.energy_production_today_3\",\"sensor.energy_production_tomorrow\":\"sensor.energy_production_tomorrow\",\"sensor.energy_production_tomorrow_2\":\"sensor.energy_production_tomorrow_2\",\"sensor.energy_production_tomorrow_3\":\"sensor.energy_production_tomorrow_3\",\"sensor.nord_pool_nl_huidige_prijs\":\"sensor.nord_pool_nl_huidige_prijs\",\"select.growatt_grid_control_authority\":\"select.growatt_grid_control_authority\",\"select.growatt_grid_vpp_export_limit_enable\":\"select.growatt_grid_vpp_export_limit_enable\",\"number.growatt_grid_vpp_export_limit_power_rate\":\"number.growatt_grid_vpp_export_limit_power_rate\",\"select.growatt_grid_remote_power_control_enable\":\"select.growatt_grid_remote_power_control_enable\",\"number.growatt_grid_remote_power_control_charging_time\":\"number.growatt_grid_remote_power_control_charging_time\",\"number.growatt_vpp_power_rate\":\"number.growatt_vpp_power_rate\",\"select.growatt_mode_vpp\":\"select.growatt_mode_vpp\",\"number.growatt_battery_remote_charge_and_discharge_power\":\"number.growatt_battery_remote_charge_and_discharge_power\",\"select.growatt_work_mode\":\"select.growatt_work_mode\",\"number.growatt_discharge_cutoff_soc\":\"number.growatt_discharge_cutoff_soc\",\"number.growatt_charge_cutoff_soc\":\"number.growatt_charge_cutoff_soc\",\"sensor.pv_array_1_power\":\"sensor.pv_array_1_power\",\"sensor.pv_array_2_power\":\"sensor.pv_array_2_power\",\"sensor.pv_array_3_power\":\"sensor.pv_array_3_power\",\"sensor.pv_array_1_energy_today\":\"sensor.pv_array_1_energy_today\",\"sensor.pv_array_2_energy_today\":\"sensor.pv_array_2_energy_today\",\"sensor.pv_array_3_energy_today\":\"sensor.pv_array_3_energy_today\",\"sensor.site_solar_energy_today\":\"sensor.site_solar_energy_today\",\"switch.flex_load_1\":\"switch.flex_load_1\",\"sensor.flex_load_1_power\":\"sensor.flex_load_1_power\",\"sensor.flex_load_2_power\":\"sensor.flex_load_2_power\",\"sensor.flex_load_3_power\":\"sensor.flex_load_3_power\",\"sensor.flex_load_4_power\":\"sensor.flex_load_4_power\",\"sensor.flex_load_5_power\":\"sensor.flex_load_5_power\",\"sensor.flex_load_6_power\":\"sensor.flex_load_6_power\",\"sensor.flex_load_7_power\":\"sensor.flex_load_7_power\",\"weather.home\":\"weather.home\",\"sensor.outdoor_temperature\":\"sensor.outdoor_temperature\",\"climate.cooling_zone_1\":\"climate.cooling_zone_1\",\"climate.cooling_zone_2\":\"climate.cooling_zone_2\",\"climate.cooling_zone_3\":\"climate.cooling_zone_3\",\"climate.cooling_zone_4\":\"climate.cooling_zone_4\",\"sensor.cooling_zone_1_temperature\":\"sensor.cooling_zone_1_temperature\",\"sensor.cooling_zone_2_temperature\":\"sensor.cooling_zone_2_temperature\",\"sensor.cooling_zone_3_temperature\":\"sensor.cooling_zone_3_temperature\",\"sensor.cooling_zone_4_temperature\":\"sensor.cooling_zone_4_temperature\",\"climate.heating_zone_1\":\"climate.heating_zone_1\",\"climate.heating_zone_2\":\"climate.heating_zone_2\",\"climate.heating_zone_3\":\"climate.heating_zone_3\",\"climate.heat_pump\":\"climate.heat_pump\",\"water_heater.domestic_hot_water\":\"water_heater.domestic_hot_water\",\"binary_sensor.dhw_hygiene_active\":\"\",\"light.zone_1\":\"light.zone_1\",\"light.zone_2\":\"light.zone_2\",\"light.zone_3\":\"light.zone_3\",\"light.zone_4\":\"light.zone_4\",\"light.zone_5\":\"light.zone_5\",\"light.zone_6\":\"light.zone_6\",\"light.zone_7\":\"light.zone_7\",\"light.zone_8\":\"light.zone_8\",\"sensor.nas_cpu_gebruik_totaal\":\"sensor.nas_cpu_gebruik_totaal\",\"sensor.nas_geheugengebruik_fysiek\":\"sensor.nas_geheugengebruik_fysiek\",\"sensor.nas_temperatuur\":\"sensor.nas_temperatuur\",\"sensor.nas_download_doorvoer\":\"sensor.nas_download_doorvoer\",\"sensor.nas_upload_doorvoer\":\"sensor.nas_upload_doorvoer\",\"sensor.nas_drive_2_status\":\"sensor.nas_drive_2_status\",\"sensor.nas_drive_2_temperatuur\":\"sensor.nas_drive_2_temperatuur\",\"sensor.nas_volume_1_status\":\"sensor.nas_volume_1_status\",\"sensor.nas_volume_1_gebruikte_ruimte\":\"sensor.nas_volume_1_gebruikte_ruimte\",\"sensor.nas_volume_1_volume_gebruikt\":\"sensor.nas_volume_1_volume_gebruikt\",\"binary_sensor.nas_drive_2_maximum_slechte_sectoren_overschreden\":\"binary_sensor.nas_drive_2_maximum_slechte_sectoren_overschreden\",\"binary_sensor.nas_drive_2_onder_de_minimale_resterende_levensduur\":\"binary_sensor.nas_drive_2_onder_de_minimale_resterende_levensduur\",\"binary_sensor.nas_beveiligingsstatus\":\"binary_sensor.nas_beveiligingsstatus\",\"update.nas_dsm_update\":\"update.nas_dsm_update\",\"select.nas_fan_speed_mode\":\"select.nas_fan_speed_mode\"}});\n} else if ((Number(current.version) || 1) < 2) {\n    const migrated = JSON.parse(JSON.stringify(current));\n    migrated.version = 2;\n    if (Number((migrated.specs || {}).evGridChargePowerKw) === 10) migrated.specs.evGridChargePowerKw = 11;\n    flow.set('ess_system_config', migrated);\n}",
     "finalize": "",
     "libs": [],
-    "x": 2180,
-    "y": 190,
+    "x": 1910,
+    "y": 700,
     "wires": [
       [
         "ess00000000000a",
@@ -1792,8 +1813,8 @@
     "topic": "ess/config/restore",
     "payload": "",
     "payloadType": "date",
-    "x": 1580,
-    "y": 180,
+    "x": 870,
+    "y": 520,
     "wires": [
       [
         "essconfig_bakread",
@@ -1819,8 +1840,8 @@
     "randomUnits": "seconds",
     "drop": false,
     "allowrate": false,
-    "x": 1780,
-    "y": 230,
+    "x": 1390,
+    "y": 610,
     "wires": [
       [
         "essconfig_fileread"
@@ -1844,8 +1865,8 @@
     "randomUnits": "seconds",
     "drop": false,
     "allowrate": false,
-    "x": 1780,
-    "y": 290,
+    "x": 1910,
+    "y": 610,
     "wires": [
       [
         "essconfig_fileread"
@@ -1865,8 +1886,8 @@
     "sendError": false,
     "encoding": "none",
     "allProps": true,
-    "x": 1800,
-    "y": 150,
+    "x": 870,
+    "y": 610,
     "wires": [
       [
         "essconfig_control"
@@ -1886,8 +1907,8 @@
     "sendError": false,
     "encoding": "none",
     "allProps": true,
-    "x": 1980,
-    "y": 230,
+    "x": 1390,
+    "y": 700,
     "wires": [
       [
         "essconfig_control"
@@ -1906,8 +1927,8 @@
     "createDir": true,
     "overwriteFile": "true",
     "encoding": "none",
-    "x": 2380,
-    "y": 160,
+    "x": 350,
+    "y": 790,
     "wires": [
       []
     ],
@@ -1924,8 +1945,8 @@
     "createDir": true,
     "overwriteFile": "true",
     "encoding": "none",
-    "x": 2380,
-    "y": 230,
+    "x": 870,
+    "y": 790,
     "wires": [
       []
     ],
@@ -1943,8 +1964,8 @@
     "resultsLocationType": "msg",
     "templateLocation": "",
     "templateLocationType": "none",
-    "x": 1480,
-    "y": 470,
+    "x": 1910,
+    "y": 2480,
     "wires": [
       [
         "essaudi_guard001"
@@ -1964,8 +1985,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1330,
-    "y": 210,
+    "x": 870,
+    "y": 2660,
     "wires": [
       [
         "essaudi_climate01"
@@ -1973,7 +1994,8 @@
       [
         "essclimateev_audi_stop"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle"
   },
   {
     "id": "essaudi_climate01",
@@ -1998,8 +2020,8 @@
     "blockInputOverrides": true,
     "domain": "audiconnect",
     "service": "start_climate_control",
-    "x": 1760,
-    "y": 470,
+    "x": 350,
+    "y": 2750,
     "wires": [
       [
         "essaudi_power001"
@@ -2019,13 +2041,14 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1860,
-    "y": 210,
+    "x": 350,
+    "y": 2840,
     "wires": [
       [
         "ess00000000000d"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle"
   },
   {
     "id": "essaudi_device002",
@@ -2039,8 +2062,8 @@
     "resultsLocationType": "msg",
     "templateLocation": "",
     "templateLocationType": "none",
-    "x": 1480,
-    "y": 540,
+    "x": 350,
+    "y": 2570,
     "wires": [
       [
         "essaudi_guard002"
@@ -2060,13 +2083,14 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1330,
-    "y": 250,
+    "x": 1390,
+    "y": 2660,
     "wires": [
       [
         "essaudi_vehicle01"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle"
   },
   {
     "id": "essaudi_vehicle01",
@@ -2091,8 +2115,8 @@
     "blockInputOverrides": true,
     "domain": "audiconnect",
     "service": "execute_vehicle_action",
-    "x": 1760,
-    "y": 540,
+    "x": 1390,
+    "y": 2750,
     "wires": [
       []
     ],
@@ -2110,8 +2134,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1220,
-    "y": 740,
+    "x": 350,
+    "y": 4620,
     "wires": [
       [
         "essloads_comp001"
@@ -2142,8 +2166,8 @@
     "blockInputOverrides": false,
     "domain": "switch",
     "service": "toggle",
-    "x": 1550,
-    "y": 740,
+    "x": 870,
+    "y": 4620,
     "wires": [
       []
     ],
@@ -2170,14 +2194,14 @@
     "topic": "",
     "payload": "",
     "payloadType": "date",
-    "x": 160,
-    "y": 285,
+    "x": 870,
+    "y": 6620,
     "wires": [
       [
         "essp1hist_prepare"
       ]
     ],
-    "g": "esseditor_dash01"
+    "g": "esseditor_history"
   },
   {
     "id": "essp1hist_prepare",
@@ -2191,14 +2215,14 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 410,
-    "y": 285,
+    "x": 350,
+    "y": 6710,
     "wires": [
       [
         "essp1hist_get001"
       ]
     ],
-    "g": "esseditor_dash01"
+    "g": "esseditor_history"
   },
   {
     "id": "essp1hist_get001",
@@ -2217,14 +2241,14 @@
     "outputType": "array",
     "outputLocationType": "msg",
     "outputLocation": "payload",
-    "x": 690,
-    "y": 285,
+    "x": 1390,
+    "y": 6710,
     "wires": [
       [
         "essp1hist_store1"
       ]
     ],
-    "g": "esseditor_dash01"
+    "g": "esseditor_history"
   },
   {
     "id": "essp1hist_catch1",
@@ -2235,10 +2259,10 @@
       "essp1hist_get001"
     ],
     "uncaught": false,
-    "x": 410,
-    "y": 325,
+    "x": 1390,
+    "y": 6620,
     "wires": [],
-    "g": "esseditor_dash01"
+    "g": "esseditor_history"
   },
   {
     "id": "essp1hist_store1",
@@ -2252,10 +2276,10 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 980,
-    "y": 285,
+    "x": 350,
+    "y": 6800,
     "wires": [],
-    "g": "esseditor_dash01"
+    "g": "esseditor_history"
   },
   {
     "id": "esswitexport_inj1",
@@ -2278,8 +2302,8 @@
     "topic": "",
     "payload": "",
     "payloadType": "date",
-    "x": 170,
-    "y": 980,
+    "x": 350,
+    "y": 4840,
     "wires": [
       [
         "esswitexport_ctrl"
@@ -2299,8 +2323,8 @@
     "initialize": "if (flow.get('ess_wit_export_mode') === undefined) flow.set('ess_wit_export_mode', 'auto');",
     "finalize": "",
     "libs": [],
-    "x": 170,
-    "y": 1060,
+    "x": 870,
+    "y": 4840,
     "wires": [
       [
         "esswitexport_ctrl",
@@ -2321,8 +2345,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 450,
-    "y": 1020,
+    "x": 1910,
+    "y": 4930,
     "wires": [
       [
         "esswitexport_auth"
@@ -2359,8 +2383,8 @@
     "blockInputOverrides": true,
     "domain": "select",
     "service": "select_option",
-    "x": 760,
-    "y": 960,
+    "x": 1910,
+    "y": 5020,
     "wires": [
       []
     ],
@@ -2390,8 +2414,8 @@
     "blockInputOverrides": true,
     "domain": "number",
     "service": "set_value",
-    "x": 760,
-    "y": 1020,
+    "x": 350,
+    "y": 5110,
     "wires": [
       []
     ],
@@ -2421,8 +2445,8 @@
     "blockInputOverrides": true,
     "domain": "select",
     "service": "select_option",
-    "x": 760,
-    "y": 1080,
+    "x": 350,
+    "y": 5200,
     "wires": [
       []
     ],
@@ -2441,8 +2465,8 @@
     "initialize": "if (flow.get('ess_wit_audi_buffer_mode') === undefined) flow.set('ess_wit_audi_buffer_mode', 'normal');",
     "finalize": "",
     "libs": [],
-    "x": 260,
-    "y": 1230,
+    "x": 1390,
+    "y": 4840,
     "wires": [
       [
         "esswitaudi_ctrl1",
@@ -2472,8 +2496,8 @@
     "topic": "",
     "payload": "",
     "payloadType": "date",
-    "x": 170,
-    "y": 1140,
+    "x": 1910,
+    "y": 4840,
     "wires": [
       [
         "esswitaudi_ctrl1"
@@ -2493,8 +2517,8 @@
     "initialize": "if (flow.get('ess_wit_audi_discharge_status') === undefined) flow.set('ess_wit_audi_discharge_status', { sessionOwned:false, active:false, status:'Stand-by na herstart', updatedAt:new Date().toISOString() });",
     "finalize": "",
     "libs": [],
-    "x": 450,
-    "y": 1140,
+    "x": 350,
+    "y": 5020,
     "wires": [
       [
         "esswitaudi_time1"
@@ -2537,8 +2561,8 @@
     "blockInputOverrides": true,
     "domain": "number",
     "service": "set_value",
-    "x": 760,
-    "y": 1140,
+    "x": 870,
+    "y": 5110,
     "wires": [
       [
         "esswitaudi_rate1"
@@ -2570,8 +2594,8 @@
     "blockInputOverrides": true,
     "domain": "number",
     "service": "set_value",
-    "x": 1010,
-    "y": 1140,
+    "x": 1390,
+    "y": 5200,
     "wires": [
       [
         "esswitaudi_mode1"
@@ -2603,8 +2627,8 @@
     "blockInputOverrides": true,
     "domain": "select",
     "service": "select_option",
-    "x": 1270,
-    "y": 1140,
+    "x": 350,
+    "y": 5290,
     "wires": [
       []
     ],
@@ -2634,8 +2658,8 @@
     "blockInputOverrides": true,
     "domain": "growatt_modbus",
     "service": "write_registers",
-    "x": 760,
-    "y": 1200,
+    "x": 1910,
+    "y": 5110,
     "wires": [
       [
         "esswit_release_ack"
@@ -2656,8 +2680,8 @@
     "initialize": "if (flow.get('ess_wit_grid_charge_mode') === undefined) flow.set('ess_wit_grid_charge_mode', 'auto'); if (flow.get('ess_wit_grid_charge_target_soc') === undefined) flow.set('ess_wit_grid_charge_target_soc', 80); if (flow.get('ess_wit_grid_charge_status') === undefined) flow.set('ess_wit_grid_charge_status', { sessionOwned:false, active:false, mode:flow.get('ess_wit_grid_charge_mode'), targetSoc:flow.get('ess_wit_grid_charge_target_soc'), status:'Wacht op actuele metingen', selectedSlots:[], updatedAt:new Date().toISOString() });",
     "finalize": "",
     "libs": [],
-    "x": 230,
-    "y": 1340,
+    "x": 350,
+    "y": 4930,
     "wires": [
       [
         "esswitgrid_ctrl1",
@@ -2687,8 +2711,8 @@
     "topic": "",
     "payload": "",
     "payloadType": "date",
-    "x": 170,
-    "y": 1400,
+    "x": 870,
+    "y": 4930,
     "wires": [
       [
         "esswitgrid_ctrl1"
@@ -2708,8 +2732,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 470,
-    "y": 1370,
+    "x": 870,
+    "y": 5020,
     "wires": [
       [
         "esswitgrid_transport_dispatch"
@@ -2755,14 +2779,15 @@
     "blockInputOverrides": true,
     "domain": "number",
     "service": "set_value",
-    "x": 760,
-    "y": 1320,
+    "x": 1390,
+    "y": 4930,
     "wires": [
       [
         "esswitgrid_power"
       ]
     ],
-    "essCanonicalTarget": "number.growatt_grid_remote_power_control_charging_time"
+    "essCanonicalTarget": "number.growatt_grid_remote_power_control_charging_time",
+    "g": "esseditor_wit001"
   },
   {
     "id": "esswitgrid_power",
@@ -2787,8 +2812,8 @@
     "blockInputOverrides": true,
     "domain": "number",
     "service": "set_value",
-    "x": 790,
-    "y": 1340,
+    "x": 1390,
+    "y": 5020,
     "wires": [
       [
         "esswitgrid_mode1"
@@ -2820,8 +2845,8 @@
     "blockInputOverrides": true,
     "domain": "select",
     "service": "select_option",
-    "x": 800,
-    "y": 1400,
+    "x": 870,
+    "y": 5200,
     "wires": [
       []
     ],
@@ -2851,14 +2876,15 @@
     "blockInputOverrides": true,
     "domain": "number",
     "service": "set_value",
-    "x": 790,
-    "y": 1380,
+    "x": 1390,
+    "y": 5110,
     "wires": [
       [
         "esswitgrid_renew"
       ]
     ],
-    "essCanonicalTarget": "number.growatt_battery_remote_charge_and_discharge_power"
+    "essCanonicalTarget": "number.growatt_battery_remote_charge_and_discharge_power",
+    "g": "esseditor_wit001"
   },
   {
     "id": "esswitgrid_renew",
@@ -2883,12 +2909,13 @@
     "blockInputOverrides": true,
     "domain": "select",
     "service": "select_option",
-    "x": 790,
-    "y": 1440,
+    "x": 1910,
+    "y": 5200,
     "wires": [
       []
     ],
-    "essCanonicalTarget": "select.growatt_grid_remote_power_control_enable"
+    "essCanonicalTarget": "select.growatt_grid_remote_power_control_enable",
+    "g": "esseditor_wit001"
   },
   {
     "id": "esswithist_inject",
@@ -2911,14 +2938,14 @@
     "topic": "",
     "payload": "",
     "payloadType": "date",
-    "x": 170,
-    "y": 1500,
+    "x": 1910,
+    "y": 6620,
     "wires": [
       [
         "esswithist_prep1"
       ]
     ],
-    "g": "esseditor_wit001"
+    "g": "esseditor_history"
   },
   {
     "id": "esswithist_prep1",
@@ -2932,14 +2959,14 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 450,
-    "y": 1500,
+    "x": 870,
+    "y": 6710,
     "wires": [
       [
         "esswithist_api001"
       ]
     ],
-    "g": "esseditor_wit001"
+    "g": "esseditor_history"
   },
   {
     "id": "esswithist_api001",
@@ -2956,12 +2983,12 @@
     "dataType": "jsonata",
     "responseType": "json",
     "outputProperties": [],
-    "x": 790,
-    "y": 1500,
+    "x": 1910,
+    "y": 6710,
     "wires": [
       []
     ],
-    "g": "esseditor_wit001"
+    "g": "esseditor_history"
   },
   {
     "id": "esslights_ctrl01",
@@ -2975,8 +3002,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1220,
-    "y": 930,
+    "x": 350,
+    "y": 4310,
     "wires": [
       [
         "esslights_on001"
@@ -3013,8 +3040,8 @@
     "blockInputOverrides": false,
     "domain": "light",
     "service": "turn_on",
-    "x": 1590,
-    "y": 900,
+    "x": 870,
+    "y": 4310,
     "wires": [
       []
     ],
@@ -3043,8 +3070,8 @@
     "blockInputOverrides": false,
     "domain": "light",
     "service": "turn_off",
-    "x": 1590,
-    "y": 960,
+    "x": 1390,
+    "y": 4310,
     "wires": [
       []
     ],
@@ -3062,8 +3089,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1220,
-    "y": 1180,
+    "x": 350,
+    "y": 3060,
     "wires": [
       [
         "essclimate_temp1"
@@ -3103,8 +3130,8 @@
     "blockInputOverrides": false,
     "domain": "climate",
     "service": "set_temperature",
-    "x": 1600,
-    "y": 1100,
+    "x": 1390,
+    "y": 3150,
     "wires": [
       []
     ],
@@ -3133,8 +3160,8 @@
     "blockInputOverrides": false,
     "domain": "climate",
     "service": "set_hvac_mode",
-    "x": 1600,
-    "y": 1150,
+    "x": 1910,
+    "y": 3150,
     "wires": [
       []
     ],
@@ -3163,8 +3190,8 @@
     "blockInputOverrides": false,
     "domain": "water_heater",
     "service": "set_temperature",
-    "x": 1600,
-    "y": 1210,
+    "x": 350,
+    "y": 3240,
     "wires": [
       []
     ],
@@ -3193,8 +3220,8 @@
     "blockInputOverrides": false,
     "domain": "water_heater",
     "service": "set_operation_mode",
-    "x": 1600,
-    "y": 1260,
+    "x": 870,
+    "y": 3240,
     "wires": [
       []
     ],
@@ -3216,8 +3243,8 @@
     "once": true,
     "onceDelay": "3",
     "topic": "ess/audi/apply-defaults",
-    "x": 170,
-    "y": 420,
+    "x": 1910,
+    "y": 1320,
     "wires": [
       [
         "essaudi_defaults1"
@@ -3244,8 +3271,8 @@
         "valueType": "eventData"
       }
     ],
-    "x": 170,
-    "y": 455,
+    "x": 350,
+    "y": 1410,
     "wires": [
       [
         "essaudi_defaults1"
@@ -3265,8 +3292,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 360,
-    "y": 625,
+    "x": 1910,
+    "y": 1410,
     "wires": [
       [
         "ess00000000000d"
@@ -3294,8 +3321,8 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 560,
-    "y": 675,
+    "x": 1910,
+    "y": 1590,
     "wires": [
       [
         "ess00000000000f"
@@ -3326,287 +3353,17 @@
     "blockInputOverrides": true,
     "domain": "persistent_notification",
     "service": "create",
-    "x": 800,
-    "y": 675,
+    "x": 350,
+    "y": 1680,
     "wires": [
       []
     ],
     "g": "esseditor_audi01"
   },
   {
-    "id": "esseditor_dash01",
-    "type": "group",
     "z": "ess000000000001",
-    "name": "1 · Dashboarddata en pagina’s",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#dbeafe",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "ess000000000002",
-      "ess00000000000a",
-      "ess000000000003",
-      "essp1hist_inject",
-      "essp1hist_prepare",
-      "essp1hist_get001",
-      "essp1hist_store1",
-      "essp1hist_catch1",
-      "ess000000000004",
-      "esstpl_energy001",
-      "esstpl_battery01",
-      "esstpl_ev0000001",
-      "esstpl_loads0001",
-      "esstpl_lights001",
-      "esstpl_climate01",
-      "esstpl_system001"
-    ],
-    "x": 50,
-    "y": 40,
-    "w": 1410,
-    "h": 340
-  },
-  {
-    "id": "esseditor_audi01",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "2 · EV slim laden",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#ede9fe",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "essaudi_defaults_inj",
-      "essaudi_ha_events",
-      "essaudi_defaults1",
-      "ess000000000009",
-      "ess00000000000d",
-      "ess000000000020",
-      "ess000000000021",
-      "ess000000000010",
-      "ess00000000000e",
-      "ess00000000000f",
-      "ess000000000017",
-      "ess000000000018",
-      "ess000000000019",
-      "essaudi_recovery_delay",
-      "essaudi_recovery_note"
-    ],
-    "x": 50,
-    "y": 380,
-    "w": 930,
-    "h": 340
-  },
-  {
-    "id": "esseditor_vehicle",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "3 · EV instellingen en voertuigacties",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#fef3c7",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "ess00000000000c",
-      "ess000000000012",
-      "essaudi_device001",
-      "essaudi_climate01",
-      "essaudi_device002",
-      "essaudi_vehicle01"
-    ],
-    "x": 1040,
-    "y": 380,
-    "w": 880,
-    "h": 260
-  },
-  {
-    "id": "esseditor_loads1",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "4 · Schakelbare verbruikers",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#dcfce7",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "essloads_control1",
-      "essloads_comp001"
-    ],
-    "x": 1040,
-    "y": 670,
-    "w": 720,
-    "h": 140
-  },
-  {
-    "id": "esseditor_prices1",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "6 · Nord Pool-planning",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#fef9c3",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "ess000000000013",
-      "ess000000000014",
-      "ess000000000015",
-      "ess000000000016"
-    ],
-    "x": 50,
-    "y": 740,
-    "w": 930,
-    "h": 160
-  },
-  {
-    "id": "esseditor_lights1",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "5 · Verlichting per ruimte",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#fef3c7",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "esslights_ctrl01",
-      "esslights_on001",
-      "esslights_off01"
-    ],
-    "x": 1040,
-    "y": 850,
-    "w": 880,
-    "h": 170
-  },
-  {
-    "id": "esseditor_climate",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "7 · Klimaatbediening",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#cffafe",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "essclimate_ctrl1",
-      "essclimate_temp1",
-      "essclimate_mode1",
-      "esswater_temp001",
-      "esswater_mode001"
-    ],
-    "x": 1040,
-    "y": 1050,
-    "w": 880,
-    "h": 280
-  },
-  {
-    "id": "esseditor_config",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "9 · Lokale configuratie en privacy",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#f3e8ff",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "esstpl_config001",
-      "essconfig_readin",
-      "essconfig_bakread",
-      "essconfig_readdelay",
-      "essconfig_retrydelay",
-      "essconfig_fileread",
-      "essconfig_control",
-      "essconfig_filewrite",
-      "essconfig_bakwrite"
-    ],
-    "x": 1480,
-    "y": 40,
-    "w": 960,
-    "h": 360
-  },
-  {
-    "id": "esseditor_wit001",
-    "type": "group",
-    "z": "ess000000000001",
-    "name": "8 · WIT export, netladen en EV-buffer",
-    "style": {
-      "stroke": "#94a3b8",
-      "stroke-opacity": "1",
-      "fill": "#dbeafe",
-      "fill-opacity": "0.28",
-      "label": true,
-      "label-position": "nw",
-      "color": "#334155"
-    },
-    "nodes": [
-      "esswitexport_inj1",
-      "esswitexport_mode",
-      "esswitexport_ctrl",
-      "esswitexport_auth",
-      "esswitexport_rate",
-      "esswitexport_sel1",
-      "esswitaudi_inj01",
-      "esswitaudi_ctrl1",
-      "esswitaudi_time1",
-      "esswitaudi_rate1",
-      "esswitaudi_mode1",
-      "esswitaudi_stop1",
-      "esswitaudi_profile",
-      "esswitgrid_set01",
-      "esswitgrid_inj01",
-      "esswitgrid_ctrl1",
-      "esswitgrid_power",
-      "esswitgrid_mode1",
-      "esswithist_inject",
-      "esswithist_prep1",
-      "esswithist_api001"
-    ],
-    "x": 50,
-    "y": 920,
-    "w": 1400,
-    "h": 650
-  },
-  {
-    "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 1390,
+    "y": 520,
     "id": "essprefs_inject",
     "type": "inject",
     "name": "Lees bewaarde laadinstellingen",
@@ -3625,12 +3382,13 @@
       [
         "essprefs_read"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 350,
+    "y": 700,
     "id": "essprefs_read",
     "type": "file in",
     "name": "Lees laadinstellingen buiten Git",
@@ -3645,12 +3403,13 @@
       [
         "essprefs_restore"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 1390,
+    "y": 790,
     "id": "essprefs_backup_read",
     "type": "file in",
     "name": "Lees reservekopie laadinstellingen",
@@ -3665,12 +3424,13 @@
       [
         "essprefs_restore"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 1910,
+    "y": 520,
     "id": "essprefs_read_error",
     "type": "catch",
     "name": "Vang leesfout laadinstellingen op",
@@ -3683,12 +3443,13 @@
       [
         "essprefs_restore"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 1910,
+    "y": 790,
     "id": "essprefs_restore",
     "type": "function",
     "name": "Herstel laadvoorkeuren veilig",
@@ -3707,12 +3468,13 @@
       [
         "essprefs_backup_read"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 350,
+    "y": 880,
     "id": "essprefs_save",
     "type": "function",
     "name": "Bewaar alleen laadvoorkeuren",
@@ -3727,12 +3489,13 @@
       [
         "essprefs_write"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 870,
+    "y": 880,
     "id": "essprefs_write",
     "type": "file",
     "name": "Bewaar laadinstellingen buiten Git",
@@ -3746,12 +3509,13 @@
       [
         "essprefs_backup_write"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 1390,
+    "y": 880,
     "id": "essprefs_backup_write",
     "type": "file",
     "name": "Bewaar reservekopie laadinstellingen",
@@ -3767,12 +3531,13 @@
         "essclim_dispatch",
         "essclim_hyst_dispatch"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 1910,
+    "y": 880,
     "id": "essprefs_saved",
     "type": "function",
     "name": "Bevestig opgeslagen laadinstellingen",
@@ -3783,12 +3548,13 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "wires": []
+    "wires": [],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 350,
+    "y": 610,
     "id": "essprefs_write_error",
     "type": "catch",
     "name": "Meld niet bewaarde laadinstellingen",
@@ -3801,12 +3567,13 @@
       [
         "essprefs_warn"
       ]
-    ]
+    ],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 1700,
+    "x": 870,
+    "y": 700,
     "id": "essprefs_warn",
     "type": "function",
     "name": "Waarschuw bij opslagfout",
@@ -3817,12 +3584,13 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "wires": []
+    "wires": [],
+    "g": "esseditor_config"
   },
   {
     "z": "ess000000000001",
-    "x": 200,
-    "y": 1900,
+    "x": 870,
+    "y": 3060,
     "id": "essclim_tick",
     "type": "inject",
     "name": "Bewaak klimaat en tapwater",
@@ -3842,12 +3610,13 @@
         "essclim_plan",
         "essclim_hyst_plan"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 520,
-    "y": 1900,
+    "x": 1390,
+    "y": 3240,
     "id": "essclim_plan",
     "type": "function",
     "name": "Plan woonkamer badkamer en tapwater",
@@ -3865,12 +3634,13 @@
       [
         "esswithist_api001"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 1900,
+    "x": 1390,
+    "y": 3060,
     "id": "essclim_settings",
     "type": "function",
     "name": "Bewaar klimaatvoorkeuren",
@@ -3885,12 +3655,13 @@
       [
         "essprefs_save"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 1160,
-    "y": 1900,
+    "x": 1910,
+    "y": 3060,
     "id": "essclim_dispatch",
     "type": "function",
     "name": "Controleer opgeslagen klimaatopdracht",
@@ -3908,12 +3679,13 @@
       [
         "essclim_water"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 200,
-    "y": 2000,
+    "x": 870,
+    "y": 3330,
     "id": "essclim_error",
     "type": "function",
     "name": "Meld mislukte klimaatopdracht",
@@ -3928,12 +3700,13 @@
       [
         "essprefs_save"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 520,
-    "y": 2000,
+    "x": 350,
+    "y": 3150,
     "id": "essclim_catch",
     "type": "catch",
     "name": "Vang klimaatbedienfout op",
@@ -3946,12 +3719,13 @@
       [
         "essclim_error"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 1910,
+    "y": 3240,
     "id": "essclim_tado",
     "type": "api-call-service",
     "name": "tado.set_climate_timer",
@@ -3975,12 +3749,13 @@
     "service": "set_climate_timer",
     "wires": [
       []
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 1160,
-    "y": 2000,
+    "x": 350,
+    "y": 3330,
     "id": "essclim_water",
     "type": "api-call-service",
     "name": "water_heater.set_temperature",
@@ -4004,12 +3779,13 @@
     "service": "set_temperature",
     "wires": [
       []
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 200,
-    "y": 2100,
+    "x": 870,
+    "y": 3150,
     "id": "essclim_weather_tick",
     "type": "inject",
     "name": "Lees uurverwachting",
@@ -4028,12 +3804,13 @@
       [
         "essclim_weather_request"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 520,
-    "y": 2100,
+    "x": 1390,
+    "y": 3330,
     "id": "essclim_weather_request",
     "type": "function",
     "name": "Vraag gekoppelde uurverwachting",
@@ -4048,12 +3825,13 @@
       [
         "essclim_weather_api"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2100,
+    "x": 1910,
+    "y": 3330,
     "id": "essclim_weather_api",
     "type": "ha-api",
     "name": "Lees HA-uurverwachting",
@@ -4078,12 +3856,13 @@
       [
         "essclim_weather_parse"
       ]
-    ]
+    ],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 1160,
-    "y": 2100,
+    "x": 350,
+    "y": 3420,
     "id": "essclim_weather_parse",
     "type": "function",
     "name": "Bewaar gevalideerde uurverwachting",
@@ -4094,12 +3873,13 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "wires": []
+    "wires": [],
+    "g": "esseditor_climate"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 1920,
+    "x": 870,
+    "y": 4090,
     "id": "essclim_hyst_plan",
     "type": "function",
     "name": "Gezamenlijke warmtevraag uit fysieke thermostaten",
@@ -4117,12 +3897,13 @@
       [
         "esswithist_api001"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 1920,
+    "x": 350,
+    "y": 3640,
     "id": "essclim_hyst_dispatch",
     "type": "function",
     "name": "Controleer opgeslagen aparte warmteopdracht",
@@ -4152,12 +3933,13 @@
       [
         "essclim_hyst_room_off"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 1920,
+    "x": 1910,
+    "y": 3910,
     "id": "essclim_hyst_accepted",
     "type": "function",
     "name": "Bewaar geaccepteerde warmteopdracht",
@@ -4172,12 +3954,13 @@
       [
         "essprefs_save"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 1920,
+    "x": 1910,
+    "y": 3820,
     "id": "essclim_hyst_error",
     "type": "function",
     "name": "Meld fout aparte verwarmingsbediening",
@@ -4192,12 +3975,13 @@
       [
         "essprefs_save"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 1920,
+    "x": 870,
+    "y": 3640,
     "id": "essclim_hyst_catch",
     "type": "catch",
     "name": "Fout aparte verwarmingsbediening",
@@ -4214,12 +3998,13 @@
       [
         "essclim_hyst_error"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 870,
+    "y": 3820,
     "id": "essclim_hyst_room_on",
     "type": "api-call-service",
     "name": "Aparte warmtevraag room_on",
@@ -4245,12 +4030,13 @@
       [
         "essclim_hyst_accepted"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 1390,
+    "y": 3820,
     "id": "essclim_hyst_room_off",
     "type": "api-call-service",
     "name": "Aparte warmtevraag room_off",
@@ -4276,12 +4062,13 @@
       [
         "essclim_hyst_accepted"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 870,
+    "y": 3730,
     "id": "essclim_hyst_heat",
     "type": "api-call-service",
     "name": "Aparte warmtevraag heat",
@@ -4307,12 +4094,13 @@
       [
         "essclim_hyst_accepted"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 1390,
+    "y": 3730,
     "id": "essclim_hyst_off",
     "type": "api-call-service",
     "name": "Aparte warmtevraag off",
@@ -4338,12 +4126,13 @@
       [
         "essclim_hyst_accepted"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 1910,
+    "y": 3730,
     "id": "essclim_hyst_switch_on",
     "type": "api-call-service",
     "name": "Aparte warmtevraag switch_on",
@@ -4369,12 +4158,13 @@
       [
         "essclim_hyst_accepted"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 350,
+    "y": 3820,
     "id": "essclim_hyst_switch_off",
     "type": "api-call-service",
     "name": "Aparte warmtevraag switch_off",
@@ -4400,12 +4190,13 @@
       [
         "essclim_hyst_accepted"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 2220,
+    "x": 1390,
+    "y": 3640,
     "id": "essclim_hk_tick",
     "type": "inject",
     "name": "Lees herkomst klimaatzones",
@@ -4424,12 +4215,13 @@
       [
         "essclim_hk_registry"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 2220,
+    "x": 350,
+    "y": 3910,
     "id": "essclim_hk_registry",
     "type": "ha-api",
     "name": "Lees HA klimaat-entiteitenregister",
@@ -4454,12 +4246,13 @@
       [
         "essclim_hk_parse"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 600,
-    "y": 2220,
+    "x": 350,
+    "y": 4000,
     "id": "essclim_hk_parse",
     "type": "function",
     "name": "Bewaar geverifieerde klimaatintegraties",
@@ -4470,7 +4263,8 @@
     "finalize": "",
     "libs": [],
     "wires": [],
-    "func": "const result=msg.registryReply?.result||msg.registryReply;\nif(!Array.isArray(result)) return null;\nconst entities={};for(const e of result) if(/^climate\\.[a-z0-9_]+$/.test(e.entity_id||'')) entities[e.entity_id]={platform:e.platform};\nflow.set('ess_climate_registry',{at:Date.now(),entities});return null;"
+    "func": "const result=msg.registryReply?.result||msg.registryReply;\nif(!Array.isArray(result)) return null;\nconst entities={};for(const e of result) if(/^climate\\.[a-z0-9_]+$/.test(e.entity_id||'')) entities[e.entity_id]={platform:e.platform};\nflow.set('ess_climate_registry',{at:Date.now(),entities});return null;",
+    "g": "esseditor_homekit"
   },
   {
     "id": "essjeep_ess00000000000d",
@@ -4484,8 +4278,8 @@
     "initialize": "if (flow.get('ess_jeep_smart_enabled') === undefined) flow.set('ess_jeep_smart_enabled', false); flow.set('ess_jeep_restart_grace_until', Date.now() + 120000);",
     "finalize": "",
     "libs": [],
-    "x": 280,
-    "y": 1985,
+    "x": 1910,
+    "y": 1900,
     "wires": [
       [
         "essjeep_guard_ess00000000000e",
@@ -4497,7 +4291,8 @@
       [
         "essjeep_guard_ess000000000017"
       ]
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess00000000000e",
@@ -4522,11 +4317,12 @@
     "blockInputOverrides": true,
     "domain": "easee",
     "service": "set_charger_dynamic_limit",
-    "x": 800,
-    "y": 1970,
+    "x": 1910,
+    "y": 1990,
     "wires": [
       []
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess00000000000f",
@@ -4551,11 +4347,12 @@
     "blockInputOverrides": true,
     "domain": "easee",
     "service": "action_command",
-    "x": 800,
-    "y": 2020,
+    "x": 870,
+    "y": 2170,
     "wires": [
       []
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess000000000017",
@@ -4580,11 +4377,12 @@
     "blockInputOverrides": true,
     "domain": "easee",
     "service": "set_charger_phase_mode",
-    "x": 800,
-    "y": 2070,
+    "x": 870,
+    "y": 2080,
     "wires": [
       []
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess000000000018",
@@ -4603,13 +4401,14 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 560,
-    "y": 2125,
+    "x": 870,
+    "y": 1990,
     "wires": [
       [
         "essjeep_ess000000000019"
       ]
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess000000000019",
@@ -4623,8 +4422,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 800,
-    "y": 2125,
+    "x": 350,
+    "y": 2080,
     "wires": [
       [
         "essjeep_guard_ess00000000000f"
@@ -4635,7 +4434,8 @@
       [
         "essjeep_essaudi_recovery_note"
       ]
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess000000000020",
@@ -4654,13 +4454,14 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 280,
-    "y": 2055,
+    "x": 350,
+    "y": 1900,
     "wires": [
       [
         "essjeep_ess000000000021"
       ]
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_ess000000000021",
@@ -4674,13 +4475,14 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 560,
-    "y": 2055,
+    "x": 1390,
+    "y": 1900,
     "wires": [
       [
         "essjeep_guard_ess00000000000f"
       ]
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_essaudi_recovery_delay",
@@ -4699,13 +4501,14 @@
     "drop": false,
     "allowrate": false,
     "outputs": 1,
-    "x": 560,
-    "y": 2175,
+    "x": 1390,
+    "y": 2080,
     "wires": [
       [
         "essjeep_guard_ess00000000000f"
       ]
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_essaudi_recovery_note",
@@ -4730,11 +4533,12 @@
     "blockInputOverrides": true,
     "domain": "persistent_notification",
     "service": "create",
-    "x": 800,
-    "y": 2175,
+    "x": 1910,
+    "y": 2080,
     "wires": [
       []
-    ]
+    ],
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_guard_ess00000000000e",
@@ -4746,14 +4550,15 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 600,
-    "y": 2400,
+    "x": 350,
+    "y": 1990,
     "wires": [
       [
         "essjeep_ess00000000000e"
       ]
     ],
-    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\nfunction jeepVehicle(states, entities = {}, now = Date.now()) {\n    const configured = entities['sensor.ev_2_state_of_charge'];\n    const candidates = Object.keys(states).filter(id => /^sensor\\..*jeep.*_hvbattery_charge$/.test(id));\n    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;\n    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };\n    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');\n    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];\n    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };\n    const updatedAt = entity('last_info_update_at')?.state;\n    const age = now-Date.parse(updatedAt);\n    const soc=read('hvbattery_charge');\n    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;\n    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');\n    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};\n}\nfunction jeepSoc(states, entities, remembered, now) {\n    const vehicle=jeepVehicle(states,entities,now);\n    const configured=entities?.['sensor.ev_2_state_of_charge'];\n    const ambiguous=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id)).length>1;\n    const anchor=vehicle.anchor||(configured&&configured!=='sensor.ev_2_state_of_charge'?configured:!ambiguous?remembered?.anchor:null);\n    const valid=sample=>anchor&&sample&&sample.anchor===anchor&&Number.isFinite(sample.soc)&&sample.soc>=0&&sample.soc<=100&&Number.isFinite(sample.reportedAt)&&sample.reportedAt<=now;\n    const reportedAt=Date.parse(vehicle.updatedAt);\n    if(anchor&&vehicle.soc!==null&&vehicle.soc>=0&&vehicle.soc<=100&&Number.isFinite(reportedAt)&&reportedAt<=now&&(!valid(remembered)||reportedAt>=remembered.reportedAt))return {anchor,soc:vehicle.soc,reportedAt,at:now,source:'auto'};\n    return valid(remembered)?{...remembered,at:now,source:'last-known'}:null;\n}\nfunction currentJeepSoc(){const explicit=explicitCarSoc('jeep');if(explicit.soc!==null)return {soc:explicit.soc,at:Date.now(),reportedAt:flow.get('ess_jeep_explicit_soc').at,source:'manual',anchor:explicit.anchor};const sample=jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_last_soc'),Date.now());if(sample)flow.set('ess_jeep_last_soc',sample);return sample;}\n\nconst ha=global.get('homeassistant')?.homeAssistant,config=flow.get('ess_system_config')||{},states=ha?.states;\nif(!states || ha.isConnected===false)return null;\nconst right=states[config.entities?.['sensor.ev_charger_2_status']||'sensor.ev_charger_2_status'];\nconst left=states[config.entities?.['sensor.ev_charger_status']||'sensor.ev_charger_status'];\nconst id=right?.attributes?.id;\nif(!id || id===left?.attributes?.id || msg.payload?.chargerId!==id)return null;\nconst stopping=msg.payload.command==='stop' || msg.payload.current===0;\nif(!stopping){const manual=currentJeepSoc(),now=Date.now();\n    const climateLease=Number(flow.get('ess_jeep_climate_power_support')?.expiresAt)>now;\n    if(right.state==='disconnected'||!climateLease&&(flow.get('ess_jeep_smart_enabled')!==true||!manual||now-manual.at<0||now-manual.at>43200000))return null;\n    if((msg.payload.command==='start' || Number(msg.payload.current)>0) && !(flow.get('ess_jeep_control_status')?.targetCurrent>=6))return null;\n}\nreturn msg;"
+    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\nfunction jeepVehicle(states, entities = {}, now = Date.now()) {\n    const configured = entities['sensor.ev_2_state_of_charge'];\n    const candidates = Object.keys(states).filter(id => /^sensor\\..*jeep.*_hvbattery_charge$/.test(id));\n    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;\n    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };\n    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');\n    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];\n    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };\n    const updatedAt = entity('last_info_update_at')?.state;\n    const age = now-Date.parse(updatedAt);\n    const soc=read('hvbattery_charge');\n    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;\n    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');\n    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};\n}\nfunction jeepSoc(states, entities, remembered, now) {\n    const vehicle=jeepVehicle(states,entities,now);\n    const configured=entities?.['sensor.ev_2_state_of_charge'];\n    const ambiguous=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id)).length>1;\n    const anchor=vehicle.anchor||(configured&&configured!=='sensor.ev_2_state_of_charge'?configured:!ambiguous?remembered?.anchor:null);\n    const valid=sample=>anchor&&sample&&sample.anchor===anchor&&Number.isFinite(sample.soc)&&sample.soc>=0&&sample.soc<=100&&Number.isFinite(sample.reportedAt)&&sample.reportedAt<=now;\n    const reportedAt=Date.parse(vehicle.updatedAt);\n    if(anchor&&vehicle.soc!==null&&vehicle.soc>=0&&vehicle.soc<=100&&Number.isFinite(reportedAt)&&reportedAt<=now&&(!valid(remembered)||reportedAt>=remembered.reportedAt))return {anchor,soc:vehicle.soc,reportedAt,at:now,source:'auto'};\n    return valid(remembered)?{...remembered,at:now,source:'last-known'}:null;\n}\nfunction currentJeepSoc(){const explicit=explicitCarSoc('jeep');if(explicit.soc!==null)return {soc:explicit.soc,at:Date.now(),reportedAt:flow.get('ess_jeep_explicit_soc').at,source:'manual',anchor:explicit.anchor};const sample=jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_last_soc'),Date.now());if(sample)flow.set('ess_jeep_last_soc',sample);return sample;}\n\nconst ha=global.get('homeassistant')?.homeAssistant,config=flow.get('ess_system_config')||{},states=ha?.states;\nif(!states || ha.isConnected===false)return null;\nconst right=states[config.entities?.['sensor.ev_charger_2_status']||'sensor.ev_charger_2_status'];\nconst left=states[config.entities?.['sensor.ev_charger_status']||'sensor.ev_charger_status'];\nconst id=right?.attributes?.id;\nif(!id || id===left?.attributes?.id || msg.payload?.chargerId!==id)return null;\nconst stopping=msg.payload.command==='stop' || msg.payload.current===0;\nif(!stopping){const manual=currentJeepSoc(),now=Date.now();\n    const climateLease=Number(flow.get('ess_jeep_climate_power_support')?.expiresAt)>now;\n    if(right.state==='disconnected'||!climateLease&&(flow.get('ess_jeep_smart_enabled')!==true||!manual||now-manual.at<0||now-manual.at>43200000))return null;\n    if((msg.payload.command==='start' || Number(msg.payload.current)>0) && !(flow.get('ess_jeep_control_status')?.targetCurrent>=6))return null;\n}\nreturn msg;",
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_guard_ess00000000000f",
@@ -4765,14 +4570,15 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 600,
-    "y": 2400,
+    "x": 350,
+    "y": 2170,
     "wires": [
       [
         "essjeep_ess00000000000f"
       ]
     ],
-    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\nfunction jeepVehicle(states, entities = {}, now = Date.now()) {\n    const configured = entities['sensor.ev_2_state_of_charge'];\n    const candidates = Object.keys(states).filter(id => /^sensor\\..*jeep.*_hvbattery_charge$/.test(id));\n    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;\n    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };\n    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');\n    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];\n    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };\n    const updatedAt = entity('last_info_update_at')?.state;\n    const age = now-Date.parse(updatedAt);\n    const soc=read('hvbattery_charge');\n    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;\n    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');\n    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};\n}\nfunction jeepSoc(states, entities, remembered, now) {\n    const vehicle=jeepVehicle(states,entities,now);\n    const configured=entities?.['sensor.ev_2_state_of_charge'];\n    const ambiguous=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id)).length>1;\n    const anchor=vehicle.anchor||(configured&&configured!=='sensor.ev_2_state_of_charge'?configured:!ambiguous?remembered?.anchor:null);\n    const valid=sample=>anchor&&sample&&sample.anchor===anchor&&Number.isFinite(sample.soc)&&sample.soc>=0&&sample.soc<=100&&Number.isFinite(sample.reportedAt)&&sample.reportedAt<=now;\n    const reportedAt=Date.parse(vehicle.updatedAt);\n    if(anchor&&vehicle.soc!==null&&vehicle.soc>=0&&vehicle.soc<=100&&Number.isFinite(reportedAt)&&reportedAt<=now&&(!valid(remembered)||reportedAt>=remembered.reportedAt))return {anchor,soc:vehicle.soc,reportedAt,at:now,source:'auto'};\n    return valid(remembered)?{...remembered,at:now,source:'last-known'}:null;\n}\nfunction currentJeepSoc(){const explicit=explicitCarSoc('jeep');if(explicit.soc!==null)return {soc:explicit.soc,at:Date.now(),reportedAt:flow.get('ess_jeep_explicit_soc').at,source:'manual',anchor:explicit.anchor};const sample=jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_last_soc'),Date.now());if(sample)flow.set('ess_jeep_last_soc',sample);return sample;}\n\nconst ha=global.get('homeassistant')?.homeAssistant,config=flow.get('ess_system_config')||{},states=ha?.states;\nif(!states || ha.isConnected===false)return null;\nconst right=states[config.entities?.['sensor.ev_charger_2_status']||'sensor.ev_charger_2_status'];\nconst left=states[config.entities?.['sensor.ev_charger_status']||'sensor.ev_charger_status'];\nconst id=right?.attributes?.id;\nif(!id || id===left?.attributes?.id || msg.payload?.chargerId!==id)return null;\nconst stopping=msg.payload.command==='stop' || msg.payload.current===0;\nif(!stopping){const manual=currentJeepSoc(),now=Date.now();\n    const climateLease=Number(flow.get('ess_jeep_climate_power_support')?.expiresAt)>now;\n    if(right.state==='disconnected'||!climateLease&&(flow.get('ess_jeep_smart_enabled')!==true||!manual||now-manual.at<0||now-manual.at>43200000))return null;\n    if((msg.payload.command==='start' || Number(msg.payload.current)>0) && !(flow.get('ess_jeep_control_status')?.targetCurrent>=6))return null;\n}\nreturn msg;"
+    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\nfunction jeepVehicle(states, entities = {}, now = Date.now()) {\n    const configured = entities['sensor.ev_2_state_of_charge'];\n    const candidates = Object.keys(states).filter(id => /^sensor\\..*jeep.*_hvbattery_charge$/.test(id));\n    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;\n    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };\n    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');\n    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];\n    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };\n    const updatedAt = entity('last_info_update_at')?.state;\n    const age = now-Date.parse(updatedAt);\n    const soc=read('hvbattery_charge');\n    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;\n    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');\n    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};\n}\nfunction jeepSoc(states, entities, remembered, now) {\n    const vehicle=jeepVehicle(states,entities,now);\n    const configured=entities?.['sensor.ev_2_state_of_charge'];\n    const ambiguous=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id)).length>1;\n    const anchor=vehicle.anchor||(configured&&configured!=='sensor.ev_2_state_of_charge'?configured:!ambiguous?remembered?.anchor:null);\n    const valid=sample=>anchor&&sample&&sample.anchor===anchor&&Number.isFinite(sample.soc)&&sample.soc>=0&&sample.soc<=100&&Number.isFinite(sample.reportedAt)&&sample.reportedAt<=now;\n    const reportedAt=Date.parse(vehicle.updatedAt);\n    if(anchor&&vehicle.soc!==null&&vehicle.soc>=0&&vehicle.soc<=100&&Number.isFinite(reportedAt)&&reportedAt<=now&&(!valid(remembered)||reportedAt>=remembered.reportedAt))return {anchor,soc:vehicle.soc,reportedAt,at:now,source:'auto'};\n    return valid(remembered)?{...remembered,at:now,source:'last-known'}:null;\n}\nfunction currentJeepSoc(){const explicit=explicitCarSoc('jeep');if(explicit.soc!==null)return {soc:explicit.soc,at:Date.now(),reportedAt:flow.get('ess_jeep_explicit_soc').at,source:'manual',anchor:explicit.anchor};const sample=jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_last_soc'),Date.now());if(sample)flow.set('ess_jeep_last_soc',sample);return sample;}\n\nconst ha=global.get('homeassistant')?.homeAssistant,config=flow.get('ess_system_config')||{},states=ha?.states;\nif(!states || ha.isConnected===false)return null;\nconst right=states[config.entities?.['sensor.ev_charger_2_status']||'sensor.ev_charger_2_status'];\nconst left=states[config.entities?.['sensor.ev_charger_status']||'sensor.ev_charger_status'];\nconst id=right?.attributes?.id;\nif(!id || id===left?.attributes?.id || msg.payload?.chargerId!==id)return null;\nconst stopping=msg.payload.command==='stop' || msg.payload.current===0;\nif(!stopping){const manual=currentJeepSoc(),now=Date.now();\n    const climateLease=Number(flow.get('ess_jeep_climate_power_support')?.expiresAt)>now;\n    if(right.state==='disconnected'||!climateLease&&(flow.get('ess_jeep_smart_enabled')!==true||!manual||now-manual.at<0||now-manual.at>43200000))return null;\n    if((msg.payload.command==='start' || Number(msg.payload.current)>0) && !(flow.get('ess_jeep_control_status')?.targetCurrent>=6))return null;\n}\nreturn msg;",
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_guard_ess000000000017",
@@ -4784,14 +4590,15 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 600,
-    "y": 2400,
+    "x": 1390,
+    "y": 1990,
     "wires": [
       [
         "essjeep_ess000000000017"
       ]
     ],
-    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\nfunction jeepVehicle(states, entities = {}, now = Date.now()) {\n    const configured = entities['sensor.ev_2_state_of_charge'];\n    const candidates = Object.keys(states).filter(id => /^sensor\\..*jeep.*_hvbattery_charge$/.test(id));\n    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;\n    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };\n    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');\n    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];\n    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };\n    const updatedAt = entity('last_info_update_at')?.state;\n    const age = now-Date.parse(updatedAt);\n    const soc=read('hvbattery_charge');\n    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;\n    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');\n    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};\n}\nfunction jeepSoc(states, entities, remembered, now) {\n    const vehicle=jeepVehicle(states,entities,now);\n    const configured=entities?.['sensor.ev_2_state_of_charge'];\n    const ambiguous=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id)).length>1;\n    const anchor=vehicle.anchor||(configured&&configured!=='sensor.ev_2_state_of_charge'?configured:!ambiguous?remembered?.anchor:null);\n    const valid=sample=>anchor&&sample&&sample.anchor===anchor&&Number.isFinite(sample.soc)&&sample.soc>=0&&sample.soc<=100&&Number.isFinite(sample.reportedAt)&&sample.reportedAt<=now;\n    const reportedAt=Date.parse(vehicle.updatedAt);\n    if(anchor&&vehicle.soc!==null&&vehicle.soc>=0&&vehicle.soc<=100&&Number.isFinite(reportedAt)&&reportedAt<=now&&(!valid(remembered)||reportedAt>=remembered.reportedAt))return {anchor,soc:vehicle.soc,reportedAt,at:now,source:'auto'};\n    return valid(remembered)?{...remembered,at:now,source:'last-known'}:null;\n}\nfunction currentJeepSoc(){const explicit=explicitCarSoc('jeep');if(explicit.soc!==null)return {soc:explicit.soc,at:Date.now(),reportedAt:flow.get('ess_jeep_explicit_soc').at,source:'manual',anchor:explicit.anchor};const sample=jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_last_soc'),Date.now());if(sample)flow.set('ess_jeep_last_soc',sample);return sample;}\n\nconst ha=global.get('homeassistant')?.homeAssistant,config=flow.get('ess_system_config')||{},states=ha?.states;\nif(!states || ha.isConnected===false)return null;\nconst right=states[config.entities?.['sensor.ev_charger_2_status']||'sensor.ev_charger_2_status'];\nconst left=states[config.entities?.['sensor.ev_charger_status']||'sensor.ev_charger_status'];\nconst id=right?.attributes?.id;\nif(!id || id===left?.attributes?.id || msg.payload?.chargerId!==id)return null;\nconst stopping=msg.payload.command==='stop' || msg.payload.current===0;\nif(!stopping){const manual=currentJeepSoc(),now=Date.now();\n    const climateLease=Number(flow.get('ess_jeep_climate_power_support')?.expiresAt)>now;\n    if(right.state==='disconnected'||!climateLease&&(flow.get('ess_jeep_smart_enabled')!==true||!manual||now-manual.at<0||now-manual.at>43200000))return null;\n    if((msg.payload.command==='start' || Number(msg.payload.current)>0) && !(flow.get('ess_jeep_control_status')?.targetCurrent>=6))return null;\n}\nreturn msg;"
+    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\nfunction jeepVehicle(states, entities = {}, now = Date.now()) {\n    const configured = entities['sensor.ev_2_state_of_charge'];\n    const candidates = Object.keys(states).filter(id => /^sensor\\..*jeep.*_hvbattery_charge$/.test(id));\n    const anchor = configured && configured!=='sensor.ev_2_state_of_charge' ? configured : candidates.length === 1 ? candidates[0] : null;\n    if (!anchor || !/_hvbattery_charge$/.test(anchor)) return { available:false, fresh:false, soc:null, actions:[] };\n    const stem = anchor.slice(7).replace(/_hvbattery_charge$/, '');\n    const entity = (suffix, domain = 'sensor') => states[domain+'.'+stem+'_'+suffix];\n    const read = suffix => { const e=entity(suffix); return e && !['unknown','unavailable',''].includes(e.state) && Number.isFinite(Number(e.state)) ? Number(e.state) : null; };\n    const updatedAt = entity('last_info_update_at')?.state;\n    const age = now-Date.parse(updatedAt);\n    const soc=read('hvbattery_charge');\n    const fresh=Number.isFinite(age)&&age>=0&&age<=1800000&&soc!==null&&soc>=0&&soc<=100;\n    const warnings=['front_left','front_right','rear_left','rear_right'].filter(side=>entity('tire_pressure_'+side+'_warning','binary_sensor')?.state==='on');\n    return {available:soc!==null,anchor,stem,soc,fresh,updatedAt,range:read('driving_range'),odometer:read('odometer'),battery12v:read('12v_battery'),remainingMinutes:read('time_to_charge_l2'),serviceKm:read('distance_to_service'),serviceDays:read('days_till_service_needed'),charging:entity('charging','binary_sensor')?.state==='on',plugged:entity('ev_charger','binary_sensor')?.state==='on',ignition:entity('ignition','binary_sensor')?.state==='on',tireWarningCount:warnings.length};\n}\nfunction jeepSoc(states, entities, remembered, now) {\n    const vehicle=jeepVehicle(states,entities,now);\n    const configured=entities?.['sensor.ev_2_state_of_charge'];\n    const ambiguous=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id)).length>1;\n    const anchor=vehicle.anchor||(configured&&configured!=='sensor.ev_2_state_of_charge'?configured:!ambiguous?remembered?.anchor:null);\n    const valid=sample=>anchor&&sample&&sample.anchor===anchor&&Number.isFinite(sample.soc)&&sample.soc>=0&&sample.soc<=100&&Number.isFinite(sample.reportedAt)&&sample.reportedAt<=now;\n    const reportedAt=Date.parse(vehicle.updatedAt);\n    if(anchor&&vehicle.soc!==null&&vehicle.soc>=0&&vehicle.soc<=100&&Number.isFinite(reportedAt)&&reportedAt<=now&&(!valid(remembered)||reportedAt>=remembered.reportedAt))return {anchor,soc:vehicle.soc,reportedAt,at:now,source:'auto'};\n    return valid(remembered)?{...remembered,at:now,source:'last-known'}:null;\n}\nfunction currentJeepSoc(){const explicit=explicitCarSoc('jeep');if(explicit.soc!==null)return {soc:explicit.soc,at:Date.now(),reportedAt:flow.get('ess_jeep_explicit_soc').at,source:'manual',anchor:explicit.anchor};const sample=jeepSoc(global.get('homeassistant')?.homeAssistant?.states||{},flow.get('ess_system_config')?.entities||{},flow.get('ess_jeep_last_soc'),Date.now());if(sample)flow.set('ess_jeep_last_soc',sample);return sample;}\n\nconst ha=global.get('homeassistant')?.homeAssistant,config=flow.get('ess_system_config')||{},states=ha?.states;\nif(!states || ha.isConnected===false)return null;\nconst right=states[config.entities?.['sensor.ev_charger_2_status']||'sensor.ev_charger_2_status'];\nconst left=states[config.entities?.['sensor.ev_charger_status']||'sensor.ev_charger_status'];\nconst id=right?.attributes?.id;\nif(!id || id===left?.attributes?.id || msg.payload?.chargerId!==id)return null;\nconst stopping=msg.payload.command==='stop' || msg.payload.current===0;\nif(!stopping){const manual=currentJeepSoc(),now=Date.now();\n    const climateLease=Number(flow.get('ess_jeep_climate_power_support')?.expiresAt)>now;\n    if(right.state==='disconnected'||!climateLease&&(flow.get('ess_jeep_smart_enabled')!==true||!manual||now-manual.at<0||now-manual.at>43200000))return null;\n    if((msg.payload.command==='start' || Number(msg.payload.current)>0) && !(flow.get('ess_jeep_control_status')?.targetCurrent>=6))return null;\n}\nreturn msg;",
+    "g": "esseditor_jeep01"
   },
   {
     "id": "essjeep_settings",
@@ -4803,15 +4610,16 @@
     "initialize": "if(flow.get('ess_jeep_smart_enabled')===undefined)flow.set('ess_jeep_smart_enabled',false);",
     "finalize": "",
     "libs": [],
-    "x": 400,
-    "y": 2200,
+    "x": 870,
+    "y": 1900,
     "wires": [
       [
         "essjeep_ess00000000000d",
         "essprefs_save"
       ]
     ],
-    "func": "\nif(flow.get('ess_charging_preferences_ready')!==true)return null;\nconst topic=String(msg.topic||''),value=msg.payload,s={departureSoc:80,solarSoc:80,departureTime:'06:00',...flow.get('ess_jeep_settings')};\nif(['ess/jeep/departure-soc','ess/jeep/solar-soc'].includes(topic)){\n    if(value===null || value==='' || !Number.isFinite(Number(value)) || Number(value)<20 || Number(value)>100)return null;\n    s[topic.endsWith('departure-soc')?'departureSoc':'solarSoc']=Math.round(Number(value));\n}else if(topic==='ess/jeep/departure-time'){\n    if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(value)))return null;s.departureTime=String(value);\n}else if(topic==='ess/jeep/smart-enabled' && typeof value==='boolean'){\n    flow.set('ess_jeep_smart_enabled',value);if(!value)flow.set('ess_jeep_force_full',false);\n}else if(topic==='ess/jeep/force-full' && typeof value==='boolean'){\n    flow.set('ess_jeep_force_full',value);if(value)flow.set('ess_jeep_smart_enabled',true);\n}else return null;\nflow.set('ess_jeep_settings',s);return {payload:Date.now()};"
+    "func": "\nif(flow.get('ess_charging_preferences_ready')!==true)return null;\nconst topic=String(msg.topic||''),value=msg.payload,s={departureSoc:80,solarSoc:80,departureTime:'06:00',...flow.get('ess_jeep_settings')};\nif(['ess/jeep/departure-soc','ess/jeep/solar-soc'].includes(topic)){\n    if(value===null || value==='' || !Number.isFinite(Number(value)) || Number(value)<20 || Number(value)>100)return null;\n    s[topic.endsWith('departure-soc')?'departureSoc':'solarSoc']=Math.round(Number(value));\n}else if(topic==='ess/jeep/departure-time'){\n    if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(value)))return null;s.departureTime=String(value);\n}else if(topic==='ess/jeep/smart-enabled' && typeof value==='boolean'){\n    flow.set('ess_jeep_smart_enabled',value);if(!value)flow.set('ess_jeep_force_full',false);\n}else if(topic==='ess/jeep/force-full' && typeof value==='boolean'){\n    flow.set('ess_jeep_force_full',value);if(value)flow.set('ess_jeep_smart_enabled',true);\n}else return null;\nflow.set('ess_jeep_settings',s);return {payload:Date.now()};",
+    "g": "esseditor_jeep01"
   },
   {
     "id": "ess_easee_registry",
@@ -4839,8 +4647,9 @@
         "ess_easee_registry_save"
       ]
     ],
-    "x": 450,
-    "y": 2700
+    "x": 350,
+    "y": 1500,
+    "g": "esseditor_audi01"
   },
   {
     "id": "ess_easee_registry_save",
@@ -4850,8 +4659,9 @@
     "outputs": 0,
     "wires": [],
     "func": "const entries=msg.easeeRegistry?.result||msg.easeeRegistry;const states=global.get('homeassistant')?.homeAssistant?.states;if(!Array.isArray(entries)||!states)return null;const map={};for(const e of entries){const charger=states[e.entity_id]?.attributes?.id;if(e.platform==='easee'&&!e.disabled_by&&charger&&e.device_id)map[charger]=e.device_id;}flow.set('ess_easee_device_ids',map);return null;",
-    "x": 800,
-    "y": 2700
+    "x": 1390,
+    "y": 1500,
+    "g": "esseditor_audi01"
   },
   {
     "id": "ess_easee_registry_inj",
@@ -4871,13 +4681,14 @@
         "ess_easee_registry"
       ]
     ],
-    "x": 150,
-    "y": 2700
+    "x": 870,
+    "y": 1410,
+    "g": "esseditor_audi01"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 2200,
+    "x": 1910,
+    "y": 3640,
     "id": "esshk_refresh_tick",
     "type": "inject",
     "name": "Ververs lokale woonkamer elke 5 minuten",
@@ -4895,12 +4706,13 @@
       [
         "esshk_refresh_request"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 2200,
+    "x": 870,
+    "y": 3910,
     "id": "esshk_refresh_request",
     "type": "function",
     "name": "Vraag actuele HomeKit-temperatuur",
@@ -4914,12 +4726,13 @@
       [
         "esshk_refresh_update"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 840,
-    "y": 2000,
+    "x": 870,
+    "y": 4000,
     "id": "esshk_refresh_update",
     "type": "api-call-service",
     "name": "Lees HomeKit-apparaat opnieuw uit",
@@ -4945,12 +4758,13 @@
       [
         "esshk_refresh_wait"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 2200,
+    "x": 1390,
+    "y": 4000,
     "id": "esshk_refresh_wait",
     "type": "delay",
     "name": "Wacht op HomeKit-uitlezing na debounce",
@@ -4969,7 +4783,8 @@
       [
         "esshk_refresh_read"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "id": "esshk_refresh_read",
@@ -4993,19 +4808,19 @@
         "valueType": "results"
       }
     ],
-    "x": 790,
-    "y": 1500,
+    "x": 1910,
+    "y": 4000,
     "wires": [
       [
         "esshk_refresh_save"
       ]
     ],
-    "g": "esseditor_wit001"
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 2200,
+    "x": 350,
+    "y": 4090,
     "id": "esshk_refresh_save",
     "type": "function",
     "name": "Beoordeel hysterese na verse uitlezing",
@@ -5019,12 +4834,13 @@
       [
         "essclim_hyst_plan"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 2200,
+    "x": 350,
+    "y": 3730,
     "id": "esshk_refresh_catch",
     "type": "catch",
     "name": "Meld mislukte HomeKit-uitlezing",
@@ -5037,12 +4853,13 @@
       [
         "esshk_refresh_error"
       ]
-    ]
+    ],
+    "g": "esseditor_homekit"
   },
   {
     "z": "ess000000000001",
-    "x": 850,
-    "y": 2200,
+    "x": 1390,
+    "y": 3910,
     "id": "esshk_refresh_error",
     "type": "function",
     "name": "Bewaar uitleesfout zonder temperatuur te wijzigen",
@@ -5052,7 +4869,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "wires": []
+    "wires": [],
+    "g": "esseditor_homekit"
   },
   {
     "id": "esslights_retry_delay",
@@ -5075,7 +4893,10 @@
       [
         "esslights_retry_check"
       ]
-    ]
+    ],
+    "g": "esseditor_lights1",
+    "x": 1910,
+    "y": 4310
   },
   {
     "id": "esslights_retry_check",
@@ -5094,7 +4915,10 @@
         "esslights_retry_delay"
       ]
     ],
-    "func": "const commands=flow.get('ess_light_commands')||{};\nconst command=commands[msg.lightEntity];\nif (!command || command.token!==msg.lightToken || command.status!=='pending') return null;\nconst config=flow.get('ess_system_config')||{};\nconst mapped=config.entities?.[command.role]??command.role;\nif (config.modules?.lighting===false || mapped!==command.entity) return null;\nconst item=global.get('homeassistant')?.homeAssistant?.states?.[command.entity];\nconst state=item?.state;\nconst brightness=Number(item?.attributes?.brightness)/255*100;\nconst confirmed=state===(command.active?'on':'off') && (command.brightness===null || Math.abs(brightness-command.brightness)<=2);\nif (confirmed) {command.status='confirmed';command.confirmedAt=Date.now();flow.set('ess_light_commands',commands);return null;}\nif (command.attempts>=3) {command.status='failed';flow.set('ess_light_commands',commands);node.warn('Lichtopdracht niet bevestigd: '+command.entity);return null;}\ncommand.attempts++;\nflow.set('ess_light_commands',commands);\nconst outputs=[null,null,{lightEntity:command.entity,lightToken:command.token}];\noutputs[command.active?0:1]={payload:command.payload};\nreturn outputs;"
+    "func": "const commands=flow.get('ess_light_commands')||{};\nconst command=commands[msg.lightEntity];\nif (!command || command.token!==msg.lightToken || command.status!=='pending') return null;\nconst config=flow.get('ess_system_config')||{};\nconst mapped=config.entities?.[command.role]??command.role;\nif (config.modules?.lighting===false || mapped!==command.entity) return null;\nconst item=global.get('homeassistant')?.homeAssistant?.states?.[command.entity];\nconst state=item?.state;\nconst brightness=Number(item?.attributes?.brightness)/255*100;\nconst confirmed=state===(command.active?'on':'off') && (command.brightness===null || Math.abs(brightness-command.brightness)<=2);\nif (confirmed) {command.status='confirmed';command.confirmedAt=Date.now();flow.set('ess_light_commands',commands);return null;}\nif (command.attempts>=3) {command.status='failed';flow.set('ess_light_commands',commands);node.warn('Lichtopdracht niet bevestigd: '+command.entity);return null;}\ncommand.attempts++;\nflow.set('ess_light_commands',commands);\nconst outputs=[null,null,{lightEntity:command.entity,lightToken:command.token}];\noutputs[command.active?0:1]={payload:command.payload};\nreturn outputs;",
+    "g": "esseditor_lights1",
+    "x": 350,
+    "y": 4400
   },
   {
     "id": "essimbalance_tick",
@@ -5114,7 +4938,10 @@
       [
         "essimbalance_registry"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 350,
+    "y": 6310
   },
   {
     "id": "essimbalance_control",
@@ -5127,7 +4954,10 @@
         "essimbalance_action"
       ]
     ],
-    "func": "function imbalanceDecision(previous, currents, enabled, now) {\n    if(!currents || currents.some(v=>!Number.isFinite(v))) return {desired:null,aboveSince:0,belowSince:0,reason:'Fasemetingen ontbreken of zijn te oud'};\n    const difference=Math.max(...currents)-Math.min(...currents);\n    const aboveSince=difference>4?(previous.aboveSince||now):0;\n    const belowSince=difference<2?(previous.belowSince||now):0;\n    let desired=null;\n    if(!enabled && aboveSince && now-aboveSince>=30000) desired=true;\n    if(enabled && belowSince && now-belowSince>=120000 && now-(previous.enabledSince||now)>=300000) desired=false;\n    return {difference,aboveSince,belowSince,desired,reason:desired===null?'Wacht op stabiel faseverschil':desired?'Faseverschil groter dan 4 A':'Faseverschil langdurig kleiner dan 2 A'};\n}\nconst now=Date.now(),config=flow.get('ess_system_config')||{};\nconst states=global.get('homeassistant')?.homeAssistant?.states||{};\nconst previous=flow.get('ess_wit_imbalance_status')||{};\nconst fresh=e=>e && !['unknown','unavailable',''].includes(String(e.state)) && now-Date.parse(e.last_reported||e.last_updated||e.last_changed)>=0 && now-Date.parse(e.last_reported||e.last_updated||e.last_changed)<=30000;\nconst currents=[1,2,3].map(i=>{const role='sensor.p1_meter_vermogen_fase_'+i;\nconst e=states[config.entities?.[role]||role];\nif(!fresh(e)||!Number.isFinite(Number(e.state)))return NaN;\nconst unit=String(e.attributes?.unit_of_measurement||'').toLowerCase();\nreturn unit==='a'?Number(e.state):unit==='w'?Number(e.state)/(Number(config.specs?.voltage)||230):unit==='kw'?Number(e.state)*1000/(Number(config.specs?.voltage)||230):NaN;});\nconst native=msg.witImbalanceNative;\nconst nativeValid=native && native.binding.remoteEntity===config.entities?.['select.growatt_grid_remote_power_control_enable'] && native.binding.authorityEntity===config.entities?.['select.growatt_grid_control_authority'] && now-native.at>=0 && now-native.at<=30000 && [0,1].includes(native.value);\nconst bound=!!nativeValid;\nconst identity=nativeValid?native.binding.deviceId+':holding947':null;\nconst enabled=nativeValid&&native.value===1;\nconst enabledSince=enabled?(previous.entity===identity&&previous.enabled?previous.enabledSince||now:now):0;\nconst base=previous.entity===identity?{...previous,enabledSince}:{};\nconst decision=imbalanceDecision(base,currents,enabled,now);\nconst status={...decision,entity:identity||null,enabled,enabledSince,at:now,blocked:!bound,commandAt:previous.entity===identity?previous.commandAt||0:0};\nif(!bound){status.reason='Power Imbalance-bediening ontbreekt of is niet bevestigd';status.aboveSince=0;status.belowSince=0;}\nflow.set('ess_wit_imbalance_status',status);\nif(msg.imbalanceVerify!==undefined){status.commandConfirmed=enabled===msg.imbalanceVerify;status.reason=status.commandConfirmed?'Power Imbalance-register bevestigd':'Power Imbalance-schrijfopdracht niet bevestigd';flow.set('ess_wit_imbalance_status',status);return null;}\nif(!bound||decision.desired===null||config.modules?.inverter===false)return null;\nif(previous.entity===identity&&previous.commandAt&&now-previous.commandAt<60000)return null;\nstatus.commandAt=now;flow.set('ess_wit_imbalance_status',status);\nif(nativeValid){msg.imbalanceVerify=decision.desired;msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'write_register',service_data:{device_id:native.binding.deviceId,register:947,value:decision.desired?1:0}}};return msg;}\nreturn null;"
+    "func": "function imbalanceDecision(previous, currents, enabled, now) {\n    if(!currents || currents.some(v=>!Number.isFinite(v))) return {desired:null,aboveSince:0,belowSince:0,reason:'Fasemetingen ontbreken of zijn te oud'};\n    const difference=Math.max(...currents)-Math.min(...currents);\n    const aboveSince=difference>4?(previous.aboveSince||now):0;\n    const belowSince=difference<2?(previous.belowSince||now):0;\n    let desired=null;\n    if(!enabled && aboveSince && now-aboveSince>=30000) desired=true;\n    if(enabled && belowSince && now-belowSince>=120000 && now-(previous.enabledSince||now)>=300000) desired=false;\n    return {difference,aboveSince,belowSince,desired,reason:desired===null?'Wacht op stabiel faseverschil':desired?'Faseverschil groter dan 4 A':'Faseverschil langdurig kleiner dan 2 A'};\n}\nconst now=Date.now(),config=flow.get('ess_system_config')||{};\nconst states=global.get('homeassistant')?.homeAssistant?.states||{};\nconst previous=flow.get('ess_wit_imbalance_status')||{};\nconst fresh=e=>e && !['unknown','unavailable',''].includes(String(e.state)) && now-Date.parse(e.last_reported||e.last_updated||e.last_changed)>=0 && now-Date.parse(e.last_reported||e.last_updated||e.last_changed)<=30000;\nconst currents=[1,2,3].map(i=>{const role='sensor.p1_meter_vermogen_fase_'+i;\nconst e=states[config.entities?.[role]||role];\nif(!fresh(e)||!Number.isFinite(Number(e.state)))return NaN;\nconst unit=String(e.attributes?.unit_of_measurement||'').toLowerCase();\nreturn unit==='a'?Number(e.state):unit==='w'?Number(e.state)/(Number(config.specs?.voltage)||230):unit==='kw'?Number(e.state)*1000/(Number(config.specs?.voltage)||230):NaN;});\nconst native=msg.witImbalanceNative;\nconst nativeValid=native && native.binding.remoteEntity===config.entities?.['select.growatt_grid_remote_power_control_enable'] && native.binding.authorityEntity===config.entities?.['select.growatt_grid_control_authority'] && now-native.at>=0 && now-native.at<=30000 && [0,1].includes(native.value);\nconst bound=!!nativeValid;\nconst identity=nativeValid?native.binding.deviceId+':holding947':null;\nconst enabled=nativeValid&&native.value===1;\nconst enabledSince=enabled?(previous.entity===identity&&previous.enabled?previous.enabledSince||now:now):0;\nconst base=previous.entity===identity?{...previous,enabledSince}:{};\nconst decision=imbalanceDecision(base,currents,enabled,now);\nconst status={...decision,entity:identity||null,enabled,enabledSince,at:now,blocked:!bound,commandAt:previous.entity===identity?previous.commandAt||0:0};\nif(!bound){status.reason='Power Imbalance-bediening ontbreekt of is niet bevestigd';status.aboveSince=0;status.belowSince=0;}\nflow.set('ess_wit_imbalance_status',status);\nif(msg.imbalanceVerify!==undefined){status.commandConfirmed=enabled===msg.imbalanceVerify;status.reason=status.commandConfirmed?'Power Imbalance-register bevestigd':'Power Imbalance-schrijfopdracht niet bevestigd';flow.set('ess_wit_imbalance_status',status);return null;}\nif(!bound||decision.desired===null||config.modules?.inverter===false)return null;\nif(previous.entity===identity&&previous.commandAt&&now-previous.commandAt<60000)return null;\nstatus.commandAt=now;flow.set('ess_wit_imbalance_status',status);\nif(nativeValid){msg.imbalanceVerify=decision.desired;msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'write_register',service_data:{device_id:native.binding.deviceId,register:947,value:decision.desired?1:0}}};return msg;}\nreturn null;",
+    "g": "esseditor_imbalance",
+    "x": 1910,
+    "y": 6310
   },
   {
     "id": "essimbalance_registry",
@@ -5154,7 +4984,10 @@
       [
         "essimbalance_prepare"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 870,
+    "y": 6310
   },
   {
     "id": "essimbalance_prepare",
@@ -5167,7 +5000,10 @@
       [
         "essimbalance_read_request"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 1390,
+    "y": 6310
   },
   {
     "id": "essimbalance_read_request",
@@ -5180,7 +5016,10 @@
       [
         "essimbalance_read"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 350,
+    "y": 6400
   },
   {
     "id": "essimbalance_read",
@@ -5207,7 +5046,10 @@
       [
         "essimbalance_result"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 870,
+    "y": 6400
   },
   {
     "id": "essimbalance_result",
@@ -5220,7 +5062,10 @@
       [
         "essimbalance_control"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 1390,
+    "y": 6400
   },
   {
     "id": "essimbalance_action",
@@ -5247,7 +5092,10 @@
       [
         "essimbalance_read_request"
       ]
-    ]
+    ],
+    "g": "esseditor_imbalance",
+    "x": 1910,
+    "y": 6400
   },
   {
     "id": "essjvehicle_soc_tick",
@@ -5261,7 +5109,10 @@
       [
         "essjvehicle_soc_save"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 870,
+    "y": 2390
   },
   {
     "id": "essjvehicle_soc_save",
@@ -5274,7 +5125,10 @@
       [
         "essprefs_save"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 870,
+    "y": 2570
   },
   {
     "id": "essjvehicle_request",
@@ -5287,7 +5141,10 @@
       [
         "essjvehicle_registry"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1390,
+    "y": 2390
   },
   {
     "id": "essjvehicle_registry",
@@ -5314,7 +5171,10 @@
       [
         "essjvehicle_dispatch"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1390,
+    "y": 2570
   },
   {
     "id": "essjvehicle_dispatch",
@@ -5327,7 +5187,10 @@
       [
         "essjvehicle_action"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1910,
+    "y": 2660
   },
   {
     "id": "essjvehicle_action",
@@ -5354,7 +5217,10 @@
       [
         "essjvehicle_result"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1910,
+    "y": 2750
   },
   {
     "id": "essjvehicle_result",
@@ -5368,7 +5234,10 @@
         "ess00000000000a",
         "essjeep_ess00000000000d"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1390,
+    "y": 2840
   },
   {
     "id": "essjvehicle_catch",
@@ -5384,7 +5253,10 @@
       [
         "essjvehicle_error"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1910,
+    "y": 2390
   },
   {
     "id": "essjvehicle_error",
@@ -5397,7 +5269,10 @@
       [
         "ess00000000000a"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 1910,
+    "y": 2570
   },
   {
     "id": "essclimateev_audi_stop",
@@ -5410,7 +5285,10 @@
         "essclimateev_audi_stop_api"
       ]
     ],
-    "func": "msg.payload={data:{type:'call_service',domain:'audiconnect',service:'execute_vehicle_action',service_data:{device_id:msg.payload.deviceId,action:'stop_climatisation'}}};return msg;"
+    "func": "msg.payload={data:{type:'call_service',domain:'audiconnect',service:'execute_vehicle_action',service_data:{device_id:msg.payload.deviceId,action:'stop_climatisation'}}};return msg;",
+    "g": "esseditor_vehicle",
+    "x": 870,
+    "y": 2750
   },
   {
     "id": "essclimateev_audi_stop_api",
@@ -5430,7 +5308,10 @@
       [
         "essclimateev_audi_release"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 870,
+    "y": 2840
   },
   {
     "id": "essclimateev_audi_release",
@@ -5443,7 +5324,10 @@
         "ess00000000000d"
       ]
     ],
-    "func": "flow.set('ess_audi_climate_power_support',null);flow.set('ess_audi_climate_status',{available:true,pending:true,active:false,status:'Klimaatstop aangevraagd',updatedAt:new Date().toISOString()});return {payload:Date.now()};"
+    "func": "flow.set('ess_audi_climate_power_support',null);flow.set('ess_audi_climate_status',{available:true,pending:true,active:false,status:'Klimaatstop aangevraagd',updatedAt:new Date().toISOString()});return {payload:Date.now()};",
+    "g": "esseditor_vehicle",
+    "x": 1910,
+    "y": 2840
   },
   {
     "id": "essmanualsoc_set",
@@ -5459,7 +5343,10 @@
         "essjeep_ess00000000000d"
       ]
     ],
-    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\n\nconst match=/^ess\\/(audi|jeep)\\/explicit-soc$/.exec(String(msg.topic));if(!match)return null;\nconst car=match[1],key='ess_'+car+'_explicit_soc';\nif(msg.payload===null){flow.set(key,null);return {payload:Date.now()};}\nif(msg.payload===''||typeof msg.payload==='boolean'||!Number.isFinite(Number(msg.payload))||Number(msg.payload)<0||Number(msg.payload)>100)return null;\nconst binding=explicitCarSoc(car);if(!binding.anchor)return null;\nflow.set(key,{soc:Number(msg.payload),at:Date.now(),anchor:binding.anchor});\nflow.set('ess_'+car+'_soc_estimator',null);return {payload:Date.now()};"
+    "func": "// BEGIN EXPLICIT SOC\nfunction manualCarSoc(manual,anchor,actual,reportedAt,now) {\n    if(!manual||manual.anchor!==anchor||!Number.isFinite(manual.soc)||manual.soc<0||manual.soc>100||!Number.isFinite(manual.at)||manual.at>now)return {soc:null,clear:!!manual};\n    if(actual!==null&&Number.isFinite(actual)&&actual>=0&&actual<=100&&Number.isFinite(reportedAt)&&reportedAt>manual.at&&reportedAt<=now)return {soc:null,clear:true};\n    return {soc:manual.soc,clear:false};\n}\nfunction integrateManualSoc(manual,powerW,now,capacityKwh) {\n    const previous=manual.integration;\n    const base=Number.isFinite(manual.estimatedSoc)?manual.estimatedSoc:manual.soc;\n    const elapsed=previous?now-previous.at:0;\n    const usable=Number.isFinite(powerW)&&powerW>=0&&Number.isFinite(previous?.powerW)&&previous.powerW>=0&&elapsed>0&&elapsed<=120000&&capacityKwh>0;\n    const added=usable?(previous.powerW+powerW)/2/1000*elapsed/3600000*.92/capacityKwh*100:0;\n    return {...manual,estimatedSoc:Math.min(100,Math.max(0,base+added)),integration:{at:now,powerW:Number.isFinite(powerW)?powerW:null}};\n}\nfunction explicitCarSoc(car){\nconst config=flow.get('ess_system_config')||{},states=global.get('homeassistant')?.homeAssistant?.states||{};\nlet anchor=config.entities?.[car==='audi'?'sensor.ev_state_of_charge':'sensor.ev_2_state_of_charge'];\nif(car==='jeep'&&(!anchor||anchor==='sensor.ev_2_state_of_charge')){const ids=Object.keys(states).filter(id=>/^sensor\\..*jeep.*_hvbattery_charge$/.test(id));anchor=ids.length===1?ids[0]:null;}\nconst e=states[anchor],value=e&&!['unknown','unavailable',''].includes(e.state)?Number(e.state):null;\nconst stamp=car==='jeep'?Date.parse(states[anchor?.replace('_hvbattery_charge','_last_info_update_at')]?.state):Date.parse(e?.last_reported||e?.last_updated);\nconst key='ess_'+car+'_explicit_soc',result=manualCarSoc(flow.get(key),anchor,value,stamp,Date.now());\nif(result.clear){flow.set(key,null);flow.set('ess_'+car+'_soc_estimator',null);flow.set('ess_manual_soc_dirty',true);}\nif(car==='jeep'&&result.soc!==null){\nconst power=states[config.entities?.['sensor.ev_charger_2_power']||'sensor.ev_charger_2_power'];\nconst age=Date.now()-Date.parse(power?.last_reported||power?.last_updated),unit=String(power?.attributes?.unit_of_measurement||'').toLowerCase();\nconst number=power&&!['unknown','unavailable',''].includes(power.state)?Number(power.state):NaN;\nconst measured=age>=0&&age<=120000&&Number.isFinite(number)&&['w','kw'].includes(unit)?Math.max(0,number*(unit==='kw'?1000:1)):null;\nconst previous=flow.get(key),updated=integrateManualSoc(previous,measured,Date.now(),Number(config.specs?.ev2BatteryCapacityKwh)||54);\nflow.set(key,updated);if(updated.estimatedSoc!==(previous.estimatedSoc??previous.soc))flow.set('ess_manual_soc_dirty',true);\nresult.soc=updated.estimatedSoc;\n}\nreturn {soc:result.soc,anchor};\n}\n// END EXPLICIT SOC\n\nconst match=/^ess\\/(audi|jeep)\\/explicit-soc$/.exec(String(msg.topic));if(!match)return null;\nconst car=match[1],key='ess_'+car+'_explicit_soc';\nif(msg.payload===null){flow.set(key,null);return {payload:Date.now()};}\nif(msg.payload===''||typeof msg.payload==='boolean'||!Number.isFinite(Number(msg.payload))||Number(msg.payload)<0||Number(msg.payload)>100)return null;\nconst binding=explicitCarSoc(car);if(!binding.anchor)return null;\nflow.set(key,{soc:Number(msg.payload),at:Date.now(),anchor:binding.anchor});\nflow.set('ess_'+car+'_soc_estimator',null);return {payload:Date.now()};",
+    "g": "esseditor_vehicle",
+    "x": 350,
+    "y": 2480
   },
   {
     "id": "essmanualsoc_tick",
@@ -5473,7 +5360,10 @@
       [
         "essmanualsoc_save"
       ]
-    ]
+    ],
+    "g": "esseditor_vehicle",
+    "x": 870,
+    "y": 2480
   },
   {
     "id": "essmanualsoc_save",
@@ -5486,6 +5376,504 @@
         "essprefs_save"
       ]
     ],
-    "func": "if(!flow.get('ess_manual_soc_dirty')||flow.get('ess_charging_preferences_ready')===false)return null;flow.set('ess_manual_soc_dirty',false);return {payload:Date.now()};"
+    "func": "if(!flow.get('ess_manual_soc_dirty')||flow.get('ess_charging_preferences_ready')===false)return null;flow.set('ess_manual_soc_dirty',false);return {payload:Date.now()};",
+    "g": "esseditor_vehicle",
+    "x": 350,
+    "y": 2660
+  },
+  {
+    "id": "esseditor_dash01",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "01 · Dashboard en pagina’s",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#dbeafe",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "ess000000000002",
+      "ess00000000000a",
+      "ess000000000003",
+      "ess000000000004",
+      "esstpl_energy001",
+      "esstpl_battery01",
+      "esstpl_ev0000001",
+      "esstpl_loads0001",
+      "esstpl_lights001",
+      "esstpl_climate01",
+      "esstpl_system001"
+    ],
+    "x": 40,
+    "y": 40,
+    "w": 2180,
+    "h": 350
+  },
+  {
+    "id": "esseditor_config",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "02 · Configuratie en opgeslagen voorkeuren",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#e2e8f0",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "esstpl_config001",
+      "essconfig_readin",
+      "essprefs_inject",
+      "essprefs_read_error",
+      "essprefs_write_error",
+      "essconfig_bakread",
+      "essconfig_readdelay",
+      "essconfig_retrydelay",
+      "essprefs_read",
+      "essprefs_warn",
+      "essconfig_fileread",
+      "essconfig_control",
+      "essconfig_filewrite",
+      "essconfig_bakwrite",
+      "essprefs_backup_read",
+      "essprefs_restore",
+      "essprefs_save",
+      "essprefs_write",
+      "essprefs_backup_write",
+      "essprefs_saved"
+    ],
+    "x": 40,
+    "y": 440,
+    "w": 2180,
+    "h": 530
+  },
+  {
+    "id": "esseditor_prices1",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "03 · Stroomprijzen",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#fef3c7",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "ess000000000013",
+      "ess000000000014",
+      "ess000000000015",
+      "ess000000000016"
+    ],
+    "x": 40,
+    "y": 1020,
+    "w": 2180,
+    "h": 170
+  },
+  {
+    "id": "esseditor_audi01",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "04 · Audi · laden links",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#dcfce7",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "ess000000000020",
+      "ess000000000009",
+      "ess000000000010",
+      "essaudi_defaults_inj",
+      "essaudi_ha_events",
+      "ess_easee_registry_inj",
+      "ess000000000021",
+      "essaudi_defaults1",
+      "ess_easee_registry",
+      "ess00000000000d",
+      "ess_easee_registry_save",
+      "ess00000000000e",
+      "ess000000000018",
+      "ess000000000017",
+      "ess000000000019",
+      "essaudi_recovery_delay",
+      "essaudi_recovery_note",
+      "ess00000000000f"
+    ],
+    "x": 40,
+    "y": 1240,
+    "w": 2180,
+    "h": 530
+  },
+  {
+    "id": "esseditor_jeep01",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "05 · Jeep · laden rechts",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#dcfce7",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "essjeep_ess000000000020",
+      "essjeep_settings",
+      "essjeep_ess000000000021",
+      "essjeep_ess00000000000d",
+      "essjeep_guard_ess00000000000e",
+      "essjeep_ess000000000018",
+      "essjeep_guard_ess000000000017",
+      "essjeep_ess00000000000e",
+      "essjeep_ess000000000019",
+      "essjeep_ess000000000017",
+      "essjeep_essaudi_recovery_delay",
+      "essjeep_essaudi_recovery_note",
+      "essjeep_guard_ess00000000000f",
+      "essjeep_ess00000000000f"
+    ],
+    "x": 40,
+    "y": 1820,
+    "w": 2180,
+    "h": 440
+  },
+  {
+    "id": "esseditor_vehicle",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "06 · Auto’s · klimaat, sloten en SOC",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#dcfce7",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "ess00000000000c",
+      "essjvehicle_soc_tick",
+      "essjvehicle_request",
+      "essjvehicle_catch",
+      "essmanualsoc_set",
+      "essmanualsoc_tick",
+      "ess000000000012",
+      "essaudi_device001",
+      "essaudi_device002",
+      "essjvehicle_soc_save",
+      "essjvehicle_registry",
+      "essjvehicle_error",
+      "essmanualsoc_save",
+      "essaudi_guard001",
+      "essaudi_guard002",
+      "essjvehicle_dispatch",
+      "essaudi_climate01",
+      "essclimateev_audi_stop",
+      "essaudi_vehicle01",
+      "essjvehicle_action",
+      "essaudi_power001",
+      "essclimateev_audi_stop_api",
+      "essjvehicle_result",
+      "essclimateev_audi_release"
+    ],
+    "x": 40,
+    "y": 2310,
+    "w": 2180,
+    "h": 620
+  },
+  {
+    "id": "esseditor_climate",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "07 · Klimaat en warm water",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#fee2e2",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "essclimate_ctrl1",
+      "essclim_tick",
+      "essclim_settings",
+      "essclim_dispatch",
+      "essclim_catch",
+      "essclim_weather_tick",
+      "essclimate_temp1",
+      "essclimate_mode1",
+      "esswater_temp001",
+      "esswater_mode001",
+      "essclim_plan",
+      "essclim_tado",
+      "essclim_water",
+      "essclim_error",
+      "essclim_weather_request",
+      "essclim_weather_api",
+      "essclim_weather_parse"
+    ],
+    "x": 40,
+    "y": 2980,
+    "w": 2180,
+    "h": 530
+  },
+  {
+    "id": "esseditor_homekit",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "08 · HomeKit · temperatuur en hysterese",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#fee2e2",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "essclim_hyst_dispatch",
+      "essclim_hyst_catch",
+      "essclim_hk_tick",
+      "esshk_refresh_tick",
+      "esshk_refresh_catch",
+      "essclim_hyst_heat",
+      "essclim_hyst_off",
+      "essclim_hyst_switch_on",
+      "essclim_hyst_switch_off",
+      "essclim_hyst_room_on",
+      "essclim_hyst_room_off",
+      "essclim_hyst_error",
+      "essclim_hk_registry",
+      "esshk_refresh_request",
+      "esshk_refresh_error",
+      "essclim_hyst_accepted",
+      "essclim_hk_parse",
+      "esshk_refresh_update",
+      "esshk_refresh_wait",
+      "esshk_refresh_read",
+      "esshk_refresh_save",
+      "essclim_hyst_plan"
+    ],
+    "x": 40,
+    "y": 3560,
+    "w": 2180,
+    "h": 620
+  },
+  {
+    "id": "esseditor_lights1",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "09 · Verlichting",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#fef3c7",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "esslights_ctrl01",
+      "esslights_on001",
+      "esslights_off01",
+      "esslights_retry_delay",
+      "esslights_retry_check"
+    ],
+    "x": 40,
+    "y": 4230,
+    "w": 2180,
+    "h": 260
+  },
+  {
+    "id": "esseditor_loads1",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "10 · Overige verbruikers",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#fef3c7",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "essloads_control1",
+      "essloads_comp001"
+    ],
+    "x": 40,
+    "y": 4540,
+    "w": 2180,
+    "h": 170
+  },
+  {
+    "id": "esseditor_wit001",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "11 · WIT · netladen, export en EV-buffer",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#ede9fe",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "esswitexport_inj1",
+      "esswitexport_mode",
+      "esswitaudi_profile",
+      "esswitaudi_inj01",
+      "esswitgrid_set01",
+      "esswitgrid_inj01",
+      "esswitgrid_time1",
+      "esswitexport_ctrl",
+      "esswitaudi_ctrl1",
+      "esswitgrid_ctrl1",
+      "esswitgrid_power",
+      "esswitexport_auth",
+      "esswitexport_rate",
+      "esswitaudi_time1",
+      "esswitgrid_live1",
+      "esswitaudi_stop1",
+      "esswitexport_sel1",
+      "esswitgrid_mode1",
+      "esswitaudi_rate1",
+      "esswitgrid_renew",
+      "esswitaudi_mode1"
+    ],
+    "x": 40,
+    "y": 4760,
+    "w": 2180,
+    "h": 620
+  },
+  {
+    "id": "esseditor_witread",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "12 · WIT · registermetingen en BMS-grenzen",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#ede9fe",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "esswit_readback_inj",
+      "esswit_readback_catch",
+      "esswit_readback_request",
+      "esswit_readback_error",
+      "esswit_readback_registry",
+      "esswit_readback_prepare",
+      "esswit_readback_authority",
+      "esswit_readback_remote_prepare",
+      "esswit_readback_remote",
+      "esswit_limits_prepare",
+      "esswit_limits_api",
+      "esswit_current_prepare",
+      "esswit_current_api",
+      "esswit_limits_save",
+      "esswit_readback_save"
+    ],
+    "x": 40,
+    "y": 5430,
+    "w": 2180,
+    "h": 440
+  },
+  {
+    "id": "esseditor_witwrite",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "13 · WIT · laadopdrachten en bevestiging",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#ede9fe",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "esswit_release_ack",
+      "esswitgrid_transport_dispatch",
+      "esswitgrid_transport_catch",
+      "esswitgrid_transport_api",
+      "esswitgrid_transport_reply"
+    ],
+    "x": 40,
+    "y": 5920,
+    "w": 2180,
+    "h": 260
+  },
+  {
+    "id": "esseditor_imbalance",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "14 · WIT · fasecompensatie",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#ede9fe",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "essimbalance_tick",
+      "essimbalance_registry",
+      "essimbalance_prepare",
+      "essimbalance_control",
+      "essimbalance_read_request",
+      "essimbalance_read",
+      "essimbalance_result",
+      "essimbalance_action"
+    ],
+    "x": 40,
+    "y": 6230,
+    "w": 2180,
+    "h": 260
+  },
+  {
+    "id": "esseditor_history",
+    "type": "group",
+    "z": "ess000000000001",
+    "name": "15 · Verbruik leren en historie",
+    "style": {
+      "stroke": "#94a3b8",
+      "fill": "#dbeafe",
+      "fill-opacity": "0.28",
+      "label": true,
+      "label-position": "nw",
+      "color": "#334155"
+    },
+    "nodes": [
+      "essp1hist_retry1",
+      "essp1hist_inject",
+      "essp1hist_catch1",
+      "esswithist_inject",
+      "essp1hist_prepare",
+      "esswithist_prep1",
+      "essp1hist_get001",
+      "esswithist_api001",
+      "essp1hist_store1"
+    ],
+    "x": 40,
+    "y": 6540,
+    "w": 2180,
+    "h": 350
   }
 ]

@@ -48,17 +48,28 @@ Bij opslaan valideert Node-RED het formaat en controleert het of gekoppelde enti
 
 ## Flowindeling
 
-De editor is in negen groepen verdeeld:
+De editor is in vijftien genummerde, gekleurde groepen verdeeld:
 
-1. dashboarddata;
-2. lokale configuratie;
-3. EV slim laden;
-4. optionele voertuigacties;
-5. schakelbare verbruikers;
-6. verlichting;
-7. Nord Pool-prijzen;
-8. klimaatbediening;
-9. WIT-export, netladen en EV-buffer.
+1. dashboard en pagina’s;
+2. configuratie en opgeslagen voorkeuren;
+3. stroomprijzen;
+4. Audi laden links;
+5. Jeep laden rechts;
+6. voertuigacties en SOC;
+7. klimaat en warm water;
+8. HomeKit, temperatuur en hysterese;
+9. verlichting;
+10. overige verbruikers;
+11. WIT-netladen, export en EV-buffer;
+12. WIT-registermetingen en BMS-grenzen;
+13. WIT-laadopdrachten en bevestiging;
+14. WIT-fasecompensatie;
+15. verbruik leren en historie.
+
+Alle nodes staan op afzonderlijke posities binnen hun groep. De layout wordt
+als laatste door `scripts/lib/editor-layout.js` opgebouwd, zodat ook later
+toegevoegde nodes worden meegenomen. Nodes behouden hun oorspronkelijke flow,
+instellingen en verbindingen; gedeelde flowcontext blijft behouden.
 
 De dashboardgenerator staat in [../scripts/build-multipage-dashboard.js](../scripts/build-multipage-dashboard.js). Wijzig bij voorkeur de generator en genereer daarna `flows.json`, zodat een volgende generatie handmatige flowwijzigingen niet overschrijft.
 

@@ -4751,5 +4751,6 @@ require('./lib/wit-imbalance')(flows);
 require('./lib/jeep-vehicle')(flows);
 require('./lib/ev-climate-power')(flows);
 require('./lib/ev-manual-soc')(flows);
+require('./lib/editor-layout')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
