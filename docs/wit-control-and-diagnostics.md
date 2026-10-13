@@ -124,4 +124,3 @@ SOC-doel als een lager tijdelijk reserve-doel van de automatische planner.
 Dit voorkomt dat de transportlaag nog 100% als doel gebruikt. Bevestiging van
 registers blijft gescheiden van werkelijk gemeten laadvermogen. Hardwarefouten
 en het uitblijven van laadvermogen worden niet onbeperkt opnieuw geprobeerd.
-
