@@ -63,6 +63,14 @@ assert.equal(witLearnedHouse({...learned,updatedAt:new Date(evening-3*3600000).t
 assert.equal(witLearnedHouse({...learned,recentDays:[{date:'2026-10-10',kwh:4}]},evening,10).kwh,10,'Learning never lowers the profile reserve');
 assert(code.includes("witLearnedHouse(flow.get('ess_house_consumption_learning'),now"),'WIT controller consumes the cleaned learning model');
 const allocate=(mode,energy,slots,start,end,power)=>witReserveSlots(slots,energy,power/1000,start,end,30,30,10,.9);
+const allocateTwoStage=new Function('witReserveSlots','economicSlots','now','bridgeDeadline','expensivePeriodStart',`
+const mode='auto',gridEnergyNeededKwh=1,planLimitW=8000,reserveWait={bridge:true,targetSoc:20},configuredTargetSoc=100,batteryCapacityKwh=30,currentStoredKwh=5.7,reserveProfile={houseReserveKwh:0},chargeEfficiency=.9;
+${allocationCode}
+return selectedSlots;`);
+const earlyCheap={start:evening,end:evening+900000,allInPrice:.20};
+const laterExpensive={start:evening+3600000,end:evening+4500000,allInPrice:.30};
+const twoStage=allocateTwoStage(witReserveSlots,[earlyCheap,laterExpensive],evening,evening+900000,evening+7200000);
+assert(twoStage.every(s=>s.allInPrice===.20),'Final refill uses spare cheaper bridge-side capacity before expensive afternoon slots');
 const quarter={start:evening,end:evening+900000,allInPrice:.20,marketPrice:.10};
 const shortCharge=allocate('auto',.4,[quarter],evening,evening+86400000,8000,[quarter]);
 assert.equal(shortCharge[0].powerKw,8,'Partial final quarter still uses maximum configured power');

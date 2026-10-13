@@ -78,7 +78,8 @@ const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot
         const bridgeEnergy=Math.min(remainingEnergyKwh,Math.max(0,Math.min(configuredTargetSoc,reserveWait.targetSoc)/100*batteryCapacityKwh-currentStoredKwh)/chargeEfficiency);
         selectedSlots=witReserveSlots(economicSlots.filter(s=>s.end<=bridgeDeadline),bridgeEnergy,planLimitW/1000,now,bridgeDeadline,currentStoredKwh,batteryCapacityKwh,reserveProfile.houseReserveKwh,chargeEfficiency);
         const already=selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0);
-        selectedSlots.push(...witReserveSlots(economicSlots.filter(s=>s.start>=bridgeDeadline),Math.max(0,remainingEnergyKwh-already),planLimitW/1000,now,expensivePeriodStart,0,0,0,chargeEfficiency));
+        const refillSlots=economicSlots.map(s=>({...s,start:Math.max(s.start,...selectedSlots.filter(p=>p.start<s.end&&p.end>s.start).map(p=>p.end))})).filter(s=>s.end>s.start);
+        selectedSlots.push(...witReserveSlots(refillSlots,Math.max(0,remainingEnergyKwh-already),planLimitW/1000,now,expensivePeriodStart,0,0,0,chargeEfficiency));
         const uncovered=remainingEnergyKwh-selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0);
         if(uncovered>.01){
             const spare=economicSlots.filter(s=>s.end<=bridgeDeadline).map(s=>({...s,start:Math.max(s.start,...selectedSlots.filter(p=>p.start<s.end&&p.end>s.start).map(p=>p.end))})).filter(s=>s.end>s.start);
