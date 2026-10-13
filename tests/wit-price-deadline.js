@@ -19,7 +19,10 @@ assert.equal(witSolarBeforeDeadline(solar,sun,solarNow,Date.parse('2026-10-12T16
 assert.equal(witSolarBeforeDeadline({...solar,valid:false},sun,solarNow,Date.parse('2026-10-12T16:00:00Z')),0,'Missing forecast gives no credit');
 const flows=require('../flows.json');
 const code=flows.find(n=>n.id==='esswitgrid_ctrl1').func;
-assert(code.includes("mode === 'auto' ? 100"));
+assert(!code.includes("mode === 'auto' ? 100"),'Automatic charging respects the configured SOC');
+assert(code.includes('Math.min(targetSoc,reserveWait.targetSoc)'),'Bridge charging cannot raise the user SOC target');
+assert(code.includes('targetSoc/100*batteryCapacityKwh-currentStoredKwh'),'Grid energy uses the selected target');
+assert(!flows.find(n=>n.id==='esstpl_battery01').format.includes(':disabled="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.mode'),'SOC remains editable in automatic mode');
 assert(code.includes('slot.end <= expensivePeriodStart'));
 assert(!code.includes("if (mode === 'auto' && !forecastValid)"));
 console.log('WIT price deadline checks passed');

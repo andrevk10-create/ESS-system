@@ -39,7 +39,7 @@ function witPriceDeadline(slots, now, reserve) {
 module.exports = function applyDeadline(flows) {
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
     grid.func=witSolarBeforeDeadline.toString()+'\n'+witReserveOpportunity.toString()+'\n'+witPriceDeadline.toString()+'\n'+grid.func;
-    grid.func=grid.func.replace('const targetSoc = Math.max(20,', "let targetSoc = mode === 'auto' ? 100 : Math.max(20,");
+    grid.func=grid.func.replace('const targetSoc = Math.max(20,', 'let targetSoc = Math.max(20,');
     // Credit only a conservative daylight fraction before the deadline.
     grid.func=grid.func.replace('const gridEnergyNeededKwh = mode', 'let gridEnergyNeededKwh = mode');
     grid.func=grid.func.replace('const powerKw = energyKwh / durationHours;', 'const powerKw = planLimitW / 1000;\n        const chargeEnd = usableStart + energyKwh / powerKw * 3600000;');
@@ -51,21 +51,24 @@ module.exports = function applyDeadline(flows) {
     grid.func=grid.func.slice(0,start)+`const reserveInputs={
     storedKwh:currentStoredKwh, capacityKwh:batteryCapacityKwh,
     houseKwh:reserveProfile.houseReserveKwh, efficiency:chargeEfficiency,
-    chargeKw:directBatteryLimitW()/1000,solarFactor:reserveProfile.conservativeForecastFactor
+    chargeKw:directBatteryLimitW()/1000,solarFactor:reserveProfile.conservativeForecastFactor,targetSoc
 };
 const originalDeadline=witPriceDeadline(slots,now,reserveInputs);
 const reserveWait=mode==='auto'?witReserveOpportunity(slots,now,originalDeadline,reserveInputs,solarWindow,states):null;
 const expensivePeriodStart=reserveWait?.deadline??originalDeadline;
-if(reserveWait?.bridge)targetSoc=reserveWait.targetSoc;
+const configuredTargetSoc=targetSoc;
+if(reserveWait?.bridge)targetSoc=Math.min(targetSoc,reserveWait.targetSoc);
 const deadlineHouseKwh = expensivePeriodStart === null ? 0 : reserveProfile.houseReserveKwh * Math.max(0, expensivePeriodStart-now) / 86400000;
 const solarBeforeDeadlineKwh = witSolarBeforeDeadline(solarWindow, states, now, expensivePeriodStart) * reserveProfile.conservativeForecastFactor * chargeEfficiency;
 if (mode === 'auto') gridEnergyNeededKwh = currentStoredKwh === null || expensivePeriodStart === null ? null
-    : Math.max(0, batteryCapacityKwh-currentStoredKwh+deadlineHouseKwh-solarBeforeDeadlineKwh) / chargeEfficiency;
-if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=reserveWait.bridgeEnergyKwh;
+    : Math.max(0, targetSoc/100*batteryCapacityKwh-currentStoredKwh+deadlineHouseKwh-solarBeforeDeadlineKwh) / chargeEfficiency;
+if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=Math.max(0,targetSoc/100*batteryCapacityKwh-currentStoredKwh)/chargeEfficiency;
 const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot.start < expensivePeriodStart && slot.end <= expensivePeriodStart && (!reserveWait||slot.start>=reserveWait.waitUntil))
     .sort((a,b)=>a.allInPrice-b.allInPrice || a.start-b.start);
 `+grid.func.slice(end);
-    grid.func=grid.func.replace('    reserveMode,', `    chargeDeadline:expensivePeriodStart === null ? null : new Date(expensivePeriodStart).toISOString(),
+    grid.func=grid.func.replace('    reserveMode,', `    configuredTargetSoc,
+    reserveTargetLimited:reserveWait?.bridge===true&&reserveWait.targetSoc>configuredTargetSoc,
+    chargeDeadline:expensivePeriodStart === null ? null : new Date(expensivePeriodStart).toISOString(),
     planningGoal:reserveWait?.bridge?'Alleen reservetekort tot het volgende goedkopere moment laden':reserveWait?'Voldoende reserve · wacht op zon of goedkopere uren':'Laden vóór de dure periode',
     reserveWaitUntil:reserveWait?new Date(reserveWait.waitUntil).toISOString():null,
     reserveBridge:reserveWait?.bridge===true,
@@ -89,12 +92,11 @@ const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot
             deadlineWarning:witGridChargeStored.deadlineWarning||null,
 // END WIT RESERVE PLAN
             planComplete:witGridChargeStored.planComplete === true,`);
-    mapper.func=mapper.func.replace('targetSoc:witGridChargeTargetSoc,','targetSoc:witGridChargeStored.targetSoc??witGridChargeTargetSoc,');
+    mapper.func=mapper.func.replace('targetSoc:witGridChargeTargetSoc,','targetSoc:witGridChargeTargetSoc,\n            effectiveTargetSoc:witGridChargeStored.targetSoc??witGridChargeTargetSoc,');
     for(const n of flows.filter(n=>n.type==='ui-template'&&n.format)) {
         n.format=n.format.replace('Geen vaste deadline; steeds 24 uur vooruit', "{{d.wit?.gridCharge?.reserveBridge?'Alleen reservetekort tot goedkoper moment laden':d.wit?.gridCharge?.reserveWaitUntil?'Voldoende reserve · wacht op zon of goedkopere uren':d.wit?.gridCharge?.chargeDeadline?'Laaddoel vóór '+slotRange(d.wit.gridCharge.chargeDeadline,d.wit.gridCharge.chargeDeadline):'Wacht op volgende dure periode'}}");
         n.format=n.format.replace('Doorlopende planning voor de komende 24 uur','Reserve, zon en stroomprijs');
         n.format=n.format.replace('Conservatief volgens reserveprofiel','Werkelijke zonnelading verlaagt de netbehoefte');
-        n.format=n.format.replace(':value="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.targetSoc||80"', ':disabled="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.mode===\'auto\'" :value="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.targetSoc||80"');
         n.format=n.format.replace('<div class="plan-clock"><div class="plan-clock-summary">', '<p v-if="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.deadlineWarning" class="subtle">{{d.wit.gridCharge.deadlineWarning}}</p><div class="plan-clock"><div class="plan-clock-summary">');
     }
 };
@@ -145,7 +147,7 @@ function witReserveOpportunity(slots,now,firstDeadline,reserve,solar,states) {
         // The visible horizon is an energy deadline when no later price peak exists.
         const deadline=horizon;
         const solarCredit=witSolarBeforeDeadline(solar,states,now,deadline)*(reserve.solarFactor||0)*reserve.efficiency;
-        const needed=Math.max(0,reserve.capacityKwh-reserve.storedKwh+reserve.houseKwh*(deadline-now)/86400000-solarCredit)/reserve.efficiency;
+        const needed=Math.max(0,(reserve.targetSoc??100)/100*reserve.capacityKwh-reserve.storedKwh+reserve.houseKwh*(deadline-now)/86400000-solarCredit)/reserve.efficiency;
         const capacity=cheaper.filter(s=>s.start>=waitUntil&&s.end<=deadline).reduce((sum,s)=>sum+(s.end-s.start)/3600000*reserve.chargeKw,0);
         if(needed>.05&&capacity<needed)continue;
         return {waitUntil,deadline,projectedReserveKwh};

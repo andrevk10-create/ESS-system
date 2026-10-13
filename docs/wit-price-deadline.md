@@ -30,7 +30,10 @@ een kleine buffer. Pas op het goedkopere moment wordt opnieuw berekend of meer
 laden nodig is. Zonder betrouwbaar volgend laadmoment of met te weinig
 bijlaadcapaciteit blijft de oorspronkelijke tijdige planning gelden.
 
-Nu laden behoudt het handmatig gekozen SOC-doel. Uit blijft uit.
+Automatisch en Nu laden gebruiken het door de gebruiker gekozen SOC-doel.
+De keuzelijst blijft in beide standen beschikbaar en toont de opgeslagen instelling.
+Een tijdelijke reserve-overbrugging mag een lager doel gebruiken, maar verhoogt
+het gekozen doel nooit. Uit blijft uit.
 Goedkopere vervolgmomenten worden op prijs beoordeeld, niet alleen op tijd:
 de goedkoopste haalbare gelegenheid heeft voorrang. Voldoende betrouwbare zon
 blijft een reden om netladen uit te stellen. De gekozen netlaadmomenten gebruiken
