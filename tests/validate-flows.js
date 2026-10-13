@@ -613,7 +613,7 @@ const audiControl = flows.find((node) => node.id === 'ess00000000000c');
 assert(audiControl, 'Veilige EV-hoofdschakelaar ontbreekt');
 assert.strictEqual((audiControl.func.match(/msg\.topic === 'ess\/audi\/solar-soc'/g) || []).length, 1, 'De EV-regeling mag de zonne-SOC-instelling maar één keer verwerken');
 assert.deepStrictEqual(detailTemplates.ev.wires, [[audiControl.id,'essjeep_settings','essjvehicle_request','essmanualsoc_set']], 'EV-bediening scheidt laden, voertuigacties en expliciete noodstand');
-assert.deepStrictEqual(ui.wires, [[audiControl.id]], 'EV-snelbediening op het overzicht moet naar de beveiligingsfunctie gaan');
+assert.deepStrictEqual(ui.wires, [[audiControl.id,'esscosts_settings']], 'EV-snelbediening blijft beveiligd; kosteninstellingen hebben een eigen topicfilter');
 const runEVControl = new Function('global', 'flow', 'node', 'msg', audiControl.func);
 const rejected = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'verboden', payload: true });
 assert.strictEqual(rejected, null, 'Onbekende dashboardopdracht moet worden geweigerd');

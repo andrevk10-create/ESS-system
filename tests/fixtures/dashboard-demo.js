@@ -42,5 +42,9 @@ module.exports = function dashboardDemo(flows, scenario = 'normal') {
         data.audiSmart={};data.nas={available:false,drive:{},volume:{}};
         data.configuration.status={valid:false,missing:['sensor.p1_meter_vermogen'],unavailable:[]};
     }
+    if(scenario!=='empty')data.energyCosts={since:'2026-10-13T08:00:00Z',ereNetRate:.10,ereEstimated:3.15,
+        today:{gridCost:4.82,batterySaving:1.36,audiCost:2.15,jeepCost:1.04,exportRevenue:.73,exportKwh:5.4},
+        total:{gridCost:18.64,batterySaving:4.92,audiCost:8.16,jeepCost:4.23,exportRevenue:2.83,missingHours:0},
+        cars:{audi:{saving:1.12},jeep:{saving:.58}}};
     return data;
 };
