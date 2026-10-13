@@ -47,6 +47,19 @@ aanvankelijk €0,10/kWh. Servicekosten worden niet nogmaals afgetrokken.
 [Lekkerladen](https://www.lekkerladen.com/) vermeldt dat koersen en uiteindelijke
 opbrengsten variëren. Deze weergave is geen bevestigde inboeking, MID-registratie
 of uitbetaling, en importeert geen bestaande Lekkerladen-opbrengsten.
+Een bestaande Lekkerladen-stand kan wel expliciet worden ingevoerd via
+`Kosten en opbrengsten` (kWh en eurobedrag), of eenmalig worden ingelezen uit
+`/config/node-red/ess-ere-opening-balance.json`. Het privébestand bevat `at`
+(ISO-tijdstip), `kwh` en `euros` en hoort niet in Git. Plaats het bij deployment
+naast het privévoorkeurenbestand. Opnieuw inlezen overschrijft geen al opgeslagen
+beginstand. Het oorspronkelijke bedrag blijft behouden; alleen nieuwe gemeten
+laadenergie wordt tegen het netto schattingstarief toegevoegd. Er wordt geen
+servicefee opnieuw afgetrokken en geen verdeling van de historische beginstand
+over Audi en Jeep verzonnen. Bij een beginstand midden in een al geregistreerd
+kwartier telt pas het volgende volledige kwartier mee, om dubbeltelling te voorkomen.
+
+De autokaarten tonen dagkosten en cumulatieve laadkosten sinds registratie.
+Ontbrekende kwartierprijzen worden niet vervangen door nulprijzen.
 
 ## Bewaren
 
