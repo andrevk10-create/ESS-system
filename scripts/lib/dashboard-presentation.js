@@ -34,7 +34,11 @@ function planView(d, now) {
         const price = prices.find(slot=>slot.a<=a && slot.b>=b);
         const rate = price ? num(price.allInPrice) : null;
         const time = new Date(a).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+        const witParts=wit.filter(slot=>slot.a<b&&slot.b>a).map(slot=>({from:Math.max(0,(slot.a-a)/quarter*100),to:Math.min(100,(slot.b-a)/quarter*100)}));
+        const witMinutes=witParts.reduce((sum,p)=>sum+(p.to-p.from)*15/100,0);
+        const witBackground=witParts.length?'linear-gradient(to right,'+witParts.flatMap(p=>['transparent '+p.from+'%','#23866e '+p.from+'%','#23866e '+p.to+'%','transparent '+p.to+'%']).join(',')+')':undefined;
         return {key:a,time,now:now>=a && now<b,ev:ev.some(slot=>slot.a<b && slot.b>a),ev2:ev2.some(slot=>slot.a<b && slot.b>a),wit:wit.some(slot=>slot.a<b && slot.b>a),rate,
+            witMinutes,witBackground,
             height:rate===null?4:max===min?50:15+85*(rate-min)/(max-min)};
     });
     const blocks = (slots, name) => {
@@ -230,6 +234,8 @@ function apply(flows) {
         // Equivalent text lives in the expandable lists; avoid 288 chart cells
         // crowding the screen-reader navigation on every planning page.
         template = template.replace(/class="ess-timeline-track([^"]*)"/g,'class="ess-timeline-track$1" aria-hidden="true"');
+        template=template.replace(':class="{wit:cell.wit,now:cell.now}"',':class="{wit:cell.wit,now:cell.now}" :style="{background:cell.witBackground}"');
+        template=template.replace("cell.time+(cell.wit?' · Accu gepland':' · Niet gepland')","cell.time+(cell.wit?' · '+Math.round(cell.witMinutes*10)/10+' min accu laden':' · Niet gepland')");
         node.format = '<template>'+template+rest.replace('</style>',css+'\n</style>');
         node.className = 'ess-dashboard-widget';
         node.height = '0';

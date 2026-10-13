@@ -68,6 +68,8 @@ assert.equal(shortCharge[0].powerKw,8,'Partial final quarter still uses maximum 
 assert.equal(shortCharge[0].end-evening,180000,'Only three minutes are required for 0.4 kWh at 8 kW');
 assert.equal(shortCharge[0].energyKwh,.4,'Full power must not increase planned energy');
 const reservePlan=witReserveSlots(tomorrow,12,8,evening,evening+19*3600000,9.9,30,10,.9);
+assert(reservePlan.filter(s=>(s.end-s.start)<600000).length<=1,'Reserve planning cannot produce a sequence of minute-long top-ups');
+assert(code.includes('priceBenchmark-slot.allInPrice/chargeEfficiency-wearCostPerKwh>=minimumBenefitPerKwh'),'Reserve demand does not bypass the economic test');
 for(const hours of [8,12,19]){
     const point=evening+hours*3600000;
     const charged=reservePlan.filter(s=>s.end<=point).reduce((sum,s)=>sum+s.energyKwh*.9,0);

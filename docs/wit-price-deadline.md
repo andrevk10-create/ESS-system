@@ -31,6 +31,18 @@ laden nodig is. Zonder betrouwbaar volgend laadmoment of met te weinig
 bijlaadcapaciteit blijft de oorspronkelijke tijdige planning gelden.
 
 Automatisch en Nu laden gebruiken het door de gebruiker gekozen SOC-doel.
+Voor automatisch netladen geldt de rendabiliteitstoets ook bij reservetekort:
+de kwartierprijs na laadverlies, plus slijtage en minimale marge, moet gunstiger
+zijn dan de prijsreferentie van de beschikbare verwachting. Een reservevraag
+mag deze toets niet omzeilen. Als goedkope bijlaadruimte ontbreekt, kan de woning
+rechtstreeks het net gebruiken; de planner forceert daarvoor geen dure acculading.
+Het goedkoopste bekende vervolgmoment blijft de bestemming van de overbrugging.
+Een eerdere verwachte zonsopkomst vervroegt die bestemming niet wanneer zulke
+prijzen beschikbaar zijn; werkelijk zonneladen verlaagt de resterende behoefte.
+Reserveaanvullingen worden in bruikbare laadkwartieren gebundeld in plaats van
+steeds een minuut bij te laden. De totale energie blijft begrensd door het doel.
+De gezamenlijke tijdlijn kleurt gedeeltelijke WIT-kwartieren alleen voor de
+werkelijk geplande duur en vermeldt de minuten in de toelichting.
 De woningraming komt uit de mediaan van geldige afgeronde dagen in de laatste
 zeven dagen van leermodel versie 2. Dat model trekt het gemeten laadvermogen
 van zowel Audi als Jeep af. Oudere modellen en ongeldige of verouderde gegevens

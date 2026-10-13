@@ -67,7 +67,8 @@ const solarBeforeDeadlineKwh = witSolarBeforeDeadline(solarWindow, states, now, 
 if (mode === 'auto') gridEnergyNeededKwh = currentStoredKwh === null || expensivePeriodStart === null ? null
     : Math.max(0, targetSoc/100*batteryCapacityKwh-currentStoredKwh+deadlineHouseKwh-solarBeforeDeadlineKwh) / chargeEfficiency;
 if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=Math.max(0,targetSoc/100*batteryCapacityKwh-currentStoredKwh)/chargeEfficiency;
-const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot.start < expensivePeriodStart && slot.end <= expensivePeriodStart && (!reserveWait||slot.start>=reserveWait.waitUntil))
+const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot.start < expensivePeriodStart && slot.end <= expensivePeriodStart && (!reserveWait||slot.start>=reserveWait.waitUntil)
+    && priceBenchmark!==null && priceBenchmark-slot.allInPrice/chargeEfficiency-wearCostPerKwh>=minimumBenefitPerKwh)
     .sort((a,b)=>a.allInPrice-b.allInPrice || a.start-b.start);
 `+grid.func.slice(end);
     const allocationStart=grid.func.indexOf("    for (const slot of economicSlots) {");
@@ -89,7 +90,7 @@ const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot
     reserveMode,`);
     grid.func=grid.func.replace("if (mode === 'auto' && !forecastValid) return stopOwned('Zonverwachting voor de komende laadperiode ontbreekt of is te oud', details);",'');
     grid.func=grid.func.replace("if (gridEnergyNeededKwh === null ||", "if (mode === 'auto' && expensivePeriodStart === null) return stopOwned('Nog geen volgende dure periode in de beschikbare prijzen', details);\nif (gridEnergyNeededKwh === null ||");
-    grid.func=grid.func.replace("'Geen rendabel laadkwartier binnen 24 uur'", "'Geen laadruimte vóór de dure periode'");
+    grid.func=grid.func.replace("'Geen rendabel laadkwartier binnen 24 uur'", "'Geen rendabel laadmoment · woning gebruikt zo nodig rechtstreeks het net'");
     // Show the active deadline and feasibility without hiding safety limits.
     grid.func=grid.func.replace('    planComplete:remainingEnergyKwh <= 0.05,', '    planComplete:remainingEnergyKwh <= 0.05,\n    deadlineWarning:remainingEnergyKwh > 0.05 ? \'Onvoldoende geplande laadruimte om vóór de dure periode vol te zijn\' : null,');
     const mapper=flows.find(n=>n.id==='ess00000000000a');
@@ -144,7 +145,9 @@ function witReserveOpportunity(slots,now,firstDeadline,reserve,solar,states) {
     const candidates=cheaper.slice().sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start).map(s=>s.start);
     const rise=Date.parse(states?.['sun.sun']?.attributes?.next_rising),set=Date.parse(states?.['sun.sun']?.attributes?.next_setting);
     const solarStart=rise+2*3600000;
-    if(solarStart>=firstDeadline&&solarStart<horizon&&solarStart<set&&witSolarBeforeDeadline(solar,states,now,solarStart)*(reserve.solarFactor||0)*reserve.efficiency>=1)candidates.unshift(solarStart);
+    // A known cheaper price window remains the bridge destination. Solar may
+    // cover that bridge as it arrives, but must not move its deadline earlier.
+    if(!candidates.length&&solarStart>=firstDeadline&&solarStart<horizon&&solarStart<set&&witSolarBeforeDeadline(solar,states,now,solarStart)*(reserve.solarFactor||0)*reserve.efficiency>=1)candidates.push(solarStart);
     for(const waitUntil of [...new Set(candidates)]) {
         const projectedReserveKwh=reserve.storedKwh-reserve.houseKwh*(waitUntil-now)/86400000;
         if(projectedReserveKwh<floor){
@@ -171,11 +174,13 @@ module.exports.witReserveOpportunity=witReserveOpportunity;
 function witReserveSlots(slots,budget,powerKw,now,deadline,stored,capacity,house,efficiency){
     const chosen=new Map();
     let remaining=budget;
-    const allocate=(eligible,needed)=>{
+    const allocate=(eligible,needed,wholeQuarter=false)=>{
         for(const s of eligible.slice().sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start)){
             const start=Math.max(now,s.start),used=chosen.get(s)||0;
             const available=Math.max(0,(s.end-start)/3600000*powerKw-used);
-            const add=Math.min(available,remaining,needed);
+            // Fill a useful charging quarter ahead of the next reserve deadline,
+            // instead of restarting for every minute-sized consumption increment.
+            const add=Math.min(available,remaining,wholeQuarter?Math.max(needed,powerKw*.25):needed);
             if(add<=0)continue;
             chosen.set(s,used+add);remaining-=add;needed-=add;
             if(needed<=.001||remaining<=.001)break;
@@ -187,7 +192,7 @@ function witReserveSlots(slots,budget,powerKw,now,deadline,stored,capacity,house
         const eligible=slots.filter(s=>s.end<=t);
         const credited=[...chosen].filter(([s])=>s.end<=t).reduce((sum,[s,e])=>sum+e,0);
         const required=Math.max(0,(floor+house*1.25*(t-now)/86400000-stored)/efficiency-credited);
-        allocate(eligible,required);
+        if(required>.001)allocate(eligible,required,true);
     }
     allocate(slots,remaining);
     return [...chosen].map(([s,energyKwh])=>({...s,start:Math.max(now,s.start),end:Math.max(now,s.start)+energyKwh/powerKw*3600000,energyKwh,powerKw})).sort((a,b)=>a.start-b.start);
