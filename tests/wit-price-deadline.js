@@ -36,7 +36,10 @@ const wait=witReserveOpportunity(tomorrow,evening,firstDeadline,actualReserve,fo
 assert(wait&&wait.waitUntil>=evening+10*3600000,'Enough reserve waits beyond the morning peak');
 assert(wait.projectedReserveKwh>=10);
 assert(tomorrow.filter(s=>s.start>=wait.waitUntil&&s.end<=wait.deadline).some(s=>s.allInPrice===.26));
-assert.equal(witReserveOpportunity(tomorrow,evening,firstDeadline,{...actualReserve,storedKwh:11},forecast,tomorrowSun),null,'Low reserve keeps timely charging');
+const bridge=witReserveOpportunity(tomorrow,evening,firstDeadline,{...actualReserve,storedKwh:11},forecast,tomorrowSun);
+assert(bridge.bridge&&bridge.targetSoc<100,'Low reserve only fills the bridge deficit');
+const remaining=11+bridge.bridgeEnergyKwh*.9-10*(bridge.deadline-evening)/86400000;
+assert(remaining>=10&&remaining<=11.5,'Bridge leaves the required reserve with at most one 5% rounding buffer');
 assert.equal(witReserveOpportunity(tomorrow,evening,firstDeadline,{...actualReserve,chargeKw:.01},{...forecast,valid:false},tomorrowSun),null,'Insufficient daytime refill capacity cannot defer');
 assert(witReserveOpportunity(tomorrow,evening,firstDeadline,actualReserve,{...forecast,valid:false},tomorrowSun),'Reliable cheaper hours can be used without solar');
 const solarOnly=tomorrow.map(s=>({...s,allInPrice:s.allInPrice===.26?.32:s.allInPrice}));

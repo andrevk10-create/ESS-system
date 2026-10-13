@@ -39,7 +39,7 @@ function witPriceDeadline(slots, now, reserve) {
 module.exports = function applyDeadline(flows) {
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
     grid.func=witSolarBeforeDeadline.toString()+'\n'+witReserveOpportunity.toString()+'\n'+witPriceDeadline.toString()+'\n'+grid.func;
-    grid.func=grid.func.replace('const targetSoc = Math.max(20,', "const targetSoc = mode === 'auto' ? 100 : Math.max(20,");
+    grid.func=grid.func.replace('const targetSoc = Math.max(20,', "let targetSoc = mode === 'auto' ? 100 : Math.max(20,");
     // Credit only a conservative daylight fraction before the deadline.
     grid.func=grid.func.replace('const gridEnergyNeededKwh = mode', 'let gridEnergyNeededKwh = mode');
     const start=grid.func.indexOf('const economicSlots = slots.filter(');
@@ -53,16 +53,19 @@ module.exports = function applyDeadline(flows) {
 const originalDeadline=witPriceDeadline(slots,now,reserveInputs);
 const reserveWait=mode==='auto'?witReserveOpportunity(slots,now,originalDeadline,reserveInputs,solarWindow,states):null;
 const expensivePeriodStart=reserveWait?.deadline??originalDeadline;
+if(reserveWait?.bridge)targetSoc=reserveWait.targetSoc;
 const deadlineHouseKwh = expensivePeriodStart === null ? 0 : reserveProfile.houseReserveKwh * Math.max(0, expensivePeriodStart-now) / 86400000;
 const solarBeforeDeadlineKwh = witSolarBeforeDeadline(solarWindow, states, now, expensivePeriodStart) * reserveProfile.conservativeForecastFactor * chargeEfficiency;
 if (mode === 'auto') gridEnergyNeededKwh = currentStoredKwh === null || expensivePeriodStart === null ? null
     : Math.max(0, batteryCapacityKwh-currentStoredKwh+deadlineHouseKwh-solarBeforeDeadlineKwh) / chargeEfficiency;
+if(mode==='auto'&&reserveWait?.bridge)gridEnergyNeededKwh=reserveWait.bridgeEnergyKwh;
 const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot.start < expensivePeriodStart && slot.end <= expensivePeriodStart && (!reserveWait||slot.start>=reserveWait.waitUntil))
     .sort((a,b)=>a.allInPrice-b.allInPrice || a.start-b.start);
 `+grid.func.slice(end);
     grid.func=grid.func.replace('    reserveMode,', `    chargeDeadline:expensivePeriodStart === null ? null : new Date(expensivePeriodStart).toISOString(),
-    planningGoal:reserveWait?'Voldoende reserve · wacht op zon of goedkopere daguren':'Laden vóór de dure periode',
+    planningGoal:reserveWait?.bridge?'Alleen reservetekort tot het volgende goedkopere moment laden':reserveWait?'Voldoende reserve · wacht op zon of goedkopere uren':'Laden vóór de dure periode',
     reserveWaitUntil:reserveWait?new Date(reserveWait.waitUntil).toISOString():null,
+    reserveBridge:reserveWait?.bridge===true,
     projectedReserveKwh:reserveWait?round(reserveWait.projectedReserveKwh):null,
     deadlineHouseKwh:round(deadlineHouseKwh),
     solarCreditKwh:mode === 'auto' ? round(solarBeforeDeadlineKwh) : round(expectedSolarChargeKwh),
@@ -77,16 +80,18 @@ const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot
     mapper.func=mapper.func.replace('            planComplete:witGridChargeStored.planComplete === true,',`// BEGIN WIT RESERVE PLAN
             chargeDeadline:witGridChargeStored.chargeDeadline||null,
             reserveWaitUntil:witGridChargeStored.reserveWaitUntil||null,
+            reserveBridge:witGridChargeStored.reserveBridge===true,
             planningGoal:witGridChargeStored.planningGoal||null,
             projectedReserveKwh:witGridChargeStored.projectedReserveKwh??null,
             deadlineWarning:witGridChargeStored.deadlineWarning||null,
 // END WIT RESERVE PLAN
             planComplete:witGridChargeStored.planComplete === true,`);
+    mapper.func=mapper.func.replace('targetSoc:witGridChargeTargetSoc,','targetSoc:witGridChargeStored.targetSoc??witGridChargeTargetSoc,');
     for(const n of flows.filter(n=>n.type==='ui-template'&&n.format)) {
-        n.format=n.format.replace('Geen vaste deadline; steeds 24 uur vooruit', "{{d.wit?.gridCharge?.reserveWaitUntil?'Voldoende reserve · wacht op zon of goedkopere daguren':d.wit?.gridCharge?.chargeDeadline?'Laaddoel vóór '+slotRange(d.wit.gridCharge.chargeDeadline,d.wit.gridCharge.chargeDeadline):'Wacht op volgende dure periode'}}");
+        n.format=n.format.replace('Geen vaste deadline; steeds 24 uur vooruit', "{{d.wit?.gridCharge?.reserveBridge?'Alleen reservetekort tot goedkoper moment laden':d.wit?.gridCharge?.reserveWaitUntil?'Voldoende reserve · wacht op zon of goedkopere uren':d.wit?.gridCharge?.chargeDeadline?'Laaddoel vóór '+slotRange(d.wit.gridCharge.chargeDeadline,d.wit.gridCharge.chargeDeadline):'Wacht op volgende dure periode'}}");
         n.format=n.format.replace('Doorlopende planning voor de komende 24 uur','Reserve, zon en stroomprijs');
         n.format=n.format.replace('Conservatief volgens reserveprofiel','Werkelijke zonnelading verlaagt de netbehoefte');
-        n.format=n.format.replace(':value="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.targetSoc||80"', ':disabled="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.mode===\'auto\'" :value="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.mode===\'auto\'?100:d.wit&&d.wit.gridCharge&&d.wit.gridCharge.targetSoc||80"');
+        n.format=n.format.replace(':value="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.targetSoc||80"', ':disabled="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.mode===\'auto\'" :value="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.targetSoc||80"');
         n.format=n.format.replace('<div class="plan-clock"><div class="plan-clock-summary">', '<p v-if="d.wit&&d.wit.gridCharge&&d.wit.gridCharge.deadlineWarning" class="subtle">{{d.wit.gridCharge.deadlineWarning}}</p><div class="plan-clock"><div class="plan-clock-summary">');
     }
 };
@@ -119,15 +124,21 @@ function witReserveOpportunity(slots,now,firstDeadline,reserve,solar,states) {
     const nightPrice=Math.min(...before.map(s=>s.allInPrice));
     const horizon=Math.min(now+86400000,...[ordered.at(-1)?.end||now]);
     const floor=Math.max(reserve.capacityKwh*.30,reserve.houseKwh);
-    const daytime=stamp=>{const hour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Amsterdam',hour:'numeric',hourCycle:'h23'}).format(new Date(stamp)));return hour>=8&&hour<18;};
-    const cheaper=ordered.filter(s=>s.start>=firstDeadline&&s.end<=horizon&&daytime(s.start)&&s.allInPrice<nightPrice-.01);
+    const cheaper=ordered.filter(s=>s.start>=firstDeadline&&s.end<=horizon&&s.allInPrice<nightPrice-.01);
     const candidates=cheaper.length?[cheaper[0].start]:[];
     const rise=Date.parse(states?.['sun.sun']?.attributes?.next_rising),set=Date.parse(states?.['sun.sun']?.attributes?.next_setting);
     const solarStart=rise+2*3600000;
     if(solarStart>=firstDeadline&&solarStart<horizon&&solarStart<set&&witSolarBeforeDeadline(solar,states,now,solarStart)*(reserve.solarFactor||0)*reserve.efficiency>=1)candidates.push(solarStart);
     for(const waitUntil of candidates.sort((a,b)=>a-b)) {
         const projectedReserveKwh=reserve.storedKwh-reserve.houseKwh*(waitUntil-now)/86400000;
-        if(projectedReserveKwh<floor)continue;
+        if(projectedReserveKwh<floor){
+            const bridgeCapacity=ordered.filter(s=>s.end<=waitUntil).reduce((sum,s)=>sum+(s.end-s.start)/3600000*reserve.chargeKw,0);
+            const targetStored=floor+reserve.houseKwh*(waitUntil-now)/86400000;
+            const targetSoc=Math.ceil(targetStored/reserve.capacityKwh*20)*5;
+            const bridgeEnergyKwh=(targetSoc/100*reserve.capacityKwh-reserve.storedKwh)/reserve.efficiency;
+            if(bridgeEnergyKwh<=bridgeCapacity&&targetSoc<=100)return {bridge:true,waitUntil:now,deadline:waitUntil,projectedReserveKwh,bridgeEnergyKwh,targetSoc};
+            continue;
+        }
         // The visible horizon is an energy deadline when no later price peak exists.
         const deadline=horizon;
         const solarCredit=witSolarBeforeDeadline(solar,states,now,deadline)*(reserve.solarFactor||0)*reserve.efficiency;
