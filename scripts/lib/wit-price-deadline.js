@@ -42,6 +42,9 @@ module.exports = function applyDeadline(flows) {
     grid.func=grid.func.replace('const targetSoc = Math.max(20,', "let targetSoc = mode === 'auto' ? 100 : Math.max(20,");
     // Credit only a conservative daylight fraction before the deadline.
     grid.func=grid.func.replace('const gridEnergyNeededKwh = mode', 'let gridEnergyNeededKwh = mode');
+    grid.func=grid.func.replace('const powerKw = energyKwh / durationHours;', 'const powerKw = planLimitW / 1000;\n        const chargeEnd = usableStart + energyKwh / powerKw * 3600000;');
+    grid.func=grid.func.replace('selectedSlots.push({ start:slot.start, end:slot.end, allInPrice:', 'selectedSlots.push({ start:usableStart, end:chargeEnd, allInPrice:');
+    grid.func=grid.func.replace('powerKw:Math.min(planLimitW / 1000, remainingEnergyKwh / durationHours)', 'powerKw:planLimitW / 1000');
     const start=grid.func.indexOf('const economicSlots = slots.filter(');
     const end=grid.func.indexOf('const planLimitW =', start);
     if(start<0||end<0) throw Error('WIT planner anchor missing');
@@ -125,11 +128,11 @@ function witReserveOpportunity(slots,now,firstDeadline,reserve,solar,states) {
     const horizon=Math.min(now+86400000,...[ordered.at(-1)?.end||now]);
     const floor=Math.max(reserve.capacityKwh*.30,reserve.houseKwh);
     const cheaper=ordered.filter(s=>s.start>=firstDeadline&&s.end<=horizon&&s.allInPrice<nightPrice-.01);
-    const candidates=cheaper.length?[cheaper[0].start]:[];
+    const candidates=cheaper.slice().sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start).map(s=>s.start);
     const rise=Date.parse(states?.['sun.sun']?.attributes?.next_rising),set=Date.parse(states?.['sun.sun']?.attributes?.next_setting);
     const solarStart=rise+2*3600000;
-    if(solarStart>=firstDeadline&&solarStart<horizon&&solarStart<set&&witSolarBeforeDeadline(solar,states,now,solarStart)*(reserve.solarFactor||0)*reserve.efficiency>=1)candidates.push(solarStart);
-    for(const waitUntil of candidates.sort((a,b)=>a-b)) {
+    if(solarStart>=firstDeadline&&solarStart<horizon&&solarStart<set&&witSolarBeforeDeadline(solar,states,now,solarStart)*(reserve.solarFactor||0)*reserve.efficiency>=1)candidates.unshift(solarStart);
+    for(const waitUntil of [...new Set(candidates)]) {
         const projectedReserveKwh=reserve.storedKwh-reserve.houseKwh*(waitUntil-now)/86400000;
         if(projectedReserveKwh<floor){
             const bridgeCapacity=ordered.filter(s=>s.end<=waitUntil).reduce((sum,s)=>sum+(s.end-s.start)/3600000*reserve.chargeKw,0);

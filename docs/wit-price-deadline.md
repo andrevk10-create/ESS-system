@@ -31,6 +31,12 @@ laden nodig is. Zonder betrouwbaar volgend laadmoment of met te weinig
 bijlaadcapaciteit blijft de oorspronkelijke tijdige planning gelden.
 
 Nu laden behoudt het handmatig gekozen SOC-doel. Uit blijft uit.
+Goedkopere vervolgmomenten worden op prijs beoordeeld, niet alleen op tijd:
+de goedkoopste haalbare gelegenheid heeft voorrang. Voldoende betrouwbare zon
+blijft een reden om netladen uit te stellen. De gekozen netlaadmomenten gebruiken
+het maximaal ingestelde laadvermogen. Een laatste gedeeltelijk kwartier krijgt
+een kortere laadduur in plaats van een lager vermogen; de benodigde energie
+blijft gelijk. De actuele netruimte en BMS kunnen het werkelijke vermogen beperken.
 BMS-limieten, laadstop-SOC, actuele fasebelasting en bevestigde WIT-bediening
 houden voorrang. 100% is een doel, geen garantie bij onvoldoende laadruimte.
 Het dashboard vermeldt de eindtijd en een waarschuwing bij te weinig geplande

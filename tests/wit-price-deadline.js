@@ -46,3 +46,13 @@ const solarOnly=tomorrow.map(s=>({...s,allInPrice:s.allInPrice===.26?.32:s.allIn
 assert(witReserveOpportunity(solarOnly,evening,firstDeadline,{...actualReserve,storedKwh:30},{...forecast,tomorrowKwh:35},tomorrowSun),'Enough conservative solar can replace grid charging without cheaper prices');
 assert.equal(witReserveOpportunity(solarOnly,evening,firstDeadline,{...actualReserve,storedKwh:30},{...forecast,valid:false},tomorrowSun),null,'Unconfirmed solar alone never justifies waiting');
 assert(code.includes('slot.start>=reserveWait.waitUntil'),'Deferred plans exclude all overnight slots');
+const cheaperNight=tomorrow.map((s,i)=>({...s,allInPrice:i===15?.18:s.allInPrice}));
+const cheapestWait=witReserveOpportunity(cheaperNight,evening,firstDeadline,actualReserve,{...forecast,valid:false},tomorrowSun);
+assert.equal(cheapestWait.waitUntil,cheaperNight[15].start,'Choose the cheapest reachable refill instead of the first cheaper hour');
+const allocationCode=code.slice(code.indexOf('let remainingEnergyKwh ='),code.indexOf('const scheduledSlot ='));
+const allocate=new Function('mode','gridEnergyNeededKwh','economicSlots','now','horizonEnd','planLimitW','slots',allocationCode+'return selectedSlots;');
+const quarter={start:evening,end:evening+900000,allInPrice:.20,marketPrice:.10};
+const shortCharge=allocate('auto',.4,[quarter],evening,evening+86400000,8000,[quarter]);
+assert.equal(shortCharge[0].powerKw,8,'Partial final quarter still uses maximum configured power');
+assert.equal(shortCharge[0].end-evening,180000,'Only three minutes are required for 0.4 kWh at 8 kW');
+assert.equal(shortCharge[0].energyKwh,.4,'Full power must not increase planned energy');
