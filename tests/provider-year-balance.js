@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {providerYearBalance:read}=require('../scripts/lib/provider-year-balance');
+const now=Date.parse('2026-10-14T09:39:00Z');
+const total={gridKwh:10,gridCost:3,exportKwh:4,exportRevenue:1};
+const snapshot={year:2026,at:now,importKwh:100,importEuros:25,exportKwh:80,exportEuros:20,netEuros:5.01,anchor:{...total},ledgerStartedAt:now-3600000};
+const ledger={startedAt:snapshot.ledgerStartedAt,total};
+assert.equal(read(snapshot,ledger,now).netEuros,5.01,'Provider rounding is retained');
+const next=read(snapshot,{...ledger,total:{gridKwh:12,gridCost:3.5,exportKwh:5,exportRevenue:1.2}},now+60000);
+assert.equal(next.importEuros,25.5);assert.equal(next.exportEuros,20.2);assert(Math.abs(next.netEuros-5.31)<1e-8);
+assert.equal(read(snapshot,{...ledger,startedAt:now},now),null,'A ledger reset cannot duplicate historical data');
+assert.equal(read(snapshot,ledger,Date.parse('2027-01-01T00:00:00+01:00')),null,'No previous-year opening carried into next year');
+console.log('Provider year balance: no overlap, delta costs, rounding and reset checks passed');
