@@ -34,6 +34,22 @@ for(const mode of ['auto','on']) {
     assert.equal(!!command?.[0],false,'Both modes stop at the configured 80% target');
 }
 {
+ const f=fixture();f.values.ess_wit_hardware_grid_guard=true;
+ Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
+ for(const phase of [1,2,3])delete f.states['sensor.p1_meter_vermogen_fase_'+phase];
+ const sent=f.run({payload:{value:100}});
+ assert(sent[0],'Hardware grid guarding does not depend on HA phase readings');
+ assert(sent[0].payload.data.service_data.values[2]<=44,'The 8 kW ceiling stays active');
+ f.values.ess_wit_grid_transport=null;
+ f.values.ess_system_config.entities={[remoteRole]:remoteRole,[authorityRole]:authorityRole};
+ f.values.ess_wit_battery_limits={remoteEntity:remoteRole,at:now,chargePowerW:0,chargeCurrentA:150,reportedVoltageV:52};
+ assert.equal(f.run({payload:{value:100}})?.[0],null,'Hardware grid guarding still respects a zero BMS charging limit');
+ delete f.values.ess_wit_battery_limits;
+ delete f.values.ess_system_config.entities;
+ f.states['sensor.growatt_battery_battery_soc']=f.state(80);
+ assert.equal(f.run({payload:{value:100}})?.[0],null,'Hardware grid guarding still stops at target SOC');
+}
+{
  const f=fixture();f.values.ess_wit_grid_charge_mode='auto';f.values.ess_wit_grid_charge_status.targetSoc=40;
  Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
  f.states['sensor.growatt_battery_battery_soc']=f.state(41);

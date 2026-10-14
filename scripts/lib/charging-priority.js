@@ -70,7 +70,7 @@ const solarPhaseAdjustmentAllowed = !lowerPriorityBlocked && enabled`);
     // Account for queued EV demand again immediately before the WIT write.
     for(const id of ['esswitgrid_transport_dispatch','esswitgrid_transport_reply']) {
     const transport=flows.find(n=>n.id===id);
-    transport.func=evPriorityReservation.toString()+'\n'+transport.func.replace(/const headroom=3\*Math\.min[^\n]*;/,
+    transport.func=evPriorityReservation.toString()+'\n'+transport.func.replace(/const headroom=[^\n]*;/,
         "const headroom=3*Math.min(...phase.map(w=>limit-w+credited/3-evPriorityReservation(flow,Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]])),now,Number(spec.voltage)||230))); ");
     }
     const solar=flows.find(n=>n.id==='esswitexport_ctrl');

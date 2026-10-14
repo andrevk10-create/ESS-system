@@ -3,6 +3,7 @@ const path = require('path');
 
 const flowPath = path.join(__dirname, '..', 'flows.json');
 const flows = JSON.parse(fs.readFileSync(flowPath, 'utf8'));
+require('./lib/ev-solar-export').unapply(flows);
 require('./lib/ev-manual-soc').unapply(flows);
 
 function sanitizePublicFlowText(input) {
@@ -4753,6 +4754,8 @@ require('./lib/ev-climate-power')(flows);
 require('./lib/ev-manual-soc')(flows);
 require('./lib/energy-costs')(flows);
 require('./lib/wit-charge-audit')(flows);
+require('./lib/wit-hardware-grid-guard')(flows);
+require('./lib/ev-solar-export')(flows);
 require('./lib/editor-layout')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

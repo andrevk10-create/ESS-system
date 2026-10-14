@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {evSolarExportWait:wait}=require('../scripts/lib/ev-solar-export');
+const now=Date.now(), deadline=now+6*3600000;
+const slots=[{start:new Date(now+3600000).toISOString(),end:new Date(now+4*3600000).toISOString(),allInPrice:0.15}];
+const stamp=new Date(now).toISOString();
+assert(wait(slots,now,deadline,10,11,0.30,stamp));
+assert(!wait(slots,now,deadline,30,11,0.30,stamp),'Insufficient later capacity preserves charging');
+assert(!wait(slots,now,deadline,10,11,0.14,stamp),'Low export value preserves solar charging');
+assert(!wait(slots,now,deadline,10,11,0.30,new Date(now-3*3600000).toISOString()),'Stale prices cannot postpone charging');
+assert(!wait(slots,now,now+3600000,10,11,0.30,stamp),'Departure urgency preserves charging');
+console.log('EV solar export checks passed');
