@@ -4753,6 +4753,7 @@ require('./lib/jeep-vehicle')(flows);
 require('./lib/ev-climate-power')(flows);
 require('./lib/ev-manual-soc')(flows);
 require('./lib/energy-costs')(flows);
+require('./lib/overview-layout')(flows);
 require('./lib/wit-charge-audit')(flows);
 require('./lib/wit-hardware-grid-guard')(flows);
 require('./lib/ev-solar-export')(flows);
