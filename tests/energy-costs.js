@@ -5,6 +5,16 @@ const car=(binding,power,connected=false)=>({binding,power,connected,directPower
 const sample=(grid=1000,battery=0)=>({binding:'meters',grid,battery,house:6000,audi:car('left',2000),jeep:car('right',1000)});
 const prices=[{start:'2026-10-13T15:00:00Z',end:'2026-10-13T15:15:00Z',allInPrice:.2},{start:'2026-10-13T15:15:00Z',end:'2026-10-13T15:30:00Z',allInPrice:.4}];
 const close=(a,b)=>assert(Math.abs(a-b)<1e-8,`${a} != ${b}`);
+{
+ const tariff=[{start:prices[0].start,end:prices[0].end,allInPrice:.298,marketPrice:.138}];
+ let exported=step(null,sample(-1000),tariff,start,true);
+ exported=step(exported,sample(-1000),tariff,start+60000,true);
+ close(exported.total.exportRevenue,.318/60);
+ let imported=step(null,sample(1000),tariff,start,true);
+ imported=step(imported,sample(1000),tariff,start+60000,true);
+ close(imported.total.gridCost,.298/60);
+ assert(valid(exported),'Saldering preserves the existing ledger schema');
+}
 let l=step(null,sample(),prices,start);
 l=step(l,sample(),prices,start+120000);
 close(l.total.gridCost,(.2+.4)/60);close(l.total.audiCost,l.total.gridCost/3);close(l.total.jeepCost,l.total.gridCost/6);

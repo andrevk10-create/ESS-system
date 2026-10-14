@@ -1,3 +1,4 @@
+const {essExportPrice}=require('./export-price');
 function evSolarExportWait(forecast, now, deadline, neededKwh, chargeKw, exportPrice, updatedAt) {
     const end = Number(deadline), stamp = new Date(updatedAt).getTime();
     if (!Number.isFinite(end) || end-now<=3600000 || !Number.isFinite(neededKwh) || neededKwh<0 ||
@@ -17,6 +18,7 @@ function unapply(flows) {
     for(const id of ['ess00000000000d','essjeep_ess00000000000d']) {
         const n=flows.find(n=>n.id===id);
         n.func=n.func.replace(/function evSolarExportWait\([\s\S]*?\n\}\n/g,'')
+            .replace(/function essExportPrice\([\s\S]*?\n\}\n/g,'')
             .replace(/const solarExportWait = [^\n]*;\n/g,'')
             .replace(/const solarPhaseAdjustmentAllowed = (?:!solarExportWait && )+/g,'const solarPhaseAdjustmentAllowed = ')
             .replace(/\} else if \(solarExportWait\) \{[\s\S]*?\} else if \(audiSoc >= solarSoc\) \{/g,'} else if (audiSoc >= solarSoc) {');
@@ -26,8 +28,8 @@ module.exports = function applySolarExport(flows) {
     unapply(flows);
     for(const id of ['ess00000000000d','essjeep_ess00000000000d']) {
         const n=flows.find(n=>n.id===id);
-        n.func=evSolarExportWait.toString()+'\n'+n.func;
-        n.func=n.func.replace('const solarPhaseAdjustmentAllowed =', `const solarExportWait = priceIsFresh && evSolarExportWait(forecast,now,departure?.getTime(),departureEnergyNeeded,netChargePowerKw,marketPrice*1.21+0.02,(flow.get('ess_nordpool_forecast_meta')||{}).updatedAt);
+        n.func=essExportPrice.toString()+'\n'+evSolarExportWait.toString()+'\n'+n.func;
+        n.func=n.func.replace('const solarPhaseAdjustmentAllowed =', `const solarExportWait = priceIsFresh && evSolarExportWait(forecast,now,departure?.getTime(),departureEnergyNeeded,netChargePowerKw,essExportPrice(marketPrice,allInPrice,now,flow.get('ess_export_saldering_2026')!==false),(flow.get('ess_nordpool_forecast_meta')||{}).updatedAt);
 const solarPhaseAdjustmentAllowed = !solarExportWait &&`);
         n.func=n.func.replace('} else if (audiSoc >= solarSoc) {', `} else if (solarExportWait) {
         solarReadySince=0;solarInsufficientSince=0;solarStartedAt=0;
