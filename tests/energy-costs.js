@@ -52,6 +52,7 @@ const migrated=step(old,sample(),prices,start+120000);
 assert.equal(migrated.version,2);close(migrated.legacyChargingCosts.audi,legacyCost);
 close(migrated.total.audiCost,0);close(migrated.total.audiKwh,oldKwh);
 assert(valid(migrated),'Corrected ledger can be persisted');
+assert.throws(()=>step({...migrated,total:{}},sample(),prices,start+180000),/bewaard voor herstel/,'Invalid historical totals must never silently restart at zero');
 const ereBalance=costEreOpening({at:start-1,kwh:1000,euros:99},migrated,start+120000);
 close(ereBalance.euros+.1*(migrated.cars.audi.kwh+migrated.cars.jeep.kwh-ereBalance.trackedKwh),99+.1*(migrated.cars.audi.kwh+migrated.cars.jeep.kwh));
 assert(flows.find(n=>n.id==='essprefs_save').func.includes('result.energyCosts'));

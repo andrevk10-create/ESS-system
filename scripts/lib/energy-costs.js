@@ -11,6 +11,7 @@ function costLedgerValid(v){
     return v;
 }
 function costLedgerStep(previous,sample,prices,now){
+    if(previous!=null&&!costLedgerValid(previous))throw new Error('Bestaande kostenregistratie ongeldig; bewaard voor herstel');
     const zero=()=>({gridKwh:0,gridCost:0,batterySaving:0,audiKwh:0,audiCost:0,jeepKwh:0,jeepCost:0,coveredHours:0,missingHours:0,audiUnpricedKwh:0,jeepUnpricedKwh:0,exportKwh:0,exportRevenue:0,exportUnpricedKwh:0});
     const ledger=costLedgerValid(previous)||{version:2,startedAt:now,chargingCostStartedAt:now,total:zero(),days:{},quarters:[],cars:{audi:{kwh:0,cost:0},jeep:{kwh:0,cost:0}}};
     if(ledger.version===1){
@@ -124,7 +125,10 @@ if(flow.get('ess_charging_preferences_ready')===true){
  const power=role=>{const e=read(role),unit=String(e?.attributes?.unit_of_measurement||'').toLowerCase();return e&&Number.isFinite(Number(e.state))&&['w','kw'].includes(unit)?Number(e.state)*(unit==='kw'?1000:1):null;};
  const car=(name,suffix)=>{const role='sensor.ev_charger'+suffix+'_status',e=read(role);const state=String(e?.state||'').toLowerCase();const connected=state==='disconnected'?false:['charging','awaiting_start','ready_to_charge','completed','paused','stopped'].includes(state)?true:null;return {binding:config.entities?.[role]||role,connected,power:power('sensor.ev_charger'+suffix+'_power'),directPowerKw:Number(config.specs?.[name==='audi'?'evGridChargePowerKw':'ev2GridChargePowerKw'])||11};};
  const sample={binding:JSON.stringify([config.entities?.['sensor.p1_meter_vermogen'],config.entities?.['sensor.growatt_wit_battery_battery_power'],config.entities?.['sensor.growatt_wit_solar_system_output_power'],...loosePvPowerIds.map(role=>config.entities?.[role]||role)]),house:read('sensor.p1_meter_vermogen',15000)&&read('sensor.growatt_wit_solar_system_output_power')&&(loosePvAfterSunset||freshLoosePvPowers.length>0)?dashboard.house.power:null,grid:read('sensor.p1_meter_vermogen',15000)?dashboard.grid.power:null,battery:read('sensor.growatt_wit_battery_battery_power')?dashboard.battery.power:null,audi:car('audi',''),jeep:car('jeep','_2')};
- const ledger=costLedgerStep(flow.get('ess_energy_cost_ledger'),sample,flow.get('ess_nordpool_forecast')||[],now);
+ let ledger;
+ try{ledger=costLedgerStep(flow.get('ess_energy_cost_ledger'),sample,flow.get('ess_nordpool_forecast')||[],now);}
+ catch(error){dashboard.energyCosts=flow.get('ess_dashboard_live')?.energyCosts||null;dashboard.alarms.push({level:'error',text:error.message});}
+ if(ledger){
  flow.set('ess_energy_cost_ledger',ledger);
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
  const ere=flow.get('ess_ere_net_rate');
@@ -133,6 +137,7 @@ if(flow.get('ess_charging_preferences_ready')===true){
  const newEreKwh=Math.max(0,ledger.cars.audi.kwh+ledger.cars.jeep.kwh-(opening?.trackedKwh||0));
  dashboard.energyCosts={total:ledger.total,today:ledger.days[day]||null,since:new Date(ledger.startedAt).toISOString(),chargingCostSince:new Date(ledger.chargingCostStartedAt||ledger.startedAt).toISOString(),legacyChargingCosts:ledger.legacyChargingCosts||null,ereOpening:opening||null,ereNetRate:netRate,ereEstimated:(opening?.euros||0)+netRate*newEreKwh,ereKwh:(opening?.kwh||0)+newEreKwh,cars:{}};
  for(const name of ['audi','jeep']){const c=ledger.cars[name],baseline=costDirectBaseline(c.session);dashboard.energyCosts.cars[name]={kwh:c.kwh,cost:c.cost,sessionCost:c.session?.cost??null,directCost:baseline,saving:baseline===null?null:baseline-c.session.cost,ereEstimated:c.kwh*netRate};}
+ }
 }
 // END ENERGY COSTS
 flow.set('ess_dashboard_live', dashboard);`);
