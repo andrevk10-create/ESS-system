@@ -25,7 +25,17 @@ flow.set('ess_dashboard_live', dashboard);`);
         else n.func=n.func.replace('    for (const [key,value] of Object.entries(candidate))',"    if(saved.providerYearBalance&&!flow.get('ess_provider_year_balance'))flow.set('ess_provider_year_balance',saved.providerYearBalance);\n    for (const [key,value] of Object.entries(candidate))");
     }
     const block=`<article class="panel finance-group" v-if="d.energyCosts?.providerYear" style="grid-column:1/-1"><div class="panel-head"><b>Zonneplan · {{d.energyCosts.providerYear.year}}</b><span>App-stand + bijgehouden kwartieren</span></div><div class="finance-metrics"><div class="metric tone-grid"><span>Afname · jaar</span><b>{{money(d.energyCosts.providerYear.importEuros)}}</b><small>{{energy(d.energyCosts.providerYear.importKwh)}}</small></div><div class="metric tone-sun"><span>Teruglevering · jaar</span><b>{{money(d.energyCosts.providerYear.exportEuros)}}</b><small>{{energy(d.energyCosts.providerYear.exportKwh)}}</small></div><div class="metric"><span>Netto verbruikskosten · jaar</span><b>{{money(d.energyCosts.providerYear.netEuros)}}</b><small>Exclusief ERE · app-afronding behouden</small></div></div></article>`;
-    ui.format=ui.format.replace('<section class="overview-finances" aria-label="Kosten en besparing">','<section class="overview-finances" aria-label="Kosten en besparing">'+block);
+    const ere=ui.format.match(/<article class="metric tone-sun"><span aria-label="ERE-OPBRENGST[\s\S]*?<\/article>/)?.[0];
+    if(!ere)throw Error('ERE overview card missing');
+    ui.format=ui.format.replace(ere,ere.replace('<article ', '<article v-if="!d.energyCosts?.providerYear" '))
+        .replace('<b>Auto’s & ERE</b>', '<b>Auto’s</b>');
+    const yearBlock=block.replace('<div class="finance-metrics">','<div class="finance-metrics finance-year-metrics">')
+        .replace('</div></div></article>','</div>'+ere+'</div></article>');
+    ui.format=ui.format.replace('<section class="overview-finances" aria-label="Kosten en besparing">','<section class="overview-finances" aria-label="Kosten en besparing">'+yearBlock)
+        .replace('</style>',`.finance-year-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:800px){.finance-year-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){.finance-year-metrics{grid-template-columns:1fr}}
+</style>`);
     const z=mapper.z,g='esseditor_history';
     flows.push({id:'essprovider_year_tick',type:'inject',z,g,name:'Lees privé Zonneplan-jaarstand',props:[{p:'payload'}],once:true,onceDelay:25,wires:[['essprovider_year_read']]},
         {id:'essprovider_year_read',type:'file in',z,g,name:'Lees jaarstand buiten Git',filename:'/config/node-red/ess-provider-year-balance.json',filenameType:'str',format:'utf8',allProps:true,sendError:false,wires:[['essprovider_year_save']]},
