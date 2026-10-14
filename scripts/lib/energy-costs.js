@@ -1,5 +1,5 @@
 function costLedgerValid(v){
-    if(!v||v.version!==1||!Number.isFinite(v.startedAt)||!v.total||!v.days||!v.cars)return null;
+    if(!v||![1,2].includes(v.version)||!Number.isFinite(v.startedAt)||!v.total||!v.days||!v.cars)return null;
     const fields=['gridKwh','gridCost','batterySaving','audiKwh','audiCost','jeepKwh','jeepCost','coveredHours','missingHours','audiUnpricedKwh','jeepUnpricedKwh','exportKwh','exportRevenue','exportUnpricedKwh'];
     if(!fields.every(k=>Number.isFinite(v.total[k]))||Object.keys(v.days).length>32)return null;
     if(!Object.values(v.days).every(d=>fields.every(k=>Number.isFinite(d[k]))))return null;
@@ -12,7 +12,13 @@ function costLedgerValid(v){
 }
 function costLedgerStep(previous,sample,prices,now){
     const zero=()=>({gridKwh:0,gridCost:0,batterySaving:0,audiKwh:0,audiCost:0,jeepKwh:0,jeepCost:0,coveredHours:0,missingHours:0,audiUnpricedKwh:0,jeepUnpricedKwh:0,exportKwh:0,exportRevenue:0,exportUnpricedKwh:0});
-    const ledger=costLedgerValid(previous)||{version:1,startedAt:now,total:zero(),days:{},quarters:[],cars:{audi:{kwh:0,cost:0},jeep:{kwh:0,cost:0}}};
+    const ledger=costLedgerValid(previous)||{version:2,startedAt:now,chargingCostStartedAt:now,total:zero(),days:{},quarters:[],cars:{audi:{kwh:0,cost:0},jeep:{kwh:0,cost:0}}};
+    if(ledger.version===1){
+        ledger.legacyChargingCosts={audi:ledger.total.audiCost,jeep:ledger.total.jeepCost};
+        for(const record of [ledger.total,...Object.values(ledger.days),...ledger.quarters])for(const car of ['audi','jeep']){record[car+'Cost']=0;record[car+'UnpricedKwh']=0;}
+        for(const car of ['audi','jeep']){ledger.cars[car].cost=0;if(ledger.cars[car].session){ledger.cars[car].session.cost=0;ledger.cars[car].session.unpriced=true;}}
+        ledger.version=2;ledger.chargingCostStartedAt=now;ledger.last=null;
+    }
     const slots=prices.map(s=>({start:Date.parse(s.start),end:Date.parse(s.end),price:typeof s.allInPrice==='number'?s.allInPrice:NaN,exportPrice:typeof s.marketPrice==='number'&&Number.isFinite(s.marketPrice)?s.marketPrice*1.21+.02:null})).filter(s=>Number.isFinite(s.start)&&s.end>s.start&&Number.isFinite(s.price));
     const date=t=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));
     const finite=v=>typeof v==='number'&&Number.isFinite(v);
@@ -53,10 +59,27 @@ function costLedgerStep(previous,sample,prices,now){
             for(const car of ['audi','jeep']){
                 if(finite(prior[car]?.power)&&finite(sample[car]?.power)&&prior[car].binding===sample[car].binding){
                     const a=interpolate(prior[car].power,sample[car].power,cursor),b=interpolate(prior[car].power,sample[car].power,end);
-                    value[car+'Kwh']=positiveIntegral(a,b,h)/1000;value[car+'Cost']=finite(price)?value[car+'Kwh']*price:0;
-                    if(!finite(price))value[car+'UnpricedKwh']=value[car+'Kwh'];
+                    value[car+'Kwh']=positiveIntegral(a,b,h)/1000;
+                    // Allocate net import proportionally across household consumption.
+                    // Solar and battery discharge incur no current grid purchase cost.
+                    const allocationOk=finite(prior.grid)&&finite(sample.grid)&&finite(prior.house)&&finite(sample.house);
+                    let gridEnergy=0;
+                    if(allocationOk){
+                        const cuts=[cursor,end];
+                        if(prior.grid*sample.grid<0){const crossing=prior.at+elapsed*(-prior.grid)/(sample.grid-prior.grid);if(crossing>cursor&&crossing<end)cuts.splice(1,0,crossing);}
+                        for(let part=0;part<cuts.length-1;part++)for(let i=0;i<32;i++){
+                            const t=cuts[part]+(i+.5)*(cuts[part+1]-cuts[part])/32;
+                            const grid=Math.max(0,interpolate(prior.grid,sample.grid,t));
+                            const house=Math.max(0,interpolate(prior.house,sample.house,t));
+                            const charge=Math.max(0,interpolate(prior[car].power,sample[car].power,t));
+                            const cars=['audi','jeep'].reduce((sum,name)=>sum+(finite(prior[name]?.power)&&finite(sample[name]?.power)?Math.max(0,interpolate(prior[name].power,sample[name].power,t)):0),0);
+                            gridEnergy+=charge*Math.min(1,grid/Math.max(house,cars,charge,1))*(cuts[part+1]-cuts[part])/32/3600000000;
+                        }
+                    }
+                    value[car+'Cost']=allocationOk&&finite(price)?gridEnergy*price:0;
+                    if(!allocationOk||(!finite(price)&&gridEnergy>0))value[car+'UnpricedKwh']=value[car+'Kwh'];
                     const c=ledger.cars[car];c.kwh+=value[car+'Kwh'];c.cost+=value[car+'Cost'];
-                    if(c.session){c.session.kwh+=value[car+'Kwh'];c.session.cost+=value[car+'Cost'];if(!finite(price))c.session.unpriced=true;}
+                    if(c.session){c.session.kwh+=value[car+'Kwh'];c.session.cost+=value[car+'Cost'];if(value[car+'UnpricedKwh']>0)c.session.unpriced=true;}
                 }
             }
             const day=date(cursor),daily=ledger.days[day]||(ledger.days[day]=zero());
@@ -100,7 +123,7 @@ if(flow.get('ess_charging_preferences_ready')===true){
  const read=(role,age=120000)=>{const e=states[role];const stamp=Date.parse(e?.last_reported||e?.last_updated||e?.last_changed);return e&&now-stamp>=0&&now-stamp<=age&&!['unknown','unavailable',''].includes(e.state)?e:null;};
  const power=role=>{const e=read(role),unit=String(e?.attributes?.unit_of_measurement||'').toLowerCase();return e&&Number.isFinite(Number(e.state))&&['w','kw'].includes(unit)?Number(e.state)*(unit==='kw'?1000:1):null;};
  const car=(name,suffix)=>{const role='sensor.ev_charger'+suffix+'_status',e=read(role);const state=String(e?.state||'').toLowerCase();const connected=state==='disconnected'?false:['charging','awaiting_start','ready_to_charge','completed','paused','stopped'].includes(state)?true:null;return {binding:config.entities?.[role]||role,connected,power:power('sensor.ev_charger'+suffix+'_power'),directPowerKw:Number(config.specs?.[name==='audi'?'evGridChargePowerKw':'ev2GridChargePowerKw'])||11};};
- const sample={binding:JSON.stringify([config.entities?.['sensor.p1_meter_vermogen'],config.entities?.['sensor.growatt_wit_battery_battery_power']]),grid:read('sensor.p1_meter_vermogen',15000)?dashboard.grid.power:null,battery:read('sensor.growatt_wit_battery_battery_power')?dashboard.battery.power:null,audi:car('audi',''),jeep:car('jeep','_2')};
+ const sample={binding:JSON.stringify([config.entities?.['sensor.p1_meter_vermogen'],config.entities?.['sensor.growatt_wit_battery_battery_power'],config.entities?.['sensor.growatt_wit_solar_system_output_power'],...loosePvPowerIds.map(role=>config.entities?.[role]||role)]),house:read('sensor.p1_meter_vermogen',15000)&&read('sensor.growatt_wit_solar_system_output_power')&&(loosePvAfterSunset||freshLoosePvPowers.length>0)?dashboard.house.power:null,grid:read('sensor.p1_meter_vermogen',15000)?dashboard.grid.power:null,battery:read('sensor.growatt_wit_battery_battery_power')?dashboard.battery.power:null,audi:car('audi',''),jeep:car('jeep','_2')};
  const ledger=costLedgerStep(flow.get('ess_energy_cost_ledger'),sample,flow.get('ess_nordpool_forecast')||[],now);
  flow.set('ess_energy_cost_ledger',ledger);
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
@@ -108,7 +131,7 @@ if(flow.get('ess_charging_preferences_ready')===true){
  const netRate=typeof ere==='number'&&Number.isFinite(ere)&&ere>=0&&ere<=2?ere:.10;
  const opening=flow.get('ess_ere_opening_balance');
  const newEreKwh=Math.max(0,ledger.cars.audi.kwh+ledger.cars.jeep.kwh-(opening?.trackedKwh||0));
- dashboard.energyCosts={total:ledger.total,today:ledger.days[day]||null,since:new Date(ledger.startedAt).toISOString(),ereOpening:opening||null,ereNetRate:netRate,ereEstimated:(opening?.euros||0)+netRate*newEreKwh,ereKwh:(opening?.kwh||0)+newEreKwh,cars:{}};
+ dashboard.energyCosts={total:ledger.total,today:ledger.days[day]||null,since:new Date(ledger.startedAt).toISOString(),chargingCostSince:new Date(ledger.chargingCostStartedAt||ledger.startedAt).toISOString(),legacyChargingCosts:ledger.legacyChargingCosts||null,ereOpening:opening||null,ereNetRate:netRate,ereEstimated:(opening?.euros||0)+netRate*newEreKwh,ereKwh:(opening?.kwh||0)+newEreKwh,cars:{}};
  for(const name of ['audi','jeep']){const c=ledger.cars[name],baseline=costDirectBaseline(c.session);dashboard.energyCosts.cars[name]={kwh:c.kwh,cost:c.cost,sessionCost:c.session?.cost??null,directCost:baseline,saving:baseline===null?null:baseline-c.session.cost,ereEstimated:c.kwh*netRate};}
 }
 // END ENERGY COSTS
@@ -127,11 +150,11 @@ flow.set('ess_dashboard_live', dashboard);`);
     const tile=`<section class="metric-grid" aria-label="Kosten en besparing">
  <article class="metric tone-grid"><span>NETAFNAMEKOSTEN VANDAAG</span><b>{{money(d.energyCosts?.today?.gridCost)}}</b><small>Totaal {{money(d.energyCosts?.total?.gridCost)}} sinds registratie</small></article>
  <article class="metric tone-battery"><span>ACCUBESPARING VANDAAG · GESCHAT</span><b>{{money(d.energyCosts?.today?.batterySaving)}}</b><small>Totaal {{money(d.energyCosts?.total?.batterySaving)}}</small></article>
- <article class="metric tone-ev" v-for="car in ['audi','jeep']" :key="'cost-'+car"><span>{{car.toUpperCase()}} · LAADKOSTEN VANDAAG</span><b>{{money(d.energyCosts?.today?.[car+'UnpricedKwh']>0?null:d.energyCosts?.today?.[car+'Cost'])}}</b><small>Totaal {{money(d.energyCosts?.total?.[car+'UnpricedKwh']>0?null:d.energyCosts?.total?.[car+'Cost'])}}</small><small>Besparing direct laden: {{money(d.energyCosts?.cars?.[car]?.saving)}}</small></article>
+ <article class="metric tone-ev" v-for="car in ['audi','jeep']" :key="'cost-'+car"><span>{{car.toUpperCase()}} · LAADKOSTEN VANDAAG · NET GESCHAT</span><b>{{money(d.energyCosts?.today?.[car+'UnpricedKwh']>0?null:d.energyCosts?.today?.[car+'Cost'])}}</b><small>Totaal {{money(d.energyCosts?.total?.[car+'UnpricedKwh']>0?null:d.energyCosts?.total?.[car+'Cost'])}}</small><small>Besparing direct laden: {{money(d.energyCosts?.cars?.[car]?.saving)}}</small></article>
  <article class="metric tone-sun"><span>TERUGLEVEROPBRENGST VANDAAG</span><b>{{money(d.energyCosts?.today?.exportUnpricedKwh>0?null:d.energyCosts?.today?.exportRevenue)}}</b><small>Zonneplan basis · {{energy(d.energyCosts?.today?.exportKwh)}}</small></article>
  <article class="metric tone-sun"><span>ERE-OPBRENGST · GESCHAT</span><b>{{money(d.energyCosts?.ereEstimated)}}</b><small>Beide laadpunten · {{price(d.energyCosts?.ereNetRate)}} netto/kWh</small></article>
  </section>
- <details class="panel" style="margin-top:10px"><summary>Kosten en opbrengsten</summary><p>Vanaf {{d.energyCosts?.since?new Date(d.energyCosts.since).toLocaleString('nl-NL'):'start registratie'}}. Kwartierprijzen × gemeten vermogen; geen vaste kosten. Laadkosten waarderen alle geladen stroom tegen de kwartierprijs, ook zon en accu. Ze worden niet bij netkosten opgeteld.</p><p>Totaal teruglevering: {{money(d.energyCosts?.total?.exportUnpricedKwh>0?null:d.energyCosts?.total?.exportRevenue)}}. Basis Zonneplan: marktprijs incl. btw + €0,02/kWh, zonder jaarlijkse saldering of voorwaardelijke 10% bonus. Audi totaal: {{money(d.energyCosts?.total?.audiUnpricedKwh>0?null:d.energyCosts?.total?.audiCost)}} · Jeep totaal: {{money(d.energyCosts?.total?.jeepUnpricedKwh>0?null:d.energyCosts?.total?.jeepCost)}}.</p><p>Accubesparing is vermeden netafname minus extra netafname voor laden; zonder slijtage, omzettingsverliescorrectie of gemiste terugleververgoeding. Direct laden vergelijkt dezelfde energie vanaf een waargenomen aansluiting op het ingestelde laadvermogen. Ontbrekende aansluiting of prijzen geeft —.</p><p>ERE is een schatting voor Lekkerladen met netto circa €0,10/kWh; geen bevestigde inboeking of uitbetaling. Ontbrekende metingen: {{Number(d.energyCosts?.total?.missingHours||0).toLocaleString('nl-NL',{maximumFractionDigits:1})}} uur.</p><label>ERE netto €/kWh <input type="number" min="0" max="2" step="0.001" :value="d.energyCosts?.ereNetRate??0.10" @change="send({topic:'ess/costs/ere-net-rate',payload:Number($event.target.value)})"></label></details>`;
+ <details class="panel" style="margin-top:10px"><summary>Kosten en opbrengsten</summary><p>Vanaf {{d.energyCosts?.since?new Date(d.energyCosts.since).toLocaleString('nl-NL'):'start registratie'}}. Kwartierprijzen × gemeten vermogen; geen vaste kosten. Laadkosten schatten alleen het netaandeel: netafname wordt evenredig over het totale woningverbruik verdeeld. Directe zon en accu-ontlading krijgen geen nettarief. Laadkosten zijn onderdeel van de netkosten.</p><p>Laadkosten volgens deze berekening vanaf {{d.energyCosts?.chargingCostSince?new Date(d.energyCosts.chargingCostSince).toLocaleString('nl-NL'):'start registratie'}}. Oude laadwaardering (inclusief zon en accu), apart bewaard: Audi {{money(d.energyCosts?.legacyChargingCosts?.audi)}} · Jeep {{money(d.energyCosts?.legacyChargingCosts?.jeep)}}.</p><p>Totaal teruglevering: {{money(d.energyCosts?.total?.exportUnpricedKwh>0?null:d.energyCosts?.total?.exportRevenue)}}. Basis Zonneplan: marktprijs incl. btw + €0,02/kWh, zonder jaarlijkse saldering of voorwaardelijke 10% bonus. Audi totaal: {{money(d.energyCosts?.total?.audiUnpricedKwh>0?null:d.energyCosts?.total?.audiCost)}} · Jeep totaal: {{money(d.energyCosts?.total?.jeepUnpricedKwh>0?null:d.energyCosts?.total?.jeepCost)}}.</p><p>Accubesparing is vermeden netafname minus extra netafname voor laden; zonder slijtage, omzettingsverliescorrectie of gemiste terugleververgoeding. Direct laden is een vergelijking met volledig netladen en vergelijkt dezelfde energie vanaf een waargenomen aansluiting op het ingestelde laadvermogen. Ontbrekende aansluiting of prijzen geeft —.</p><p>ERE is een schatting voor Lekkerladen met netto circa €0,10/kWh; geen bevestigde inboeking of uitbetaling. Ontbrekende metingen: {{Number(d.energyCosts?.total?.missingHours||0).toLocaleString('nl-NL',{maximumFractionDigits:1})}} uur.</p><label>ERE netto €/kWh <input type="number" min="0" max="2" step="0.001" :value="d.energyCosts?.ereNetRate??0.10" @change="send({topic:'ess/costs/ere-net-rate',payload:Number($event.target.value)})"></label></details>`;
     ui.format=ui.format.replace('  <section class="quick-actions"',tile+'\n  <section class="quick-actions"');
     ui.format=ui.format.replace('Beide laadpunten · {{price(d.energyCosts?.ereNetRate)}} netto/kWh','{{energy(d.energyCosts?.ereKwh)}} · beide laadpunten');
     ui.format=ui.format.replace('</label></details>',`</label><p>ERE-beginstand: {{money(d.energyCosts?.ereOpening?.euros)}} voor {{energy(d.energyCosts?.ereOpening?.kwh)}}. Dit bedrag blijft apart van de nieuwe schatting.</p><div class="control-row"><label>Beginstand kWh <input ref="ereOpeningKwh" type="number" min="0" step="0.001"></label><label>Beginstand € <input ref="ereOpeningEuros" type="number" min="0" step="0.01"></label><button class="touch-button" @click="send({topic:'ess/costs/ere-opening',payload:{kwh:$refs.ereOpeningKwh.value===''?null:Number($refs.ereOpeningKwh.value),euros:$refs.ereOpeningEuros.value===''?null:Number($refs.ereOpeningEuros.value),at:new Date().toISOString()}})">Beginstand opslaan</button></div></details>`);

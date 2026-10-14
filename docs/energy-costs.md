@@ -15,9 +15,18 @@ berekening, geen vervanging voor de factuur of een gecertificeerde kWh-meter.
 Ontbrekende prijzen of metingen worden als ontbrekende dekking geregistreerd.
 
 Netafnamekosten omvatten alle afgenomen elektriciteit, inclusief autoladen en
-netladen van de accu. Laadkosten zijn daarnaast een afzonderlijke waardering van
-de energie van elk laadpunt tegen het all-in kwartiertarief, inclusief laden met
-zon of accu. Tel deze bedragen daarom niet nog eens bij netafnamekosten op.
+netladen van de accu. Laadkosten schatten het netaandeel per laadpunt: positieve
+netafname wordt evenredig over het totale actuele woningverbruik verdeeld.
+Direct verbruikte zon en accu-ontlading krijgen geen actueel nettarief. Bij
+teruglevering zijn de laadkosten nul. Het betreft een schatting van de verdeling,
+omdat de bron van stroom per laadpunt niet afzonderlijk wordt gemeten.
+Tel deze bedragen niet nog eens bij netafnamekosten op. Ontbrekende bronmetingen
+geven onbekende laadkosten; de totale laadenergie blijft wel geregistreerd.
+
+Bij overgang van registerversie 1 naar 2 blijven energie, netkosten en ERE behouden.
+De oude laadwaarderingen blijven apart bewaard als `legacyChargingCosts`.
+Nieuwe laadkostentellers beginnen bij `chargingCostStartedAt`; historische
+laadbedragen kunnen zonder bronmetingen niet betrouwbaar worden herberekend.
 
 Accubesparing vergelijkt de gemeten netafname met berekende netafname zonder de
 gemeten accustroom. Extra netafname voor acculaden verlaagt de besparing. Dit is
@@ -31,7 +40,7 @@ Per laadpunt wordt een waargenomen overgang van losgekoppeld naar aangesloten
 vastgelegd, met de op dat moment beschikbare kwartiertarieven. De vergelijking
 gebruikt dezelfde werkelijk geregistreerde geladen energie, maar rekent die
 vanaf de aansluiting door tegen het ingestelde laadvermogen van de auto.
-Het betreft de huidige of laatst geregistreerde sessie, geen gegarandeerd
+Dit referentiescenario veronderstelt volledig netladen. Het betreft de huidige of laatst geregistreerde sessie, geen gegarandeerd
 historisch resultaat. Een auto die bij de start al aangesloten is, ontbrekende
 prijzen en gemiste aansluitovergangen geven geen fictieve besparing.
 
