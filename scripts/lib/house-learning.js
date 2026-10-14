@@ -1,5 +1,5 @@
 // Self-contained helpers, embedded in the Node-RED history function at build time.
-function housePowerSample(rawStates, config, dashboard, control, now) {
+function housePowerSample(rawStates, config, dashboard, control, now, snapshot) {
     const states = rawStates || {};
     const mapping = config.entities || {};
     const number = value => value === null || value === undefined || value === '' || typeof value === 'boolean'
@@ -37,10 +37,21 @@ function housePowerSample(rawStates, config, dashboard, control, now) {
         const stateText = String(state && state.state || '').toLowerCase();
         const controllerActive = suffix === '' && ageOk(control.updatedAt, 120000)
             && (control.actualCharging === true || control.chargingConfirmed === true || number(control.chargerPowerW) > 100);
-        const currentActive = fresh(current) && number(current.state) > 0.5;
+        // Sub-ampere residual/current offsets do not represent EV charging.
+        const currentActive = fresh(current) && number(current.state) > 1;
+        // HA's current REST response can confirm an unchanged disconnected
+        // charger. Keep original timestamps; never apply this to active charging.
+        const observed=role=>{
+            const cached=entity(role),actual=snapshot?.entities?.[id(role)];
+            return ageOk(snapshot?.at,90000)&&cached&&actual&&actual.state===cached.state&&
+                (actual.last_reported||actual.last_updated)===(cached.last_reported||cached.last_updated);
+        };
+        const idleStates=['disconnected','no_car_connected','awaiting_start','awaiting_authorization','ready_to_charge','completed','finished','paused','standby','idle'];
+        const disconnectedConfirmed=idleStates.includes(stateText)&&powerW===0&&number(current?.state)!==null&&number(current?.state)<=1&&
+            entity('binary_sensor.ev_charger'+suffix+'_online')?.state==='on'&&
+            [prefix+'_status',prefix+'_power',prefix+'_current','binary_sensor.ev_charger'+suffix+'_online'].every(observed);
         const charging = stateText === 'charging' || controllerActive || currentActive;
-        const idle = statusFresh(state) && ['disconnected', 'no_car_connected', 'awaiting_start', 'awaiting_authorization',
-            'ready_to_charge', 'completed', 'finished', 'paused', 'standby', 'idle'].includes(stateText);
+        const idle = disconnectedConfirmed || statusFresh(state) && idleStates.includes(stateText);
         // P1-based controller estimates include household demand: never subtract
         // them as measured EV power. They can only disqualify an apparent zero.
         if (fresh(power) && powerW !== null && !(powerW <= 100 && charging) && !(powerW > 100 && idle)) {

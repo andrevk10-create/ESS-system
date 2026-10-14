@@ -86,6 +86,26 @@ f.values.ess_dashboard_live.house.power = 2000;
 assert.equal(run(f).model.lastBasePowerW, 1000, 'Fresh idle status may confirm zero when a parked meter does not change');
 f.states['sensor.ev_charger_current'] = reading(16, 'A');
 assert.equal(run(f).model.lastBasePowerW, null, 'Measured charging current must invalidate contradictory idle/zero');
+f.states['sensor.ev_charger_current'] = reading(0.59, 'A');
+assert.equal(run(f).model.lastBasePowerW,1000,'A zero power meter and idle status tolerate a sub-ampere residual');
+{
+ const {houseLearningRefreshResult}=require('../scripts/lib/house-learning-refresh');
+ const config={entities:{}},values={},cache={homeAssistant:{isConnected:true,states:{}}};
+ const flow={get:k=>k==='ess_system_config'?config:values[k],set:(k,v)=>values[k]=v};
+ const global={get:()=>cache,set:()=>{}};
+ const old=reading(0,'kW',now-3600000);
+ old.entity_id=secondary;
+ houseLearningRefreshResult(flow,global,{actual:[old]},now);
+ assert.equal(cache.homeAssistant.states[secondary].last_reported,old.last_reported,'REST reads preserve actual old timestamps');
+ const states={...fixture().states,[secondary]:old,'sensor.ev_charger_2_status':{...reading('disconnected','',now-3600000),entity_id:'sensor.ev_charger_2_status'},
+ 'sensor.ev_charger_2_current':{...reading(0,'A',now-3600000),entity_id:'sensor.ev_charger_2_current'},
+ 'binary_sensor.ev_charger_2_online':{...reading('on','',now-3600000),entity_id:'binary_sensor.ev_charger_2_online'}};
+ const snapshot={at:now,entities:states};
+ assert.equal(housePowerSample(states,config,fixture().values.ess_dashboard_live,{},now,snapshot).evPowerW,11000,'An online disconnected charger with matching REST zero readings is excluded');
+ assert.equal(housePowerSample(states,config,fixture().values.ess_dashboard_live,{},now,{...snapshot,at:now-120000}).basePowerW,null,'Expired REST confirmation cannot validate stale readings');
+ const mismatch={...snapshot,entities:{...states,[secondary]:{...old,state:'4'}}};
+ assert.equal(housePowerSample(states,config,fixture().values.ess_dashboard_live,{},now,mismatch).basePowerW,null,'Conflicting snapshots cannot confirm idle');
+}
 
 f = fixture();
 f.values.ess_dashboard_live.updatedAt = new Date(now - 60000).toISOString();

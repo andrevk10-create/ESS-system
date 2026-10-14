@@ -4728,6 +4728,7 @@ if (dashboardMapper) {
 require('./lib/dashboard-diagnostics').apply(flows);
 require('./lib/dashboard-presentation').apply(flows);
 require('./lib/harden-house-learning')(flows);
+require('./lib/house-learning-refresh')(flows);
 require('./lib/charging-preferences')(flows);
 require('./lib/climate-control')(flows);
 require('./lib/tado-hysteresis')(flows);
