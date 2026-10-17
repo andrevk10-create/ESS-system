@@ -31,6 +31,8 @@ assert.equal(command.imbalanceVerify,true);
 message.witImbalanceNative.value=1;
 assert.equal(execute(flow,global,message,DateStub),null,'Write verification must not issue a second write');
 assert.equal(memory.ess_wit_imbalance_status.commandConfirmed,true);
+assert.equal(memory.ess_wit_imbalance_status.remainingImbalance,true,'An enabled register must not be mistaken for balanced P1 phases');
+assert.equal(memory.ess_wit_imbalance_status.meterIncludesEV,false);
 message.witImbalanceNative.binding.remoteEntity='select.other';delete message.imbalanceVerify;
 assert.equal(execute(flow,global,message,DateStub),null,'Wrong inverter binding must block');
 console.log('WIT imbalance: strict 4 A threshold, debounce, hysteresis, minimum on-time, signed phases and missing binding passed');

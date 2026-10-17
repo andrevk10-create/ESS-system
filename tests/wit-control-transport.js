@@ -36,6 +36,15 @@ for(const mode of ['auto','on']) {
 {
  const f=fixture();f.values.ess_wit_hardware_grid_guard=true;
  Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
+ f.states['sensor.p1_meter_vermogen_fase_3']=f.state(7130);
+ assert.equal(f.run({payload:{value:44}})?.[0],null,'A 31 A phase blocks extra charging when the Growatt meter does not include EVs');
+ f.values.ess_wit_grid_transport=null;
+ delete f.states['sensor.p1_meter_vermogen_fase_3'];
+ assert.equal(f.run({payload:{value:44}})?.[0],null,'Hardware opt-in alone cannot bypass missing whole-installation phase measurements');
+}
+{
+ const f=fixture();f.values.ess_wit_hardware_grid_guard=true;f.values.ess_wit_meter_includes_ev=true;
+ Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
  for(const phase of [1,2,3])delete f.states['sensor.p1_meter_vermogen_fase_'+phase];
  const sent=f.run({payload:{value:100}});
  assert(sent[0],'Hardware grid guarding does not depend on HA phase readings');

@@ -61,8 +61,24 @@ No guessed register is written and no extra capacity is credited from this mode.
 The WIT forced-charge interface
 continues to receive a total power target; it is not three independent targets.
 
-For the installed 3×25 A connection the requested design ceiling is now 24 A
-per phase, leaving 1 A below each fuse. WIT planning and write transport, both EV
-controllers, climate headroom and the phase dashboard use this ceiling. Signed
+For a configured 3×25 A connection the design ceiling is 24 A
+per phase, leaving 1 A below each fuse. WIT planning and write transport
+evaluate the most loaded phase. Easee retains its own Equalizer control. Signed
 P1 power is still evaluated per phase: export on one phase does not compensate
 the fuse loading on another. Battery charging remains capped at 8 kW.
+
+Hardware-only WIT grid guarding now requires both explicit private flags:
+`ess_wit_hardware_grid_guard` and `ess_wit_meter_includes_ev` must be true.
+The latter defaults to false and is persisted as `witMeterIncludesEV` in the
+private charging preferences. A meter that excludes the charging circuits is
+insufficient to bypass the whole-site P1 check, even if its own protection is
+enabled. The planner and the final transport write both check phase headroom.
+The optional `ess/wit/meter-includes-ev` boolean settings topic can record a
+confirmed complete meter boundary; it does not modify inverter wiring/settings.
+
+Excluding a balanced three-phase EV load from a meter reduces the measured total
+but does not explain a difference between phases. Diagnose imbalance separately:
+use actual Easee phase currents, synchronized P1 readings, meter phase assignment
+and inverter operating mode. A configured Easee phase mode alone is not proof
+of actual charging on all phases. The native setting and remaining P1 imbalance
+are separate status fields (`enabled` and `remainingImbalance`).

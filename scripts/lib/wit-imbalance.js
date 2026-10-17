@@ -31,6 +31,9 @@ const enabledSince=enabled?(previous.entity===identity&&previous.enabled?previou
 const base=previous.entity===identity?{...previous,enabledSince}:{};
 const decision=imbalanceDecision(base,currents,enabled,now);
 const status={...decision,entity:identity||null,enabled,enabledSince,at:now,blocked:!bound,commandAt:previous.entity===identity?previous.commandAt||0:0};
+status.meterIncludesEV=flow.get('ess_wit_meter_includes_ev')===true;
+status.remainingImbalance=enabled&&Number.isFinite(decision.difference)&&decision.difference>4;
+if(bound&&enabled)status.reason=status.meterIncludesEV?'Fasecompensatie ingeschakeld':'Fasecompensatie ingeschakeld; laadpunten buiten Growatt-meting, WIT-netladen volgt P1';
 if(!bound){status.reason='Power Imbalance-bediening ontbreekt of is niet bevestigd';status.aboveSince=0;status.belowSince=0;}
 flow.set('ess_wit_imbalance_status',status);
 if(msg.imbalanceVerify!==undefined){status.commandConfirmed=enabled===msg.imbalanceVerify;status.reason=status.commandConfirmed?'Power Imbalance-register bevestigd':'Power Imbalance-schrijfopdracht niet bevestigd';flow.set('ess_wit_imbalance_status',status);return null;}
