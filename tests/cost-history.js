@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {costHistory}=require('../scripts/lib/cost-history');
+const start=Date.parse('2026-10-14T08:00:00Z'),end=start+3600000;
+const rows=[],mapped={};
+const row=(id,state,unit='W',time=start)=>{mapped[id]=id;rows.push({id,state:String(state),unit,at:new Date(time).toISOString()});};
+row('sensor.p1_meter_vermogen',1000);row('sensor.growatt_battery_battery_power',-1000);row('sensor.growatt_solar_system_output_power',3000);
+for(const n of [1,2,3])row('sensor.pv_array_'+n+'_power',0);
+row('sun.sun','above_horizon','');row('sensor.nord_pool_nl_huidige_prijs',.1,'EUR/kWh');
+row('sensor.ev_charger_status','disconnected','',start-1000);row('sensor.ev_charger_status','charging','');row('sensor.ev_charger_power',2,'kW');
+row('sensor.ev_charger_2_status','disconnected','');row('sensor.ev_charger_2_power',0);
+const result=costHistory(rows,mapped,start,end),d=result.days['2026-10-14'];
+assert(Math.abs(d.batterySaving-.25185)<1e-8);assert(Math.abs(d.audiCost-.125925)<1e-8);assert.equal(d.audiPricedKwh,2);
+assert.equal(result.sessions.audi[0].at,start);
+row('sensor.ev_charger_status','disconnected','',start+1800000);
+assert.equal(costHistory(rows,mapped,start,end).days['2026-10-14'].audiPricedKwh,1,'Disconnected status prevents stale power from inventing charging');
+row('sensor.growatt_battery_battery_power','unavailable','W',start+1800000);
+assert(Math.abs(costHistory(rows,mapped,start,end).days['2026-10-14'].batteryHours-.5)<1e-8,'Unknown intervals are excluded');
+console.log('Cost history: real connection, units, stale charger stop and unknown intervals passed');
