@@ -1,4 +1,5 @@
 const {essExportPrice}=require('./export-price');
+const {costSample}=require('./cost-sample');
 function costLedgerValid(v){
     if(!v||![1,2].includes(v.version)||!Number.isFinite(v.startedAt)||!v.total||!v.days||!v.cars)return null;
     const fields=['gridKwh','gridCost','batterySaving','audiKwh','audiCost','jeepKwh','jeepCost','coveredHours','missingHours','audiUnpricedKwh','jeepUnpricedKwh','exportKwh','exportRevenue','exportUnpricedKwh'];
@@ -33,6 +34,11 @@ function costLedgerStep(previous,sample,prices,now,saldering2026){
                 c.session={at:now,kwh:0,cost:0,powerKw:s.directPowerKw,prices:slots.slice(0,200)};
             }else if(s.connected&&c.connected!==true&&!c.session)c.session={at:null,kwh:0,cost:0,powerKw:s.directPowerKw,prices:[]};
             c.connected=s.connected;
+        }
+        if(c.session?.at!=null){
+            const known=new Map(c.session.prices.map(p=>[p.start,p]));
+            for(const slot of slots)if(slot.end>c.session.at&&!known.has(slot.start))known.set(slot.start,slot);
+            c.session.prices=[...known.values()].sort((a,b)=>a.start-b.start).slice(0,200);
         }
     }
     const prior=ledger.last,elapsed=prior?now-prior.at:0;
@@ -117,15 +123,12 @@ function costEreOpening(snapshot,ledger,now){
 module.exports=function apply(flows){
     for(let i=flows.length-1;i>=0;i--)if(flows[i].id.startsWith('esscosts_'))flows.splice(i,1);
     const get=id=>flows.find(n=>n.id===id),mapper=get('ess00000000000a');
-    const helpers=[essExportPrice,costLedgerValid,costLedgerStep,costDirectBaseline].map(f=>f.toString()).join('\n');
-    mapper.func=helpers+'\n'+mapper.func.replace(/^function essExportPrice\([\s\S]*?^\}\r?\n/gm,'').replace(/^function cost(?:LedgerValid|LedgerStep|DirectBaseline)\([\s\S]*?^\}\r?\n/gm,'').replace(/\/\/ BEGIN ENERGY COSTS[\s\S]*?\/\/ END ENERGY COSTS\n/g,'');
+    const helpers=[costSample,essExportPrice,costLedgerValid,costLedgerStep,costDirectBaseline].map(f=>f.toString()).join('\n');
+    mapper.func=helpers+'\n'+mapper.func.replace(/^function costSample\([\s\S]*?^\}\r?\n/gm,'').replace(/^function essExportPrice\([\s\S]*?^\}\r?\n/gm,'').replace(/^function cost(?:LedgerValid|LedgerStep|DirectBaseline)\([\s\S]*?^\}\r?\n/gm,'').replace(/\/\/ BEGIN ENERGY COSTS[\s\S]*?\/\/ END ENERGY COSTS\n/g,'');
     mapper.func=mapper.func.replace("flow.set('ess_dashboard_live', dashboard);",`// BEGIN ENERGY COSTS
 if(flow.get('ess_charging_preferences_ready')===true){
  const now=Date.now(),config=flow.get('ess_system_config')||{};
- const read=(role,age=120000)=>{const e=states[role];const stamp=Date.parse(e?.last_reported||e?.last_updated||e?.last_changed);return e&&now-stamp>=0&&now-stamp<=age&&!['unknown','unavailable',''].includes(e.state)?e:null;};
- const power=role=>{const e=read(role),unit=String(e?.attributes?.unit_of_measurement||'').toLowerCase();return e&&Number.isFinite(Number(e.state))&&['w','kw'].includes(unit)?Number(e.state)*(unit==='kw'?1000:1):null;};
- const car=(name,suffix)=>{const role='sensor.ev_charger'+suffix+'_status',e=read(role);const state=String(e?.state||'').toLowerCase();const connected=state==='disconnected'?false:['charging','awaiting_start','ready_to_charge','completed','paused','stopped'].includes(state)?true:null;return {binding:config.entities?.[role]||role,connected,power:power('sensor.ev_charger'+suffix+'_power'),directPowerKw:Number(config.specs?.[name==='audi'?'evGridChargePowerKw':'ev2GridChargePowerKw'])||11};};
- const sample={binding:JSON.stringify([config.entities?.['sensor.p1_meter_vermogen'],config.entities?.['sensor.growatt_wit_battery_battery_power'],config.entities?.['sensor.growatt_wit_solar_system_output_power'],...loosePvPowerIds.map(role=>config.entities?.[role]||role)]),house:read('sensor.p1_meter_vermogen',15000)&&read('sensor.growatt_wit_solar_system_output_power')&&(loosePvAfterSunset||freshLoosePvPowers.length>0)?dashboard.house.power:null,grid:read('sensor.p1_meter_vermogen',15000)?dashboard.grid.power:null,battery:read('sensor.growatt_wit_battery_battery_power')?dashboard.battery.power:null,audi:car('audi',''),jeep:car('jeep','_2')};
+ const sample=costSample(states,config,dashboard,loosePvPowerIds,freshLoosePvPowers,loosePvAfterSunset,flow.get('ess_house_learning_snapshot'),now);
  let ledger;
  try{ledger=costLedgerStep(flow.get('ess_energy_cost_ledger'),sample,flow.get('ess_nordpool_forecast')||[],now,flow.get('ess_export_saldering_2026')!==false);}
  catch(error){dashboard.energyCosts=flow.get('ess_dashboard_live')?.energyCosts||null;dashboard.alarms.push({level:'error',text:error.message});}
@@ -137,7 +140,7 @@ if(flow.get('ess_charging_preferences_ready')===true){
  const opening=flow.get('ess_ere_opening_balance');
  const newEreKwh=Math.max(0,ledger.cars.audi.kwh+ledger.cars.jeep.kwh-(opening?.trackedKwh||0));
  dashboard.energyCosts={exportBasis:flow.get('ess_export_saldering_2026')!==false&&now<Date.parse('2027-01-01T00:00:00+01:00')?'Incl. saldering 2026':'Zonneplan basis',total:ledger.total,today:ledger.days[day]||null,since:new Date(ledger.startedAt).toISOString(),chargingCostSince:new Date(ledger.chargingCostStartedAt||ledger.startedAt).toISOString(),legacyChargingCosts:ledger.legacyChargingCosts||null,ereOpening:opening||null,ereNetRate:netRate,ereEstimated:(opening?.euros||0)+netRate*newEreKwh,ereKwh:(opening?.kwh||0)+newEreKwh,cars:{}};
- for(const name of ['audi','jeep']){const c=ledger.cars[name],baseline=costDirectBaseline(c.session);dashboard.energyCosts.cars[name]={kwh:c.kwh,cost:c.cost,sessionCost:c.session?.cost??null,directCost:baseline,saving:baseline===null?null:baseline-c.session.cost,ereEstimated:c.kwh*netRate};}
+ for(const name of ['audi','jeep']){const c=ledger.cars[name],baseline=costDirectBaseline(c.session);dashboard.energyCosts.cars[name]={kwh:c.kwh,cost:c.cost,sessionCost:c.session?.cost??null,directCost:baseline,saving:baseline===null?null:baseline-c.session.cost,savingReason:baseline!==null?'':!Number.isFinite(c.session?.at)?'Geen aansluitmoment':'Meetgegevens of prijzen ontbreken',ereEstimated:c.kwh*netRate};}
  }
 }
 // END ENERGY COSTS
@@ -184,6 +187,13 @@ flow.set('ess_ere_opening_balance',balance);return {payload:Date.now()};`;
         const car=card.includes('aria-label="Audi laadregeling"')?'audi':'jeep';
         return card.replace('<h3>Laadplanning</h3>',`<div class="metric-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="metric"><span>LAADKOSTEN VANDAAG</span><b>{{money(d.energyCosts?.today?.${car}UnpricedKwh>0?null:d.energyCosts?.today?.${car}Cost)}}</b></div><div class="metric"><span>TOTALE LAADKOSTEN</span><b>{{money(d.energyCosts?.total?.${car}UnpricedKwh>0?null:d.energyCosts?.total?.${car}Cost)}}</b></div></div><h3>Laadplanning</h3>`);
     });
+    for(const n of [ui,ev]) {
+        n.format=n.format.replace(/d\.energyCosts\?\.(today|total)\?\.\[car\+'UnpricedKwh'\]>0\?null:/g,
+            (_,period)=>`d.energyCosts?.${period}?.[car+'UnpricedKwh']>0 && d.energyCosts?.${period}?.[car+'Kwh']<=d.energyCosts?.${period}?.[car+'UnpricedKwh']+0.000001?null:`)
+            .replace(/d\.energyCosts\?\.(today|total)\?\.(audi|jeep)UnpricedKwh>0\?null:/g,
+            (_,period,car)=>`d.energyCosts?.${period}?.${car}UnpricedKwh>0 && d.energyCosts?.${period}?.${car}Kwh<=d.energyCosts?.${period}?.${car}UnpricedKwh+0.000001?null:`);
+    }
+    ui.format=ui.format.replace('<small>Besparing direct laden:',`<small v-if="d.energyCosts?.total?.[car+'UnpricedKwh']>0">Gedeeltelijke meetgegevens</small><small v-if="d.energyCosts?.cars?.[car]?.saving==null">{{d.energyCosts?.cars?.[car]?.savingReason}}</small><small>Besparing direct laden:`);
 };
 module.exports.costLedgerStep=costLedgerStep;
 module.exports.costLedgerValid=costLedgerValid;
