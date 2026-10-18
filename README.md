@@ -254,3 +254,9 @@ The linked technical documents are currently written in Dutch.
 No open-source license has been added yet. Without a license, reuse remains legally restricted. Add a suitable license and liability disclaimer before broad public distribution.
 
 The configuration page audits all entity roles, including optional unconfigured sources. PV daily yield discovery follows each configured inverter rather than forecast/lifetime counters. Current WIT limits are shown from device-bound Modbus readback; unused 0xffff status words do not invalidate otherwise verified power/current fields.
+
+### Warmtepompregistratie
+
+De klimaatpagina registreert geschatte compressorlooptijd, gedetecteerde starts en stops, elektrisch verbruik en tijd op hoog vermogen uit de geconfigureerde rol `sensor.flex_load_4_power`. Standaardgrenzen: aan vanaf 300 W, uit bij maximaal 150 W en hoog vermogen vanaf 3000 W; deze meetgrenzen zijn op de pagina instelbaar. Een toestandsovergang vereist twee verschillende metingen met minimaal 30 seconden ertussen. Hoog vermogen betekent mogelijk warm water, geen bevestigde bedrijfsmodus. De registratie stuurt geen warmtepompopdrachten.
+
+De registratie begint na het toepassen van de update. Dagtotalen (Amsterdamse tijd) en cumulatieve totalen worden in de bestaande private voorkeuren met backup bewaard, buiten Git. Er worden maximaal 400 dagen bewaard, waarvan de laatste 14 zichtbaar zijn. Meetgaten en herstarts worden niet opgevuld met veronderstelde looptijd, energie of schakelmomenten; de onbekende meettijd staat apart. Het totale elektrische verbruik omvat ook stand-byverbruik en pompen. De looptijd blijft een schatting tot aanvullende sensoren een directe compressorstatus leveren.
