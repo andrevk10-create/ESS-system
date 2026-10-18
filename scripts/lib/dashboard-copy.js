@@ -35,5 +35,19 @@ module.exports=function compactDashboardCopy(flows) {
         n.format=n.format.replace('Bij HomeKit-woonkamer: kies de woonkamerthermostaat en uitsluitend die kamer hieronder. Het fysieke doel blijft leidend; ESS bewaart het tijdens eigen UIT. Andere adapters gebruiken een aparte regelzone of contact.','Kies alleen de woonkamer bij HomeKit.');
         n.format=n.format.replace('Actuele, aan deze WIT gekoppelde registerterugmelding. De stroominstelling is niet hetzelfde als een door de BMS toegestane stroom.','Stroominstelling ≠ BMS-limiet.');
         n.format=n.format.replace('Geschat: {{d.jeepSmart?.estimatedEVSoc==null?\'—\':Math.round(d.jeepSmart.estimatedEVSoc)+\'%\'}} · 54 kWh. Vul de stand opnieuw in bij elke aansluiting.','Geschat: {{d.jeepSmart?.estimatedEVSoc==null?\'—\':Math.round(d.jeepSmart.estimatedEVSoc)+\'%\'}} · Bij aansluiten opnieuw invullen.');
+        n.format=n.format.replace(/<p class="subtle">\{\{d\.wit\?\.gridCharge\?\.houseTimeProfile\?\.source\}\}[\s\S]*?<\/p>/,
+            '<details class="ess-slot-list"><summary>Verbruiksprofiel · {{d.wit?.gridCharge?.houseTimeProfile?.days||0}} meetdagen</summary><p>{{Number(d.wit?.gridCharge?.houseTimeProfile?.learnedHours||0).toFixed(1)}} van {{Number(d.wit?.gridCharge?.houseTimeProfile?.hours||0).toFixed(1)}} uur geleerd. Overige uren: daggemiddelde. Reserve: 20% SOC.</p></details>');
+        n.format=n.format.replace('Looptijd is afgeleid uit elektrisch vermogen. Hoog vermogen kan warm water zijn, maar ook verwarming of ontdooien. Elektrische bijverwarming is volgens jouw instelling uitgeschakeld. Verbruik omvat ook het stand-byverbruik. Meetgaten worden niet als looptijd ingevuld.',
+            'Looptijd geschat uit vermogen. Hoog vermogen: mogelijk warm water. Verbruik inclusief stand-by.');
+        n.format=n.format.replace(' stops. Onbekende meettijd:',' stops · zonder meting:')
+            .replace('STARTS / STOPS VANDAAG · GEDETECTEERD','STARTS / STOPS VANDAAG')
+            .replace('Warmtepomp · compressorregistratie','Compressor')
+            .replace('Compressor vermoedelijk actief','Compressor actief · geschat')
+            .replace('Compressor vermoedelijk uit','Compressor uit · geschat')
+            .replace('Warmtepomp gemeten:','Warmtepomp:')
+            .replace('Extra accureserve:','Accureserve:')
+            .replace('Alleen reservetekort tot goedkoper moment laden','Overbrugging tot goedkoper moment')
+            .replace('Voldoende reserve · wacht op zon of goedkopere uren','Wacht op zon of lagere prijs')
+            .replace('Aan tot 100% thuisaccu-SOC; uit voor aangesloten EV onder zonne-SOC','Automatisch · accu eerst, EV-voorrang');
     }
 };
