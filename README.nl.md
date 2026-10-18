@@ -54,7 +54,9 @@ Alle negen pagina’s hebben leesbare tekst, consistente bediening, desktopnavig
 - Slim netladen op basis van actuele SOC, verwachte woningreserve, bruikbaar zonne-overschot, laadverlies, slijtage en kwartierprijzen.
 - Alleen het berekende energietekort wordt in rendabele goedkope kwartieren gepland.
 - Doorlopende herberekening bij nieuwe SOC-, prijs- of prognosegegevens.
-- **Automatisch**, **Nu laden** en **Uit**, met instelbaar doel-SOC en een 24-uurs tijdlijn.
+- **Automatisch**, **Nu laden** en **Uit**, met instelbaar doel-SOC en een tijdlijn over alle bekende kwartierprijzen.
+- Een overbrugging dekt nacht en ochtend tot een goedkoper laadvenster. Daarna kiest de planner de goedkoopste haalbare kwartieren om vóór de dure periode weer het doel-SOC te bereiken, met controle op de echte opslagcapaciteit. Het geleerde woningverbruik sluit beide auto's uit en krijgt 25% planningsmarge; de tussenreserve is 20% van de accucapaciteit, geen volledige dag woningverbruik.
+- Een conservatieve, gedateerde zonverwachting vermindert de netlaadvraag. Geplande blokken gebruiken het beschikbare laadvermogen; het laatste kwartier kan korter duren. Bij onvoldoende rendabele laadruimte verschijnt een tekortmelding in plaats van dure geforceerde bijlaadmomenten.
 - Onderlinge vergrendeling tussen netladen, exportbegrenzing en extra ontladen voor de EV.
 - Extra ontladen tijdens EV-laden alleen wanneer de prognose voldoende herlaadruimte laat.
 - Reserveprofielen **Eco**, **Normaal** en **EV voorrang**.

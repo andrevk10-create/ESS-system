@@ -1,0 +1,62 @@
+const assert=require('node:assert/strict');
+const {witKnownPricePlan:plan}=require('../scripts/lib/wit-known-price-plan');
+const now=Date.parse('2026-10-18T18:00:00Z'),hour=3600000;
+const prices=Array.from({length:30*4},(_,i)=>{const h=i/4;return h<4?.45:h<12?.34:h<17?.48:h<21?.26+(i%4)*.001:h<25?.52:.38;});
+const slots=prices.map((allInPrice,i)=>({start:now+i*hour/4,end:now+(i+1)*hour/4,allInPrice}));
+const r={storedKwh:18,capacityKwh:30,houseKwh:36,efficiency:.9,chargeKw:8,targetSoc:100,solarFactor:.65};
+const forecast={valid:false};
+let result=plan(slots,now,r,forecast,{});
+assert.equal(result.horizon,now+30*hour,'All published prices beyond 24 hours remain known');
+assert.equal(result.deadline,now+21*hour,'Refill deadline is the afternoon price rise, not the morning peak');
+assert(result.bridgeEnergyKwh>0,'Winter consumption requires a real reserve bridge');
+assert(result.refillEnergyKwh>0,'Plan a separate final refill');
+assert(result.selectedSlots.some(s=>s.start>=now+17*hour),'Cheap afternoon charging must be visible immediately');
+assert(result.selectedSlots.every(s=>s.allInPrice<.35),'No scattered expensive charging');
+assert(result.projectedSoc>=99.99);
+assert(result.reserveShortfallKwh<.001,'The bridge covers every intervening reserve checkpoint');
+assert(result.minimumSoc>=20-.001);
+assert(result.selectedSlots.every(s=>s.powerKw===8),'Every selected block charges at full available power');
+assert(result.selectedSlots.every(s=>s.energyKwh<=8*(s.end-s.start)/hour+1e-8));
+// Independently replay the physical energy balance at minute resolution,
+// including partial final quarters and the hardware lower limit.
+function replay(p,reserve){let stored=reserve.storedKwh,min=stored,max=stored;for(let t=now;t<p.deadline;t+=60000){const end=Math.min(t+60000,p.deadline),energy=p.selectedSlots.reduce((sum,s)=>sum+Math.max(0,Math.min(end,s.end)-Math.max(t,s.start))/hour*s.powerKw,0);stored+=energy*reserve.efficiency-reserve.houseKwh*1.25*(end-t)/86400000;min=Math.min(min,stored);max=Math.max(max,stored);}return {stored,min,max};}
+const physical=replay(result,r);
+assert(physical.max<=30.0001,'Plan never promises energy beyond physical storage');
+assert(physical.min>=6-.001);
+assert(Math.abs(physical.stored-30)<.001);
+const full=plan(slots,now,{...r,storedKwh:30,houseKwh:10},forecast,{});
+assert.equal(full.bridgeEnergyKwh,0,'Enough existing reserve avoids night charging');
+assert(full.selectedSlots.every(s=>s.start>=now+17*hour));
+const solarStates={'sun.sun':{attributes:{next_rising:'2026-10-19T06:00:00Z',next_setting:'2026-10-19T16:30:00Z'}}};
+const sunny=plan(slots,now,r,{valid:true,forecastDate:'2026-10-19',tomorrowKwh:30,todayRemainingKwh:0},solarStates);
+const sum=p=>p.selectedSlots.reduce((n,s)=>n+s.energyKwh,0);
+assert(sum(sunny)<sum(result),'Conservative forecast solar reduces grid purchases');
+assert(sunny.projectedSoc>=99.99);
+const restricted=plan(slots,now,{...r,chargeKw:.1},forecast,{});
+assert(restricted.remainingEnergyKwh>0&&restricted.reserveShortfallKwh>0,'Insufficient power is reported rather than inventing a feasible schedule');
+const flat=plan(slots.map(s=>({...s,allInPrice:.35})),now,r,forecast,{});
+assert.equal(flat.selectedSlots.length,0,'Unprofitable flat rates use the grid directly rather than forced cycling');
+const earlier=slots.map(s=>({...s,allInPrice:s.start>=now+17*hour&&s.start<now+19*hour?.20:s.allInPrice}));
+const early=plan(earlier,now,{...r,houseKwh:10},forecast,{});
+assert(early.selectedSlots.some(s=>s.start<now+19*hour&&s.allInPrice===.20),'Earlier cheaper daytime quarters are actually used');
+const lateCheap=slots.map(s=>({...s,allInPrice:s.start>=now+27*hour?.52:s.start>=now+25*hour?.18:s.allInPrice}));
+const late=plan(lateCheap,now,{...r,houseKwh:10},forecast,{});
+assert(late.selectedSlots.some(s=>s.start>=now+25*hour),'Known cheap prices outside 24 hours can be selected');
+assert.equal(plan([],now,r,forecast,{}).selectedSlots.length,0);
+const lower=plan(slots,now,{...r,targetSoc:80},forecast,{});
+assert(lower.projectedSoc>=79.99&&lower.projectedSoc<=80.001,'The chosen target remains the ceiling for grid charging');
+assert(replay(lower,{...r,targetSoc:80}).max<=24.001,'Bridge charging also respects a lower configured target');
+const zeroPower=plan(slots,now,{...r,chargeKw:0},forecast,{});
+assert(zeroPower.remainingEnergyKwh>0&&zeroPower.selectedSlots.length===0,'A zero BMS limit is never reported as a complete plan');
+const gap=plan(slots.filter(s=>s.start>=now+16*hour),now,r,forecast,{});
+assert(gap.reserveShortfallKwh>0,'Unknown early prices cannot produce fictitious bridge slots');
+for(const shift of [86400000,7*86400000,13*86400000]){
+    const moved=plan(slots.map(s=>({...s,start:s.start+shift,end:s.end+shift})),now+shift,r,forecast,{});
+    assert(Math.abs(sum(moved)-sum(result))<.001,'Other dates and the daylight-saving boundary do not change the energy arithmetic');
+}
+const code=require('../flows.json').find(n=>n.id==='esswitgrid_ctrl1').func;
+assert(code.includes('witKnownPricePlan(slots,now,reserveInputs'));
+assert(!code.includes('const horizonEnd = now + planningHorizonMs;'));
+assert(code.includes('projectedSocAtDeadline:'));
+assert(require('../flows.json').find(n=>n.id==='esstpl_battery01').format.includes('knownEnd=Date.parse(smart.knownPriceUntil'),'The timeline also displays the extended horizon');
+console.log('Known WIT prices: full horizon, winter bridge, afternoon refill, physical capacity, full power, solar, economics and infeasibility passed');

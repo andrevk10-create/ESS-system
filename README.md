@@ -54,7 +54,9 @@ All nine pages share readable typography, consistent controls, desktop navigatio
 - Smart grid charging based on current SOC, expected household reserve, usable solar surplus, charging losses, battery wear, and 15-minute prices.
 - Only the calculated energy shortfall is scheduled in economically worthwhile low-price slots.
 - Continuous replanning when SOC, price, or forecast data changes.
-- **Automatic**, **Charge now**, and **Off**, with an adjustable target SOC and a rolling 24-hour timeline.
+- **Automatic**, **Charge now**, and **Off**, with an adjustable target SOC and a timeline covering all published quarter-hour prices.
+- A reserve bridge covers the night and morning before a cheaper refill window. The final refill uses the cheapest feasible quarters before prices become expensive, respecting storage capacity and the selected SOC ceiling. Learned household use excludes both EV chargers and retains a 25% planning margin; the intermediate reserve is 20% of battery capacity rather than an entire day's consumption.
+- Conservative, dated solar forecasts reduce grid purchases. Every selected block uses the available charging power, shortening a final quarter when needed. If profitable charging capacity cannot cover the bridge or final target, the plan reports the shortfall instead of adding expensive forced top-ups.
 - Mutual interlocking between grid charging, export limitation, and additional battery discharge for EV charging.
 - Additional discharge during EV charging only when the forecast leaves enough energy to recharge the home battery.
 - **Eco**, **Normal**, and **EV priority** reserve profiles.
