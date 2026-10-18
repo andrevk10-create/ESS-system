@@ -37,3 +37,18 @@ assert.equal(get('essclim_hyst_room_off').action,'climate.set_hvac_mode');
 assert.ok(get('esstpl_config001').wires[0].includes('essclim_settings'),'Config page submits to validated climate preferences');
 assert.match(get('esstpl_config001').format,/ess\/climate\/hysteresis-save/);
 console.log('HomeKit living-room hysteresis regression checks passed');
+// Amsterdam night boundary, including both DST changes and dispatch crossing 22:30.
+const {homekitRoomNightOff}=require('../scripts/lib/homekit-room-hysteresis');
+for(const [at,night] of [['2026-10-18T20:29:59Z',false],['2026-10-18T20:30:00Z',true],['2026-10-19T04:59:59Z',true],['2026-10-19T05:00:00Z',false],['2026-10-25T01:30:00Z',true],['2027-03-28T01:30:00Z',true]]) assert.equal(homekitRoomNightOff(f.config,Date.parse(at)),night,at);
+f.now=Date.parse('2026-10-18T20:29:00Z');
+f.ledger.source={identity:JSON.stringify(['homekit-room','climate.living',25,20]),entity:'climate.living',goal:21,autoOff:true,manualOff:false,lastSwitch:f.now-600000};
+state('off',19,null);r=step();const beforeNight=r.actions[0];assert.equal(beforeNight.on,true);
+f.now=Date.parse('2026-10-18T20:30:00Z');state('off',19,null);
+assert.equal(tadoCommandAllowed({...f,command:beforeNight}),false,'Queued daytime ON cannot cross into night');
+f.ledger.source.pending=null;assert.equal(step().actions.length,0,'Saved target never restarts heating at night');
+f.ledger.source.owned=true;f.ledger.source.autoOff=false;f.ledger.source.lastSwitch=f.now-60000;
+state('heat',19,21);r=step();assert.equal(r.actions[0].on,false,'Night stops ESS-owned heat even below target');
+assert.equal(tadoCommandAllowed({...f,command:r.actions[0]}),true,'Night OFF allowed despite minimum on time');
+ack('off',19,null);assert.equal(f.ledger.source.goal,21);f.now=Date.parse('2026-10-19T04:59:00Z');state('off',19,null);assert.equal(step().actions.length,0);
+f.now=Date.parse('2026-10-19T05:00:00Z');state('off',19,null);assert.equal(step().actions[0].on,true,'Daytime hysteresis resumes at 07:00');
+console.log('Living-room night OFF and DST checks passed');

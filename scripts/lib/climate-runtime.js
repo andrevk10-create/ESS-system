@@ -3,7 +3,7 @@ function climateDefaults() {
     return {version:1,mode:'auto',profile:'normal',tadoHysteresis:true,hysteresisDegrees:0.5,maximumPowerW:0,phaseWeights:[0,0,0],
         minimumBenefit:0.04,houseReserveKwh:14,batteryFloorSoc:50,manualMinutes:120,
         heatSource:{enabled:false,adapter:'tado-zone',entity:'',roomRoles:['climate.heating_zone_1','climate.heating_zone_2','climate.heating_zone_3'],
-            heatTarget:25,minimumOnMinutes:10,minimumOffMinutes:5,leaseMinutes:20,
+            nightOffStart:'22:30',nightOffEnd:'07:00',heatTarget:25,minimumOnMinutes:10,minimumOffMinutes:5,leaseMinutes:20,
             roomsDetached:false,offScheduleConfirmed:false,relayTested:false,watchdogConfirmed:false},
         rooms:[{key:'room1',label:'Woonkamer',role:'',enabled:false,comfort:21,minimum:18,maximum:22,schedule:'native',start:'07:00',end:'22:00',preheatMinutes:60},
             {key:'room2',label:'Badkamer',role:'',enabled:false,comfort:21,minimum:18,maximum:22,schedule:'native',start:'07:00',end:'09:00',preheatMinutes:60}],
@@ -17,6 +17,7 @@ function climateValidate(input) {
     if (typeof c.tadoHysteresis !== 'boolean') fail('Ongeldige Tado-hysterese');
     if(typeof c.hysteresisDegrees!=='number'||!Number.isFinite(c.hysteresisDegrees)||c.hysteresisDegrees<0.1||c.hysteresisDegrees>2) fail('Hysterese moet tussen 0,1 en 2 °C liggen');
     const h=c.heatSource;
+    if (![h.nightOffStart,h.nightOffEnd].every(v=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) || h.nightOffStart===h.nightOffEnd) fail('Ongeldige nachtelijke uitschakeltijden');
     if(!['tado-zone','switch','homekit-room'].includes(h.adapter)||['enabled','roomsDetached','offScheduleConfirmed','relayTested','watchdogConfirmed'].some(k=>typeof h[k]!=='boolean')||
         typeof h.entity!=='string'||h.entity!==''&&!(h.adapter==='switch'?/^switch\.[a-z0-9_]+$/:/^climate\.[a-z0-9_]+$/).test(h.entity)) fail('Ongeldige aparte verwarmingsbediening');
     if(!Array.isArray(h.roomRoles)||!h.roomRoles.length||h.roomRoles.length>3||new Set(h.roomRoles).size!==h.roomRoles.length||
@@ -50,7 +51,7 @@ function climateValidate(input) {
     if (w.enabled && (!num(w.minimum,40,60) || !num(w.normal,w.minimum,60) || !num(w.buffer,w.normal,60) || !num(w.litres,30,2000) || !num(w.lossKwhPerDay,0,15) || !num(w.boostMinutes,30,180))) fail('Controleer vatinhoud en tapwatergrenzen');
     return {version:1,mode:c.mode,profile:c.profile,tadoHysteresis:c.tadoHysteresis,hysteresisDegrees:c.hysteresisDegrees,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
         houseReserveKwh:c.houseReserveKwh,batteryFloorSoc:c.batteryFloorSoc,manualMinutes:c.manualMinutes,rooms:c.rooms,
-        heatSource:{enabled:h.enabled,adapter:h.adapter,entity:h.entity,roomRoles:h.roomRoles.slice(),heatTarget:h.heatTarget,minimumOnMinutes:h.minimumOnMinutes,
+        heatSource:{nightOffStart:h.nightOffStart,nightOffEnd:h.nightOffEnd,enabled:h.enabled,adapter:h.adapter,entity:h.entity,roomRoles:h.roomRoles.slice(),heatTarget:h.heatTarget,minimumOnMinutes:h.minimumOnMinutes,
             minimumOffMinutes:h.minimumOffMinutes,leaseMinutes:h.leaseMinutes,roomsDetached:h.roomsDetached,offScheduleConfirmed:h.offScheduleConfirmed,relayTested:h.relayTested,watchdogConfirmed:h.watchdogConfirmed},
         water:{enabled:w.enabled,normal:w.normal,buffer:w.buffer,minimum:w.minimum,litres:w.litres,lossKwhPerDay:w.lossKwhPerDay,boostMinutes:w.boostMinutes,restoreAcknowledged:w.restoreAcknowledged}};
 }
