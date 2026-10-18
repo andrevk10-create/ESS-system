@@ -4762,6 +4762,7 @@ require('./lib/wit-charge-audit')(flows);
 require('./lib/wit-hardware-grid-guard')(flows);
 require('./lib/ev-solar-export')(flows);
 require('./lib/wit-known-price-plan')(flows);
+require('./lib/house-time-profile')(flows);
 require('./lib/heat-pump-history')(flows);
 require('./lib/editor-layout')(flows);
 

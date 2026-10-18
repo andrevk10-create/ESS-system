@@ -97,7 +97,7 @@ function houseLearningStep(previous, restored, sample, now, fallback, profileLab
             lastBasePowerW:restored.last_base_power_w, lastSampleAt:restored.last_sample_at
         } : {};
     const cutoff = new Date(now);
-    cutoff.setDate(cutoff.getDate() - 7);
+    cutoff.setDate(cutoff.getDate() - 30);
     const recent = new Map((Array.isArray(model.recentDays) ? model.recentDays : [])
         .filter(day => day && /^\d{4}-\d{2}-\d{2}$/.test(day.date) && day.date >= dayKey(cutoff) && day.date < today
             && number(day.kwh) !== null && number(day.kwh) >= 0.5 && number(day.kwh) <= 200)
@@ -121,14 +121,13 @@ function houseLearningStep(previous, restored, sample, now, fallback, profileLab
         currentValueKwh += (lastBasePowerW + sample.basePowerW) / 2 * elapsedHours / 1000;
         coverageHours += elapsedHours;
     }
-    const recentDays = [...recent.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-7);
+    const recentDays = [...recent.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
     const values = recentDays.map(day => day.kwh).sort((a, b) => a - b);
-    const middle = Math.floor(values.length / 2);
-    const forecastKwh = values.length ? values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2 : fallback;
+    const forecastKwh = values.length ? values.reduce((sum,value)=>sum+value,0)/values.length : fallback;
     return {
         schemaVersion:2, recentDays, currentDate:today, currentValueKwh, coverageHours,
         lastBasePowerW:sample.basePowerW, lastSampleAt:new Date(now).toISOString(), forecastKwh,
-        source:values.length ? 'Mediaan van ' + values.length + ' afgeronde dag(en), zonder beide laadpunten'
+        source:values.length ? 'Gemiddelde van ' + values.length + ' afgeronde dag(en), maximaal 30 dagen, zonder beide laadpunten'
             : 'Startwaarde van reserveprofiel ' + profileLabel + ' · woningverbruik opnieuw leren',
         sampleValid:sample.basePowerW !== null, sampleReason:sample.reason,
         excludedEVPowerW:sample.evPowerW, chargers:sample.chargers, updatedAt:new Date(now).toISOString()

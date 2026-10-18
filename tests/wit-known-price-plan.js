@@ -19,7 +19,7 @@ assert(result.selectedSlots.every(s=>s.powerKw===8),'Every selected block charge
 assert(result.selectedSlots.every(s=>s.energyKwh<=8*(s.end-s.start)/hour+1e-8));
 // Independently replay the physical energy balance at minute resolution,
 // including partial final quarters and the hardware lower limit.
-function replay(p,reserve){let stored=reserve.storedKwh,min=stored,max=stored;for(let t=now;t<p.deadline;t+=60000){const end=Math.min(t+60000,p.deadline),energy=p.selectedSlots.reduce((sum,s)=>sum+Math.max(0,Math.min(end,s.end)-Math.max(t,s.start))/hour*s.powerKw,0);stored+=energy*reserve.efficiency-reserve.houseKwh*1.25*(end-t)/86400000;min=Math.min(min,stored);max=Math.max(max,stored);}return {stored,min,max};}
+function replay(p,reserve){let stored=reserve.storedKwh,min=stored,max=stored;for(let t=now;t<p.deadline;t+=60000){const end=Math.min(t+60000,p.deadline),energy=p.selectedSlots.reduce((sum,s)=>sum+Math.max(0,Math.min(end,s.end)-Math.max(t,s.start))/hour*s.powerKw,0);stored+=energy*reserve.efficiency-reserve.houseKwh*(end-t)/86400000;min=Math.min(min,stored);max=Math.max(max,stored);}return {stored,min,max};}
 const physical=replay(result,r);
 assert(physical.max<=30.0001,'Plan never promises energy beyond physical storage');
 assert(physical.min>=6-.001);
@@ -55,7 +55,7 @@ for(const shift of [86400000,7*86400000,13*86400000]){
     assert(Math.abs(sum(moved)-sum(result))<.001,'Other dates and the daylight-saving boundary do not change the energy arithmetic');
 }
 const code=require('../flows.json').find(n=>n.id==='esswitgrid_ctrl1').func;
-assert(code.includes('witKnownPricePlan(slots,now,reserveInputs'));
+assert(code.includes('witKnownPricePlan(slots,now,{...reserveInputs,hourlyProfile:houseTimeProfile}'));
 assert(!code.includes('const horizonEnd = now + planningHorizonMs;'));
 assert(code.includes('projectedSocAtDeadline:'));
 assert(require('../flows.json').find(n=>n.id==='esstpl_battery01').format.includes('knownEnd=Date.parse(smart.knownPriceUntil'),'The timeline also displays the extended horizon');

@@ -21,12 +21,20 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const deadline=lastAffordable&&lastAffordable.end>=cheapest.end?lastAffordable.end:nominalDeadline;
     const target=Math.min(r.capacityKwh,Math.max(0,r.targetSoc/100*r.capacityKwh));
     const reserveFloor=Math.min(target,r.capacityKwh*.20),hardwareFloor=r.capacityKwh*.10;
-    const houseRate=r.houseKwh*1.25/86400000;
+    const houseRate=r.houseKwh/86400000;
+    const demandCache=new Map();
+    const demandAt=at=>{
+        if(!demandCache.has(at))demandCache.set(at,Array.isArray(r.hourlyProfile?.segments)
+            ?r.hourlyProfile.segments.reduce((sum,s)=>sum+Math.max(0,Math.min(at,s.end)-s.start)/3600000*s.kwhPerHour,0)
+            :houseRate*Math.max(0,at-now));
+        return demandCache.get(at);
+    };
     const solarCache=new Map(),sunset=Date.parse(states?.['sun.sun']?.attributes?.next_setting);
     const solarAt=at=>{if(!solarCache.has(at))solarCache.set(at,witSolarBeforeDeadline(solar,states,now,Number.isFinite(sunset)&&sunset>now?Math.min(at,sunset):at)*Math.min(.35,r.solarFactor||0)*r.efficiency);return solarCache.get(at);};
     const candidates=opportunities.filter(s=>s.start<deadline&&s.end<=deadline);
     const sunPoints=['next_rising','next_setting'].map(k=>Date.parse(states?.['sun.sun']?.attributes?.[k])).filter(t=>Number.isFinite(t)&&t>now&&t<deadline);
-    const points=[...new Set([now,deadline,...sunPoints,...candidates.flatMap(s=>[s.start,s.end])])].sort((a,b)=>a-b);
+    const hourPoints=(r.hourlyProfile?.segments||[]).flatMap(s=>[s.start,s.end]).filter(t=>t>now&&t<deadline);
+    const points=[...new Set([now,deadline,...sunPoints,...hourPoints,...candidates.flatMap(s=>[s.start,s.end])])].sort((a,b)=>a-b);
     const chosen=new Map();
     const simulate=()=>{
         const starts=[...chosen].map(([s,e])=>s.end-e/r.chargeKw*3600000);
@@ -37,7 +45,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
             const from=times[i-1],to=times[i];
             let input=0;
             for(const [s,e]of chosen){const start=s.end-e/r.chargeKw*3600000;input+=Math.max(0,Math.min(to,s.end)-Math.max(from,start))/3600000*r.chargeKw;}
-            const raw=stored+input*r.efficiency-houseRate*(to-from)+Math.max(0,solarAt(to)-solarAt(from));
+            const raw=stored+input*r.efficiency-(demandAt(to)-demandAt(from))+Math.max(0,solarAt(to)-solarAt(from));
             overflow+=Math.max(0,raw-(input>1e-9?target:r.capacityKwh));
             directGrid+=Math.max(0,hardwareFloor-raw);
             stored=Math.min(r.capacityKwh,Math.max(hardwareFloor,raw));min=Math.min(min,stored);
@@ -94,7 +102,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,
         remainingEnergyKwh:Math.max(0,target-projected.stored)/r.efficiency,
         reserveShortfallKwh:Math.max(0,reserveShortfallKwh),projectedSoc:projected.stored/r.capacityKwh*100,
-        minimumSoc:projected.min/r.capacityKwh*100,houseKwh:houseRate*(deadline-now),solarKwh:solarAt(deadline)};
+        minimumSoc:projected.min/r.capacityKwh*100,houseKwh:demandAt(deadline),solarKwh:solarAt(deadline)};
 }
 module.exports=function apply(flows){
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');

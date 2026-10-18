@@ -218,12 +218,12 @@ function witLearnedHouse(model,now,fallback){
     const age=now-Date.parse(model?.updatedAt);
     if(model?.schemaVersion!==2||!Number.isFinite(age)||age< -60000||age>7200000)return initial;
     const day=t=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));
-    const today=day(now),cutoff=day(now-7*86400000);
+    const today=day(now),cutoff=day(now-30*86400000);
     const values=[...new Map((Array.isArray(model.recentDays)?model.recentDays:[])
         .filter(d=>d&&/^\d{4}-\d{2}-\d{2}$/.test(d.date)&&d.date>=cutoff&&d.date<today&&typeof d.kwh==='number'&&Number.isFinite(d.kwh)&&d.kwh>=.5&&d.kwh<=200)
         .map(d=>[d.date,d.kwh])).values()].sort((a,b)=>a-b);
     if(!values.length)return initial;
-    const middle=Math.floor(values.length/2),median=values.length%2?values[middle]:(values[middle-1]+values[middle])/2;
-    return {kwh:Math.max(fallback,median),days:values.length,source:'Geleerd woningverbruik zonder beide laadpunten; minimaal reserveprofiel'};
+    const mean=values.reduce((sum,value)=>sum+value,0)/values.length;
+    return {kwh:Math.max(fallback,mean),days:values.length,source:'Gemiddeld woningverbruik over '+values.length+' meetdagen (maximaal 30), zonder beide laadpunten; minimaal reserveprofiel'};
 }
 module.exports.witLearnedHouse=witLearnedHouse;

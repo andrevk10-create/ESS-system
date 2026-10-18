@@ -53,7 +53,7 @@ assert(code.includes('slot.start>=reserveWait.waitUntil'),'Deferred plans exclud
 const cheaperNight=tomorrow.map((s,i)=>({...s,allInPrice:i===15?.18:s.allInPrice}));
 const cheapestWait=witReserveOpportunity(cheaperNight,evening,firstDeadline,actualReserve,{...forecast,valid:false},tomorrowSun);
 assert.equal(cheapestWait.waitUntil,cheaperNight[15].start,'Choose the cheapest reachable refill instead of the first cheaper hour');
-const allocationCode=code.slice(code.indexOf('let remainingEnergyKwh ='),code.indexOf('const knownPricePlan='));
+const allocationCode=code.slice(code.indexOf('let remainingEnergyKwh ='),code.indexOf('const houseTimeProfile='));
 const {witReserveSlots}=require('../scripts/lib/wit-price-deadline');
 const {witLearnedHouse}=require('../scripts/lib/wit-price-deadline');
 const learned={schemaVersion:2,updatedAt:new Date(evening).toISOString(),recentDays:[{date:'2026-10-10',kwh:24},{date:'2026-10-11',kwh:28},{date:'2026-10-12',kwh:26}]};
