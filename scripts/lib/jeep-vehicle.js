@@ -47,6 +47,11 @@ flow.set('ess_dashboard_live', dashboard);`);
         if(!n.func.includes("flow.get('ess_jeep_manual_soc')"))continue;
         n.func=helper+n.func;
         n.func=n.func.replaceAll("flow.get('ess_jeep_manual_soc')","currentJeepSoc()");
+        // currentJeepSoc validates the vehicle binding/report and refreshes its
+        // bookkeeping timestamp after the controller captured `now`. That new
+        // timestamp must not be rejected as a future manual entry.
+        n.func=n.func.replace(/const manualSoc=currentJeepSoc\(\);\nconst manualSocFresh=[^\n]+\nconst reportedEVSoc=manualSocFresh \? manualSoc\.soc : null;/,
+            "const jeepSocSample=currentJeepSoc();\nconst reportedEVSoc=jeepSocSample?.soc??null;");
         n.func=n.func.replace("flow.set('ess_jeep_manual_soc',null);",'');
         n.func=n.func.replace(/const previousSocEstimator = flow\.get\('ess_jeep_soc_estimator'\)[\s\S]*?flow\.set\('ess_jeep_soc_estimator', \{[\s\S]*?\n\}\);/,"const estimatedEVSoc=reportedEVSoc;\nconst audiSoc=reportedEVSoc;\nconst audiSocSource='Laatst gemeld door Jeep';");
         n.func=n.func.replace(/\}else if\(topic==='ess\/jeep\/manual-soc'\)\{[\s\S]*?(?=\}else if\(topic==='ess\/jeep\/smart-enabled')/,'');

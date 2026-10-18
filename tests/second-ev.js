@@ -23,7 +23,7 @@ function fixture(){
     };
     for(let i=1;i<=3;i++)states['sensor.p1_meter_vermogen_fase_'+i]=reading(0,'W');
     const flow={get:k=>values[k],set:(k,v)=>values[k]=v};
-    const run=(id,msg={})=>new Function('flow','global','node','msg','Date',get(id).func)(flow,{get:()=>({homeAssistant:{states}})},{status(){},warn(){}},msg,Clock);
+    const run=(id,msg={},clock=Clock)=>new Function('flow','global','node','msg','Date',get(id).func)(flow,{get:()=>({homeAssistant:{states}})},{status(){},warn(){}},msg,clock);
     return {values,states,flow,run};
 }
 let f=fixture();let out=f.run('essjeep_ess00000000000d');
@@ -32,6 +32,19 @@ assert.equal(out[0].payload.chargerId,'right');
 assert.equal(out[1].payload.chargerId,'right');
 assert.equal(f.values.ess_jeep_control_status.estimatedEVSoc,40);
 assert.equal(f.values.ess_audi_control_status,undefined,'Jeep never changes Audi state');
+{
+    const planned=fixture();
+    planned.values.ess_jeep_force_full=false;
+    planned.states['sensor.jeep_test_hvbattery_charge']=reading(73,'%');
+    planned.values.ess_nordpool_forecast=Array.from({length:4},(_,i)=>({start:new Clock(now+(6+i/4)*3600000).toISOString(),end:new Clock(now+(6+(i+1)/4)*3600000).toISOString(),allInPrice:.1,marketPrice:.02}));
+    let ticks=0;
+    class AdvancingClock extends Clock {static now(){return now+ticks++;}}
+    planned.run('essjeep_ess00000000000d',{},AdvancingClock);
+    const status=planned.values.ess_jeep_control_status;
+    assert.equal(status.reportedEVSoc,73,'A fresh internal sample timestamp must not discard the known vehicle SOC');
+    assert(status.departureScheduledSlots>0,'73% to 80% must produce departure charging slots with an advancing real clock');
+    assert(!status.preflightIssues.includes('EV-SOC ontbreekt'));
+}
 {
     const live=fixture();delete live.values.ess_jeep_manual_soc;
     live.states['sensor.jeep_test_hvbattery_charge']=reading(65,'%');
