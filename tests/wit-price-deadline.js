@@ -17,6 +17,16 @@ const sun={'sun.sun':{attributes:{next_rising:'2026-10-12T06:00:00Z',next_settin
 assert.equal(witSolarBeforeDeadline(solar,sun,solarNow,Date.parse('2026-10-12T04:45:00Z')),0,'No solar before sunrise');
 assert.equal(witSolarBeforeDeadline(solar,sun,solarNow,Date.parse('2026-10-12T16:00:00Z')),35,'Solar before evening counts');
 assert.equal(witSolarBeforeDeadline({...solar,valid:false},sun,solarNow,Date.parse('2026-10-12T16:00:00Z')),0,'Missing forecast gives no credit');
+{
+ const at=Date.parse('2026-10-19T13:00:00Z');
+ const days={valid:true,todayDate:'2026-10-19',tomorrowDate:'2026-10-20',todayValid:true,tomorrowValid:true,todayRemainingKwh:7,tomorrowKwh:42};
+ const next={'sun.sun':{attributes:{next_rising:'2026-10-20T06:00:00Z',next_setting:'2026-10-19T16:00:00Z'}}};
+ assert.equal(witSolarBeforeDeadline(days,next,at,Date.parse('2026-10-20T05:00:00Z')),7,'Overnight keeps today credit but never borrows tomorrow sun before sunrise');
+ assert.equal(witSolarBeforeDeadline(days,next,at,Date.parse('2026-10-20T11:00:00Z')),28,'Tomorrow daylight adds to today instead of being capped at today sunset');
+ const samples=Array.from({length:30},(_,i)=>witSolarBeforeDeadline(days,next,at,at+i*3600000));
+ assert(samples.every((v,i)=>i===0||v>=samples[i-1]),'Cumulative solar cannot decrease across midnight');
+ assert.equal(witSolarBeforeDeadline({...days,tomorrowValid:false},next,at,Date.parse('2026-10-20T11:00:00Z')),7,'A truly missing tomorrow forecast receives no credit');
+}
 const flows=require('../flows.json');
 const code=flows.find(n=>n.id==='esswitgrid_ctrl1').func;
 assert(!code.includes("mode === 'auto' ? 100"),'Automatic charging respects the configured SOC');

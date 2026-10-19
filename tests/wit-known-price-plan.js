@@ -61,6 +61,20 @@ assert(sum(sunny)<sum(result),'Conservative forecast solar reduces grid purchase
  assert(withSun.projectedSoc>=99.99);
 }
 assert(sunny.projectedSoc>=99.99);
+{
+ const at=Date.parse('2026-10-19T13:00:00Z');
+ const prices=Array.from({length:33*4},(_,i)=>{const h=i/4;return {start:at+i*hour/4,end:at+(i+1)*hour/4,allInPrice:h<2?.34:h<7?.50:h<17?.33:h<21?.48:h<26?.25:.52};});
+ const reserve={...r,storedKwh:27.6,houseKwh:40.236,chargeKw:3.246};
+ const s={'sun.sun':{attributes:{next_rising:'2026-10-20T06:00:00Z',next_setting:'2026-10-19T16:00:00Z'}}};
+ const sun={valid:true,todayDate:'2026-10-19',tomorrowDate:'2026-10-20',todayValid:true,tomorrowValid:true,todayRemainingKwh:7,tomorrowKwh:42};
+ const tomorrow=plan(prices,at,reserve,sun,s),todayOnly=plan(prices,at,reserve,{...sun,tomorrowValid:false},s);
+ const night=p=>p.selectedSlots.filter(s=>s.start< Date.parse('2026-10-20T06:00:00Z')).reduce((n,s)=>n+s.energyKwh,0);
+ assert(tomorrow.solarKwh>todayOnly.solarKwh,'Daytime replan must include tomorrow before tomorrow deadline');
+ assert(sum(tomorrow)<sum(todayOnly)-5,'Tomorrow sun substantially reduces total net purchases');
+ assert(night(tomorrow)<night(todayOnly),'A near-full tapered battery must not plan an oversized night bridge because tomorrow sun was discarded');
+ assert(tomorrow.projectedSoc>=99.99);
+ assert(tomorrow.minimumSoc>=20-.001);
+}
 const restricted=plan(slots,now,{...r,chargeKw:.1},forecast,{});
 assert(restricted.remainingEnergyKwh>0&&restricted.reserveShortfallKwh>0,'Insufficient power is reported rather than inventing a feasible schedule');
 const flat=plan(slots.map(s=>({...s,allInPrice:.35})),now,r,forecast,{});

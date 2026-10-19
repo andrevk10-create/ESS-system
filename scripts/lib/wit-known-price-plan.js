@@ -29,8 +29,8 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
             :houseRate*Math.max(0,at-now));
         return demandCache.get(at);
     };
-    const solarCache=new Map(),sunset=Date.parse(states?.['sun.sun']?.attributes?.next_setting);
-    const solarAt=at=>{if(!solarCache.has(at))solarCache.set(at,witSolarBeforeDeadline(solar,states,now,Number.isFinite(sunset)&&sunset>now?Math.min(at,sunset):at)*Math.min(.35,r.solarFactor||0)*r.efficiency);return solarCache.get(at);};
+    const solarCache=new Map();
+    const solarAt=at=>{if(!solarCache.has(at))solarCache.set(at,witSolarBeforeDeadline(solar,states,now,at)*Math.min(.35,r.solarFactor||0)*r.efficiency);return solarCache.get(at);};
     const candidates=opportunities.filter(s=>s.start<deadline&&s.end<=deadline);
     const sunPoints=['next_rising','next_setting'].map(k=>Date.parse(states?.['sun.sun']?.attributes?.[k])).filter(t=>Number.isFinite(t)&&t>now&&t<deadline);
     const hourPoints=(r.hourlyProfile?.segments||[]).flatMap(s=>[s.start,s.end]).filter(t=>t>now&&t<deadline);

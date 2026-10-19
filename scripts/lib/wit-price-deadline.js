@@ -131,20 +131,31 @@ module.exports.witPriceDeadline=witPriceDeadline;
 function witSolarBeforeDeadline(window, states, now, deadline) {
     if (!Number.isFinite(deadline)) return 0;
     const local = stamp => new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));
-    const day = local(deadline);
-    const isToday=day===local(now);
-    const valid=isToday?(window.todayValid??window.valid):(window.tomorrowValid??window.valid);
-    const forecastDate=isToday?(window.todayDate??window.forecastDate):(window.tomorrowDate??window.forecastDate);
-    if (!valid || day !== forecastDate) return 0;
     const sun = states['sun.sun']?.attributes || {};
     const rise = Date.parse(sun.next_rising), set = Date.parse(sun.next_setting);
-    // Only count a dated forecast with a known solar window for that day.
-    if (!Number.isFinite(rise) || !Number.isFinite(set) || local(set) !== day) return 0;
-    const start = local(rise) === day ? Math.max(now,rise) : now;
-    if (set <= start) return 0;
-    const total = day === local(now) ? window.todayRemainingKwh : window.tomorrowKwh;
-    if (!Number.isFinite(total) || total < 0) return 0;
-    return total * Math.max(0,Math.min(1,(deadline-start)/(set-start)));
+    if (!Number.isFinite(rise) || !Number.isFinite(set) || deadline<=now) return 0;
+    const today=local(now),tomorrow=local(now+86400000);
+    let credited=0;
+    for(const isToday of [true,false]){
+        const day=isToday?today:tomorrow;
+        const valid=isToday?(window.todayValid??window.valid):(window.tomorrowValid??window.valid);
+        const dated=isToday?(window.todayDate??window.forecastDate):(window.tomorrowDate??window.forecastDate);
+        const total=isToday?window.todayRemainingKwh:window.tomorrowKwh;
+        if(!valid || dated!==day || !Number.isFinite(total) || total<0)continue;
+        let start=rise,end=set;
+        if(!isToday){
+            // Daily forecasts have no hourly shape. When HA still reports
+            // today's sunset, project that daylight boundary one day ahead;
+            // keep the real next sunrise when it already belongs to tomorrow.
+            if(local(start)===today)start+=86400000;
+            if(local(end)===today)end+=86400000;
+        }
+        if(local(end)!==day)continue;
+        start=local(start)===day?Math.max(now,start):isToday?now:NaN;
+        if(!Number.isFinite(start)||end<=start)continue;
+        credited+=total*Math.max(0,Math.min(1,(deadline-start)/(end-start)));
+    }
+    return credited;
 }
 module.exports.witSolarBeforeDeadline=witSolarBeforeDeadline;
 

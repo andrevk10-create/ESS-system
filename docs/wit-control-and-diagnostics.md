@@ -65,6 +65,14 @@ the existing conservative factor and charging efficiency. The displayed
 expected solar charging uses the same credit as the inventory/net-energy plan;
 unknown days are never filled with invented forecast energy.
 
+For a deadline tomorrow, solar credit accumulates today's remaining production
+and tomorrow's dated forecast. It is not capped at today's sunset and never
+decreases at midnight. With daily forecasts, tomorrow's hourly shape is an
+approximation: a solar boundary still dated today is projected 24 hours ahead,
+using tomorrow's actual next sunrise when available. No tomorrow production is
+credited before that sunrise; the existing maximum 35% forecast credit and
+charging efficiency still apply. Current BMS/fuse limits remain authoritative.
+
 | Role | Accepted unit |
 | --- | --- |
 | `sensor.battery_charge_power_limit` | W or kW |
