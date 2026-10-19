@@ -31,9 +31,10 @@ const enabledSince=enabled?(previous.entity===identity&&previous.enabled?previou
 const base=previous.entity===identity?{...previous,enabledSince}:{};
 const decision=imbalanceDecision(base,currents,enabled,now);
 const charge=flow.get('ess_wit_grid_charge_status')||{};
+const transport=flow.get('ess_wit_grid_transport');
 const readback=flow.get('ess_wit_control_readback');
 const restore=flow.get('ess_wit_imbalance_charge_restore');
-const owned=charge.sessionOwned===true || !!flow.get('ess_wit_grid_transport');
+const owned=charge.sessionOwned===true || !!transport;
 const sameReadback=bound && readback?.deviceId===native.binding.deviceId && readback.remoteEntity===native.binding.remoteEntity && readback.authorityEntity===native.binding.authorityEntity && now-readback.at>=0 && now-readback.at<=120000;
 let chargeOverride=false;
 if(bound && owned){
@@ -60,11 +61,23 @@ status.remainingImbalance=enabled&&Number.isFinite(decision.difference)&&decisio
 if(bound&&enabled&&!chargeOverride)status.reason=status.meterIncludesEV?'Fasecompensatie ingeschakeld':'Fasecompensatie ingeschakeld; laadpunten buiten Growatt-meting, WIT-netladen volgt P1';
 if(!bound){status.reason='Power Imbalance-bediening ontbreekt of is niet bevestigd';status.aboveSince=0;status.belowSince=0;}
 flow.set('ess_wit_imbalance_status',status);
-if(msg.imbalanceVerify!==undefined){status.commandConfirmed=enabled===msg.imbalanceVerify;status.reason=status.commandConfirmed?'Power Imbalance-register bevestigd':'Power Imbalance-schrijfopdracht niet bevestigd';flow.set('ess_wit_imbalance_status',status);return null;}
+if(msg.imbalanceVerify!==undefined){
+ const pending=flow.get('ess_wit_imbalance_pending_write');
+ if(pending?.at===msg.witImbalanceCommandAt)flow.set('ess_wit_imbalance_pending_write',null);
+ status.commandConfirmed=enabled===msg.imbalanceVerify;status.reason=status.commandConfirmed?'Power Imbalance-register bevestigd':'Power Imbalance-schrijfopdracht niet bevestigd';flow.set('ess_wit_imbalance_status',status);return null;
+}
+// The transport owns register 947 throughout a charge command. This loop may
+// observe it, but must not interleave a write with disable/settle/readback.
+if(transport)return null;
+const pendingWrite=flow.get('ess_wit_imbalance_pending_write');
+if(pendingWrite && now-pendingWrite.at>=0 && now-pendingWrite.at<30000)return null;
 if(!bound||decision.desired===null||config.modules?.inverter===false)return null;
 if(!chargeOverride&&previous.entity===identity&&previous.commandAt&&now-previous.commandAt<60000)return null;
 status.commandAt=now;flow.set('ess_wit_imbalance_status',status);
-if(nativeValid){msg.imbalanceVerify=decision.desired;msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'write_register',service_data:{device_id:native.binding.deviceId,register:947,value:decision.desired?1:0}}};return msg;}
+if(nativeValid){
+ flow.set('ess_wit_imbalance_pending_write',{at:now,deviceId:native.binding.deviceId,value:decision.desired?1:0});
+ msg.witImbalanceCommandAt=now;msg.imbalanceVerify=decision.desired;msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'write_register',service_data:{device_id:native.binding.deviceId,register:947,value:decision.desired?1:0}}};return msg;
+}
 return null;`});
     flows.find(n=>n.id==='essimbalance_control').initialize="flow.set('ess_wit_imbalance_managed',true);";
     const api=(id,name,data,next)=>({id,type:'ha-api',z,name,server:'ess00000000000b',version:1,protocol:'websocket',method:'get',path:'',data,dataType:'json',responseType:'json',outputProperties:[{property:'imbalanceReply',propertyType:'msg',value:'',valueType:'results'}],wires:[[next]]});

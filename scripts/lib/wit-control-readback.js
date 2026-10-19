@@ -141,7 +141,8 @@ ${guardMarker}`);
     add(fn('esswitgrid_transport_reply','Bevestig echte WIT-laadopdracht',helperSource+"\nreturn witGridTransport(flow,global,msg,true,Date.now());",[['esswitgrid_transport_api'],['esswitgrid_ctrl1']]));
     add({id:'esswitgrid_transport_catch',type:'catch',z,name:'WIT-schrijfopdracht mislukt',scope:['esswitgrid_transport_api'],uncaught:false,wires:[['esswitgrid_transport_reply']],x:450,y:1900});
     for(const id of ['esswitgrid_transport_dispatch','esswitgrid_transport_reply']) {
-        const n=get(id); n.outputs=3;n.wires.push(['esswit_readback_request']);
+        const n=get(id); n.outputs=4;n.wires.push(['esswit_readback_request'],['esswitgrid_phase_wait']);
     }
+    add({id:'esswitgrid_phase_wait',type:'delay',z,name:'Wacht 3 s op fase-instelling',pauseType:'delay',timeout:'3',timeoutUnits:'seconds',wires:[['esswitgrid_transport_dispatch']],x:1050,y:1900});
 };
 module.exports.witReadbackFailure=witReadbackFailure;

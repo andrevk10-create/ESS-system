@@ -10,6 +10,22 @@ charge command. Invalid or refused readback blocks charging through the existing
 fault/release path. This provides balanced inverter currents, not necessarily
 equal P1 imports, because household loads and other PV differ by phase.
 
+The charge transport now allows register 947 to settle: polling every three
+seconds, at most one extra disable write after at least 15 seconds, and a fixed
+90-second deadline. Two actual zero readings at least three seconds apart are
+required before the power command. A missing read or one old enabled response
+does not immediately latch a fault. Persistent refusal still blocks charging.
+Authority/AC permission are established before this final phase check.
+
+The household phase loop observes but does not write during a transport
+operation. A household write already underway reserves the register for up to
+30 seconds, so an older restoration cannot race a new disable command. Delayed
+ticks/replies are tied to their original operation/request; stopping, release or
+a changed device binding prevents them from starting or resuming charging.
+Installing an update does not erase a previously latched fault. Explicitly
+select **Automatisch** again to request the existing bounded release/reset;
+hardware Disabled feedback remains required before the fault is cleared.
+
 After the session ends, Power Imbalance is enabled again only after fresh,
 device-matched readback confirms both authority and remote control disabled.
 The pending restoration stays in flow context until register 947 confirms 1;

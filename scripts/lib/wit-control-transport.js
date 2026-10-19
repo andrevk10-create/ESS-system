@@ -47,7 +47,18 @@ function witGridTransport(flow, global, msg, reply, now) {
     const mapping = config.entities;
     const mapped = role => mapping ? mapping[role] : role;
     let op = flow.get(key);
-    if (reply && msg.witReadbackTick) {
+    const phaseWait=()=>{
+        op.stage='imbalanceWait';op.phasePollToken=(op.phasePollToken||0)+1;
+        flow.set(key,op);
+        return [null,null,null,{witImbalancePoll:true,witOperationId:op.id,phasePollToken:op.phasePollToken}];
+    };
+    if(!reply && msg.witImbalancePoll){
+        if(!op || op.id!==msg.witOperationId || op.stage!=='imbalanceWait' || msg.phasePollToken!==op.phasePollToken)return null;
+        const s=flow.get('ess_wit_grid_charge_status')||{};
+        if(flow.get('ess_wit_grid_charge_mode')==='off'||!s.sessionOwned||s.releasing){flow.set(key,null);return [null,{payload:now}];}
+        if(now-op.phaseStartedAt>=90000)return fail('Power Imbalance niet tijdig uit bevestigd · netladen geblokkeerd');
+        // Resume the stored phase step; never create a new charge operation.
+    } else if (reply && msg.witReadbackTick) {
         if (!op || !['power','authorityRead','remoteRead','awaitReadback'].includes(op.stage) || !op.powerSentAt ||
             flow.get('ess_wit_command_fault') || flow.get('ess_wit_grid_charge_status')?.releasing ||
             !flow.get('ess_wit_grid_charge_status')?.sessionOwned) return null;
@@ -61,13 +72,30 @@ function witGridTransport(flow, global, msg, reply, now) {
     }
     if (reply) {
         if (!op || op.id !== msg.witOperationId) return null;
-        if (msg.error) return fail('WIT-opdracht mislukt: '+String(msg.error.message || 'Modbus'));
+        if(op.stage==='imbalanceWait')return null;
+        if(op.stage.startsWith('imbalance') && msg.witPhaseRequest!==op.phaseRequest)return null;
+        if (msg.error) {
+            if(['imbalanceRead','imbalanceVerify'].includes(op.stage) && now-op.phaseStartedAt<90000)return phaseWait();
+            if(op.stage==='imbalanceOff' && now-op.phaseStartedAt<90000){op.next+=1;return phaseWait();}
+            return fail('WIT-opdracht mislukt: '+String(msg.error.message || 'Modbus'));
+        }
         if (op.stage === 'imbalanceRead' || op.stage === 'imbalanceVerify') {
             const r=msg.witReply?.response || msg.witReply;
-            if(r?.success!==true || r.values?.length!==1 || ![0,1].includes(r.values[0])) return fail('Power Imbalance-register niet bevestigd · netladen geblokkeerd');
-            if(op.stage==='imbalanceVerify' && r.values[0]!==0) return fail('Power Imbalance blijft aan · netladen geblokkeerd');
+            if(now-op.phaseStartedAt>=90000)return fail('Power Imbalance niet tijdig uit bevestigd · netladen geblokkeerd');
+            if(r?.success!==true || r.values?.length!==1 || ![0,1].includes(r.values[0]))return phaseWait();
             flow.set('ess_wit_imbalance_charge_restore',{deviceId:op.binding.deviceId});
-            if(op.stage==='imbalanceRead' && r.values[0]===1) op.steps.splice(op.next+1,0,'imbalanceOff','imbalanceVerify');
+            if(r.values[0]===1){
+                op.phaseZeroAt=null;
+                if(!op.phaseWrites || (op.phaseWrites<2 && now-op.phaseLastWriteAt>=15000)){
+                    // Retry the documented write at most once, after settling.
+                    if(op.stage==='imbalanceRead')op.steps.splice(op.next+1,0,'imbalanceOff','imbalanceVerify');
+                    else {op.steps.splice(op.next,0,'imbalanceOff');return phaseWait();}
+                }else return phaseWait();
+            }else{
+                if(op.phaseZeroAt===null || op.phaseZeroAt===undefined){op.phaseZeroAt=now;return phaseWait();}
+                if(now-op.phaseZeroAt<3000)return phaseWait();
+                op.phaseConfirmedAt=now;
+            }
         }
         if (op.stage === 'authorityRead') op.authorityResult = msg.witReply?.response || msg.witReply;
         if (op.stage === 'remoteRead') {
@@ -99,7 +127,8 @@ function witGridTransport(flow, global, msg, reply, now) {
             return [null,{payload:now}];
         }
         op.next += 1;
-    } else {
+        if(op.stage==='imbalanceOff')return phaseWait();
+    } else if(!msg.witImbalancePoll) {
         if (op) return null; // One request on the bus; timers cannot build a queue.
         if (flow.get('ess_wit_command_fault')) return null;
         if (msg.payload?.option !== 'Charge' && msg.payload?.option !== 'Enabled' && msg.payload?.value === undefined) return null;
@@ -119,32 +148,40 @@ function witGridTransport(flow, global, msg, reply, now) {
         // downward safety reductions must still be sent immediately.
         if (kind === 'update' && ack && now - ack.sentAt < 45000 && percent >= ack.powerPercent) return null;
         const steps = [];
-        if(flow.get('ess_wit_imbalance_managed')===true) steps.push('imbalanceRead');
         if (!snapshot.authority) steps.push('authority');
         if (!snapshot.ac) steps.push('ac');
+        if(flow.get('ess_wit_imbalance_managed')===true) steps.push('imbalanceRead');
         steps.push('power','authorityRead','remoteRead');
         op = {id:now,kind,powerPercent:percent,attempt:flow.get('ess_wit_charge_watch')?.attempts,
-            startedAt:now,next:0,steps,binding:{deviceId:snapshot.deviceId,remoteEntity:snapshot.remoteEntity,authorityEntity:snapshot.authorityEntity}};
+            startedAt:now,phaseStartedAt:now,next:0,steps,binding:{deviceId:snapshot.deviceId,remoteEntity:snapshot.remoteEntity,authorityEntity:snapshot.authorityEntity}};
     }
     const status = flow.get('ess_wit_grid_charge_status') || {};
     if (op.binding.remoteEntity !== mapped('select.growatt_grid_remote_power_control_enable') ||
         op.binding.authorityEntity !== mapped('select.growatt_grid_control_authority')) return fail('WIT-koppeling gewijzigd tijdens opdracht');
-    if (flow.get('ess_wit_command_fault') || !status.sessionOwned || flow.get('ess_wit_grid_charge_mode') === 'off') {
+    if (flow.get('ess_wit_command_fault') || !status.sessionOwned || status.releasing || flow.get('ess_wit_grid_charge_mode') === 'off') {
         flow.set(key,null);
         return [null,{payload:now}];
     }
     const stage = op.steps[op.next];
     if (!stage) return fail('Ongeldige WIT-schrijfstap');
+    if(op.phaseStartedAt!==undefined && flow.get('ess_wit_imbalance_managed')===true){
+        if(!snapshot || snapshot.deviceId!==op.binding.deviceId || now-snapshot.at<0 || now-snapshot.at>120000)return fail('Verse WIT-devicebinding ontbreekt tijdens fasecontrole');
+        const pending=flow.get('ess_wit_imbalance_pending_write');
+        if(stage.startsWith('imbalance') && pending?.deviceId===op.binding.deviceId && now-pending.at>=0 && now-pending.at<30000)return phaseWait();
+    }
     let data;
     if (stage === 'imbalanceRead' || stage === 'imbalanceVerify') {
         data={domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:op.binding.deviceId,register_type:'holding',start_address:947,count:1},return_response:true};
     } else if(stage==='imbalanceOff') {
+        op.phaseWrites=(op.phaseWrites||0)+1;op.phaseLastWriteAt=now;
         data={domain:'growatt_modbus',service:'write_register',service_data:{device_id:op.binding.deviceId,register:947,value:0}};
     } else if (stage === 'authority') {
         data = {domain:'growatt_modbus',service:'write_registers',service_data:{device_id:op.binding.deviceId,register:30100,values:[1]}};
     } else if (stage === 'ac') {
         data = {domain:'growatt_modbus',service:'write_registers',service_data:{device_id:op.binding.deviceId,register:30410,values:[1]}};
     } else if (stage === 'power') {
+        if(flow.get('ess_wit_imbalance_managed')===true && (!Number.isFinite(op.phaseConfirmedAt) || now-op.phaseConfirmedAt<0 || now-op.phaseConfirmedAt>15000))
+            return fail('Power Imbalance niet recent uit bevestigd · netladen geblokkeerd');
         const raw = global.get('homeassistant')?.homeAssistant?.states;
         const role = id => raw?.[mapped(id)];
         const freshNumber = (id,maxAge=15000) => {
@@ -197,8 +234,9 @@ function witGridTransport(flow, global, msg, reply, now) {
         data={domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:op.binding.deviceId,register_type:'holding',start_address:stage==='authorityRead'?30100:30407,count:stage==='authorityRead'?1:5},return_response:true};
     }
     op.stage=stage;
+    if(stage.startsWith('imbalance'))op.phaseRequest=(op.phaseRequest||0)+1;
     flow.set(key,op);
-    return [{witOperationId:op.id,payload:{data:{type:'call_service',...data}}},null];
+    return [{witOperationId:op.id,...(stage.startsWith('imbalance')?{witPhaseRequest:op.phaseRequest}:{}),payload:{data:{type:'call_service',...data}}},null];
 }
 
 module.exports={witApplyReadback,witReadbackResult,witGridTransport};

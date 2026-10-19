@@ -65,6 +65,14 @@ the existing conservative factor and charging efficiency. The displayed
 expected solar charging uses the same credit as the inventory/net-energy plan;
 unknown days are never filled with invented forecast energy.
 
+Daily forecast totals use their reporting date instead of the former generic
+three-hour expiry. An unchanged total reported today remains usable for today's
+or tomorrow's dated solar day, with a maximum age of 36 hours. After midnight,
+yesterday's tomorrow may describe today before sunrise; it cannot be relabelled
+as the following day. Missing/unavailable values remain invalid. Live remaining
+production retains its short freshness check; older daily totals use the
+existing conservative daylight approximation rather than stale remaining energy.
+
 For a deadline tomorrow, solar credit accumulates today's remaining production
 and tomorrow's dated forecast. It is not capped at today's sunset and never
 decreases at midnight. With daily forecasts, tomorrow's hourly shape is an

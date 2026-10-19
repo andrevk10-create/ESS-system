@@ -5,6 +5,32 @@ const prices=Array.from({length:30*4},(_,i)=>{const h=i/4;return h<4?.45:h<12?.3
 const slots=prices.map((allInPrice,i)=>({start:now+i*hour/4,end:now+(i+1)*hour/4,allInPrice}));
 const r={storedKwh:18,capacityKwh:30,houseKwh:36,efficiency:.9,chargeKw:8,targetSoc:100,solarFactor:.65};
 const forecast={valid:false};
+{
+ const {witSolarWindow}=require('../scripts/lib/wit-runtime');
+ const at=new Date(2026,9,19,21).getTime();
+ const s={'sun.sun':{state:'below_horizon',attributes:{next_rising:new Date(2026,9,20,8).toISOString(),next_setting:new Date(2026,9,20,18).toISOString()}}};
+ const value=(n,age)=>({state:String(n),attributes:{unit_of_measurement:'kWh'},last_updated:new Date(at-age).toISOString()});
+ for(const [i,n]of [15.103,14.781,14.153].entries()){
+  const suffix=i?'_'+(i+1):'';
+  s['sensor.energy_production_today'+suffix]=value(7,8*hour);
+  s['sensor.energy_production_tomorrow'+suffix]=value(n,8*hour);
+ }
+ const good=witSolarWindow(s,{},at,null,true);
+ assert(good.tomorrowValid);
+ assert(Math.abs(good.tomorrowKwh-44.037)<1e-8,'Unchanged same-day tomorrow totals survive the old 3-hour threshold');
+ const daytime=witSolarWindow({...s,'sun.sun':{...s['sun.sun'],state:'above_horizon'}},{},at,null,true);
+ assert.equal(daytime.tomorrowKwh,good.tomorrowKwh,'Validity cannot flip just because the sun crosses the horizon');
+ const nextDay=new Date(2026,9,20,12).getTime();
+ assert.equal(witSolarWindow(s,{},nextDay,null,true).tomorrowValid,false,'Yesterday tomorrow is not silently relabelled as a new tomorrow');
+ const dawn=new Date(2026,9,20,4).getTime();
+ const rolled=witSolarWindow(s,{},dawn,null,true);
+ assert(Math.abs(rolled.todayRemainingKwh-44.037)<1e-8,'Before sunrise yesterday tomorrow describes today');
+ assert.equal(rolled.tomorrowValid,false);
+ s['sensor.energy_production_tomorrow'].state='unavailable';
+ assert.equal(witSolarWindow(s,{},at,null,true).tomorrowValid,false,'Unavailable values cannot be kept alive by a date');
+ s['sensor.energy_production_tomorrow']=value(15,40*hour);
+ assert.equal(witSolarWindow(s,{},at,null,true).tomorrowValid,false,'Old daily data beyond the age bound is rejected');
+}
 let result=plan(slots,now,r,forecast,{});
 assert.equal(result.horizon,now+30*hour,'All published prices beyond 24 hours remain known');
 assert.equal(result.deadline,now+21*hour,'Refill deadline is the afternoon price rise, not the morning peak');
@@ -42,7 +68,7 @@ assert(sum(sunny)<sum(result),'Conservative forecast solar reduces grid purchase
   const item=(n,age)=>({state:String(n),attributes:{unit_of_measurement:'kWh'},last_updated:new Date(at-age).toISOString()});
   s['sensor.energy_production_today'+suffix]=item(v+2,hour);
   s['sensor.energy_production_today_remaining'+suffix]=item(v,hour);
-  s['sensor.energy_production_tomorrow'+suffix]=item(15,4*hour);
+  s['sensor.energy_production_tomorrow'+suffix]=item(15,27*hour);
  }
  const solar=witSolarWindow(s,{},at,null,true);
  assert.equal(solar.valid,false,'Rolling tomorrow input remains honestly unavailable');

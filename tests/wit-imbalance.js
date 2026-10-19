@@ -44,6 +44,8 @@ for(const charge of [{sessionOwned:true,active:true},{sessionOwned:true,active:f
  let command=execute(fl,global,message(1),DateStub);
  assert.equal(command.payload.data.service_data.value,0,'Owned charging must disable imbalance immediately');
  assert.equal(mem.ess_wit_imbalance_status.gridChargeOverride,true);
+ execute(fl,global,{...command,witImbalanceNative:message(0).witImbalanceNative},DateStub);
+ assert.equal(mem.ess_wit_imbalance_pending_write,null,'Verified write releases its bus reservation');
  assert.equal(execute(fl,global,message(0),DateStub),null,'Already disabled must not write repeatedly');
  mem.ess_wit_grid_charge_status={sessionOwned:false};
  assert.equal(execute(fl,global,message(0),DateStub),null,'Missing release feedback must not restore early');
@@ -58,6 +60,16 @@ for(const charge of [{sessionOwned:true,active:true},{sessionOwned:true,active:f
  assert(mem.ess_wit_imbalance_charge_restore,'Keep restoration pending until hardware confirms');
  execute(fl,global,message(1),DateStub);
  assert.equal(mem.ess_wit_imbalance_charge_restore,null,'Only confirmed restoration clears recovery state');
+}
+{
+ const binding={deviceId:'own',remoteEntity:'select.own_remote',authorityEntity:'select.own_authority'};
+ for(const busy of [true,false]){
+  const mem={ess_system_config:config,ess_wit_grid_charge_status:{sessionOwned:true},...(busy?{ess_wit_grid_transport:{id:1}}:{})};
+  const fl={get:k=>mem[k],set:(k,v)=>mem[k]=v};
+  const msg={witImbalanceNative:{binding,at:clock,value:1}};
+  const out=execute(fl,global,msg,DateStub);
+  assert.equal(!!out,!busy,'The household loop cannot write while transport owns the register');
+ }
 }
 {
  const mem={ess_system_config:config,ess_wit_grid_charge_status:{sessionOwned:false},ess_wit_imbalance_charge_restore:{deviceId:'other'}};

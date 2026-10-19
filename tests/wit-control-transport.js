@@ -216,35 +216,114 @@ f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
 f.values.ess_system_config={specs:{maximumBatteryChargePowerKw:18}};
 for(const [index,w]of [-1000,-2000,-3000].entries())f.states['sensor.p1_meter_vermogen_fase_'+(index+1)]=f.state(w);
 assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],44,'Even an old 18 kW setting and ample export headroom cannot exceed the 8 kW installation ceiling');
-for(const initial of [0,1]){
+const phaseFixture=()=>{
  const t=fixture();t.values.ess_wit_imbalance_managed=true;
  Object.assign(t.values.ess_wit_control_readback,{authority:1,ac:1});
- let out=t.run({payload:{value:25}})[0];
- assert.equal(out.payload.data.service_data.start_address,947,'Read real phase mode before each charge command');
- const reply=values=>t.run({...out,witReply:{response:{success:true,values}}},true);
- out=reply([initial])[0];
+ const start=()=>t.run({payload:{value:25}})[0];
+ const reply=(request,values,success=true)=>t.run({...request,witReply:{response:{success,values}}},true);
+ const resume=(result,ms=3000)=>{
+  assert.equal(result[0],null,'No power/write emitted during settling');assert(result[3]?.witImbalancePoll);
+  now+=ms;for(const e of Object.values(t.states))e.last_updated=new Date(now).toISOString();
+  return t.run(result[3]);
+ };
+ return {...t,start,reply,resume};
+};
+for(const initial of [0,1]){
+ const t=phaseFixture();let request=t.start();
+ assert.equal(request.payload.data.service_data.start_address,947);
+ let out=t.reply(request,[initial]);
  if(initial===1){
-  assert.deepEqual(out.payload.data.service_data,{device_id:binding.deviceId,register:947,value:0});
-  out=reply([])[0];
-  assert.equal(out.payload.data.service_data.start_address,947,'Disable must be read back before power');
-  out=reply([0])[0];
+  request=out[0];assert.deepEqual(request.payload.data.service_data,{device_id:binding.deviceId,register:947,value:0});
+  out=t.reply(request,[]);
+  assert.equal(t.reply(request,[]),null,'Duplicate write acknowledgement while waiting cannot skip verification');
+  request=t.resume(out)[0];out=t.reply(request,[0]);
  }
- assert.deepEqual(out.payload.data.service_data.values,[1,2,25],'Only confirmed disabled phase mode permits charging');
+ request=t.resume(out)[0];
+ assert.equal(t.reply({...request,witPhaseRequest:request.witPhaseRequest-1},[0]),null,'Old response cannot confirm newer read');
+ out=t.reply(request,[0]);
+ assert.deepEqual(out[0].payload.data.service_data.values,[1,2,25],'Only two settled disabled readbacks permit power');
  assert.equal(t.values.ess_wit_imbalance_charge_restore.deviceId,binding.deviceId);
 }
 for(const bad of [null,[2],[0,1]]){
- const t=fixture();t.values.ess_wit_imbalance_managed=true;
- const out=t.run({payload:{value:25}})[0];
- const result=t.run({...out,witReply:{response:{success:bad!==null,values:bad}}},true);
- assert.equal(result[0],null,'Missing/invalid phase register must block charging');
+ const t=phaseFixture(),request=t.start();
+ const pending=t.reply(request,bad,bad!==null);
+ assert.equal(t.values.ess_wit_command_fault,undefined,'One incomplete read is recoverable');
+ const failed=t.resume(pending,90000);
+ assert.equal(failed[0],null);assert(t.values.ess_wit_command_fault,'Persistent missing readback fails closed');
+ assert.equal(t.values.ess_wit_grid_transport,null);
+}
+{
+ const t=phaseFixture();let request=t.start(),out=t.reply(request,[1]);
+ request=out[0];out=t.reply(request,[]);
+ request=t.resume(out)[0];out=t.reply(request,[1]);
+ assert(!t.values.ess_wit_command_fault,'Inverter may still report old enabled value after write');
+ request=t.resume(out,15000)[0];out=t.reply(request,[1]);
+ request=t.resume(out)[0];assert.equal(request.payload.data.service,'write_register','One spaced retry is allowed');
+ out=t.reply(request,[]);request=t.resume(out)[0];out=t.reply(request,[0]);
+ request=t.resume(out)[0];out=t.reply(request,[0]);
+ assert(out[0].payload.data.service_data.values,'Delayed disable eventually permits charge');
+ assert.equal(t.values.ess_wit_grid_transport.phaseWrites,2);
+}
+for(const cancel of ['off','releasing','unowned','remapped']){
+ const t=phaseFixture();const pending=t.reply(t.start(),[0]);
+ if(cancel==='off')t.values.ess_wit_grid_charge_mode='off';
+ if(cancel==='releasing')t.values.ess_wit_grid_charge_status.releasing=true;
+ if(cancel==='unowned')t.values.ess_wit_grid_charge_status.sessionOwned=false;
+ if(cancel==='remapped')t.values.ess_system_config.entities={[remoteRole]:'select.other',[authorityRole]:authorityRole};
+ const result=t.resume(pending);
+ assert.equal(result[0],null,'Cancelled/remapped wait must never send a command: '+cancel);
+ assert.equal(t.values.ess_wit_grid_transport,null);
+ assert.equal(t.run(pending[3]),null,'Late wait after cancellation must be inert');
+}
+{
+ const t=phaseFixture();let request=t.start();
+ let pending=t.reply(request,[1]);let writes=0;
+ for(let i=0;i<70 && !t.values.ess_wit_command_fault;i++){
+  if(pending[0]){
+   request=pending[0];if(request.payload.data.service==='write_register')writes++;
+   pending=t.reply(request,request.payload.data.service==='write_register'?[]:[1]);
+  }else pending=t.resume(pending);
+ }
+ assert.equal(writes,2,'A genuine refusal has at most two writes');
+ assert(t.values.ess_wit_command_fault,'Persistent enabled state eventually latches a fault');
+ assert.equal(t.values.ess_wit_grid_transport,null);
+}
+{
+ const t=phaseFixture();t.values.ess_wit_imbalance_pending_write={at:now,deviceId:binding.deviceId,value:1};
+ const waiting=t.run({payload:{value:25}});
+ assert.equal(waiting[0],null,'A pending household restoration must finish before transport writes');
+ assert(waiting[3]);
+ t.values.ess_wit_imbalance_pending_write=null;
+ const request=t.resume(waiting)[0];
+ assert.equal(request.payload.data.service_data.start_address,947);
+ const pending=t.reply(request,[0]);
+ t.values.ess_wit_control_readback.deviceId='replacement';
+ assert.equal(t.resume(pending)[0],null,'An inverter replacement while waiting must block writes');
  assert(t.values.ess_wit_command_fault);
 }
 {
- const t=fixture();t.values.ess_wit_imbalance_managed=true;
- let out=t.run({payload:{value:25}})[0];
- const reply=values=>t.run({...out,witReply:{response:{success:true,values}}},true);
- out=reply([1])[0];out=reply([])[0];
- assert.equal(reply([1])[0],null,'Refused disable must never send a charging setpoint');
+ const t=phaseFixture(),request=t.start();
+ const waiting=t.run({...request,error:{message:'read timeout'}},true);
+ assert(!t.values.ess_wit_command_fault,'One transient read exception can settle');
+ const newer=t.resume(waiting)[0];
+ assert.equal(t.reply(request,[0]),null,'Late failed request cannot satisfy a new phase read');
+ let pending=t.reply(newer,[0]);
+ const poll=pending[3];const current=t.resume(pending)[0];
+ assert.equal(t.run(poll),null,'Duplicate delayed tick cannot emit a second read');
+ assert(t.reply(current,[0])[0].payload.data.service_data.values);
+}
+{
+ const t=phaseFixture();const off=t.reply(t.start(),[1])[0];
+ let pending=t.run({...off,error:{message:'write reply lost'}},true);
+ let request=t.resume(pending)[0];pending=t.reply(request,[0]);
+ request=t.resume(pending)[0];
+ assert(t.reply(request,[0])[0].payload.data.service_data.values,'A lost write acknowledgement may be recovered only by real disabled register reads');
+}
+{
+ const t=phaseFixture();
+ t.values.ess_wit_grid_transport={id:now,kind:'start',next:-1,stage:'authority',startedAt:now,steps:['power'],powerPercent:25,binding};
+ const out=t.run({witOperationId:now,witReply:{success:true}},true);
+ assert.equal(out[0],null,'An old pending operation from before deployment cannot bypass the new phase gate');
  assert(t.values.ess_wit_command_fault);
 }
 console.log('WIT transport: readback, atomic charge, fuse limits and verified balanced phase mode OK');

@@ -88,7 +88,7 @@ async function main() {
         const replay=fixture();
         replay.s['sun.sun']={state:'above_horizon',attributes:{next_rising:new Date(2026,9,20,8).toISOString(),next_setting:new Date(2026,9,19,18).toISOString()}};
         replay.s['sensor.energy_production_today_remaining']=reading(14,'kWh',now);
-        replay.s['sensor.energy_production_tomorrow']=reading(40,'kWh',now-4*3600000);
+        replay.s['sensor.energy_production_tomorrow']=reading(40,'kWh',now-27*3600000);
         replay.run('esswitgrid_ctrl1');
         const status=replay.values.ess_wit_grid_charge_status;
         assert(status.solarCreditKwh>0,'Generated planner credits fresh today when tomorrow is stale');

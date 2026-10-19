@@ -16,6 +16,7 @@ function witSolarWindow(states, config, now, audit, rolling) {
     const date = new Date(now);
     const dayKey = d => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
     const today = dayKey(date);
+    const yesterday = dayKey(new Date(date.getFullYear(), date.getMonth(), date.getDate()-1));
     const tomorrow = dayKey(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1));
     const hour = date.getHours() + date.getMinutes() / 60;
     const sun = states['sun.sun'];
@@ -43,8 +44,13 @@ function witSolarWindow(states, config, now, audit, rolling) {
         const identity = (next || current).entity_id || mapping[tomorrowRole] || tomorrowRole;
         if (seen.has(identity)) continue;
         seen.add(identity);
-        const kwh = item => {
-            if (!witFresh(item, now, maxAge)) return null;
+        const kwh = (item,daily=false) => {
+            // Daily totals describe a dated solar day, not a live power sample.
+            // HA can keep last_updated unchanged for hours. Keep same-day
+            // reports usable, but never relabel yesterday's "tomorrow" today.
+            if (!witFresh(item, now, daily?36*3600000:maxAge)) return null;
+            const reportedDay=dayKey(new Date(item.last_reported||item.last_updated||item.last_changed||0));
+            if(daily && reportedDay!==today && !(beforeSunrise&&reportedDay===yesterday))return null;
             const n = witNumber(item.state);
             const unit = String(item.attributes && item.attributes.unit_of_measurement || 'kWh').toLowerCase();
             return n === null || n < 0 ? null : unit === 'wh' ? n / 1000 : unit === 'mwh' ? n * 1000 : n;
@@ -54,19 +60,19 @@ function witSolarWindow(states, config, now, audit, rolling) {
         const actualTodayId = mapping[todayRole] || todayRole;
         const remainingId = actualTodayId.replace('energy_production_today', 'energy_production_today_remaining');
         const remaining = states[remainingId] || states[remainingRole];
-        let todayRemaining = beforeSunrise ? kwh(current) : kwh(remaining);
+        let todayRemaining = beforeSunrise ? kwh(current,true) : kwh(remaining);
         if (beforeSunrise && current && dayKey(new Date(current.last_reported || current.last_updated || 0)) !== today) {
             const nextDate = next && dayKey(new Date(next.last_reported || next.last_updated || 0));
-            todayRemaining = nextDate !== today ? kwh(next) : null;
+            todayRemaining = nextDate !== today ? kwh(next,true) : null;
         }
         if (afterSunset) todayRemaining = 0;
         if (todayRemaining === null && !afterSunset && !beforeSunrise) {
             // Without a remaining forecast use a conservative daylight fraction.
-            const total = kwh(current);
+            const total = kwh(current,true);
             const sunsetHour = dayKey(nextSet) === today ? nextSet.getHours() + nextSet.getMinutes() / 60 : 18;
             todayRemaining = total === null ? null : total * Math.max(0, Math.min(1, (sunsetHour - hour) / 12));
         }
-        groups.push({ today: todayRemaining, tomorrow: kwh(next) });
+        groups.push({ today: todayRemaining, tomorrow: kwh(next,true) });
     }
     const sum = key => groups.length && groups.every(g => g[key] !== null) ? groups.reduce((n, g) => n + g[key], 0) : null;
     let todayRemaining = sum('today');
