@@ -16,4 +16,47 @@ witChargeSoc(flow,states,{},now);states[soc]=reading('unknown');
 assert.equal(witChargeSoc(flow,states,{},now+10000).soc,null,'No near-full fallback');
 states[soc]=reading(101);witChargeSoc(flow,states,{},now);
 assert.equal(values.ess_wit_last_valid_soc,null,'Invalid numeric SOC clears cache');
-console.log('WIT SOC: transient gaps, stale telemetry, remapping, near-full and invalid readings checked');
+const remote='select.growatt_grid_remote_power_control_enable',authority='select.growatt_grid_control_authority';
+const native={deviceId:'own',remoteEntity:remote,authorityEntity:authority,socEntity:soc,at:now,reportedSoc:38};
+const nativeFixture=()=>{
+ const memory={ess_wit_battery_limits:{...native},ess_wit_control_readback:{...native}};
+ const fl={get:k=>memory[k],set:(k,v)=>memory[k]=v};
+ return {memory,run:(s={},c={},at=now)=>witChargeSoc(fl,s,c,at)};
+};
+{
+ const f=nativeFixture();
+ assert.deepEqual(f.run(),{soc:38,cached:false,source:'register',at:now},'Simultaneously missing HA SOC and power use verified local SOC');
+ assert.equal(f.run({}, {}, now+120000).soc,38);
+ assert.equal(f.run({}, {}, now+120001).soc,null,'Repeated use never refreshes register freshness');
+ assert.equal(f.memory.ess_wit_last_valid_soc,undefined,'Register fallback must not refresh the HA grace cache');
+ assert.equal(f.run({[soc]:reading(101)}).soc,null,'An explicit invalid sensor must not be masked');
+ assert.equal(f.run({[soc]:reading(39)}).soc,39,'An equally recent valid HA sample takes precedence');
+ assert.equal(f.run({[soc]:{...reading(37),last_updated:new Date(now-300000).toISOString()}}).soc,38,'An unchanged HA SOC must not override newer hardware SOC');
+ for(const value of [0,99,100]){f.memory.ess_wit_battery_limits.reportedSoc=value;assert.equal(f.run().soc,value,'Real hardware SOC remains authoritative near full');}
+}
+for(const [field,value] of [['deviceId','other'],['socEntity','sensor.other'],['socEntity',undefined],['remoteEntity','select.other'],['authorityEntity','select.other'],['at',now+1],['at',now-120001],['reportedSoc',101],['reportedSoc',-1],['reportedSoc',null],['reportedSoc','38']]){
+ const f=nativeFixture();f.memory.ess_wit_battery_limits[field]=value;
+ assert.equal(f.run().soc,null,'Reject unproven register SOC: '+field+'='+value);
+}
+for(const patch of [{deviceId:'other'},{remoteEntity:'select.other'},{authorityEntity:'select.other'},{at:now-120001}]){
+ const f=nativeFixture();Object.assign(f.memory.ess_wit_control_readback,patch);
+ assert.equal(f.run().soc,null,'Reject changed/stale control binding');
+}
+for(const role of [soc,remote,authority]){
+ const f=nativeFixture();assert.equal(f.run({}, {entities:{[role]:''}}).soc,null,'An explicitly disabled role must block native fallback');
+ assert.equal(f.run({}, {entities:{[role]:'other'}}).soc,null,'A changed mapping must invalidate native fallback');
+}
+// Registry proof must include the SOC sensor on the same device/config entry.
+const prepare=new Function('flow','msg',require('../flows.json').find(n=>n.id==='esswit_readback_prepare').func);
+for(const kind of ['matching','other-soc-device','other-soc-entry','missing-soc','other-authority-device']){
+ const memory={ess_wit_readback_pending:1};const fl={get:k=>memory[k],set:(k,v)=>memory[k]=v};
+ const entries=[remote,authority,soc].map(entity_id=>({entity_id,device_id:'own',config_entry_id:'entry',platform:'growatt_modbus'}));
+ if(kind==='other-soc-device')entries[2].device_id='other';
+ if(kind==='other-soc-entry')entries[2].config_entry_id='other';
+ if(kind==='missing-soc')entries.pop();
+ if(kind==='other-authority-device')entries[1].device_id='other';
+ const out=prepare(fl,{witReadId:1,witReply:entries});
+ if(kind==='other-authority-device')assert.equal(out,null);
+ else assert.equal(out.witBinding.socEntity,kind==='matching'?soc:undefined,'Only registry-matched SOC is attached to readback');
+}
+console.log('WIT SOC: simultaneous HA gaps, native freshness/identity, near-full, remapping and registry proof checked');

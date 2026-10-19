@@ -32,8 +32,11 @@ const remoteEntity=entities?entities[remoteRole]:remoteRole,authorityEntity=enti
 const entries=msg.witReply?.result||msg.witReply;
 const remote=Array.isArray(entries)?entries.find(e=>e.entity_id===remoteEntity&&e.platform==='growatt_modbus'):null;
 const authority=Array.isArray(entries)?entries.find(e=>e.entity_id===authorityEntity&&e.platform==='growatt_modbus'):null;
-if(!remote?.device_id || !authority || remote.config_entry_id!==authority.config_entry_id){flow.set('ess_wit_control_readback',null);flow.set('ess_wit_readback_pending',null);return null;}
+if(!remote?.device_id || !authority || remote.device_id!==authority.device_id || remote.config_entry_id!==authority.config_entry_id){flow.set('ess_wit_control_readback',null);flow.set('ess_wit_readback_pending',null);return null;}
 msg.witBinding={deviceId:remote.device_id,remoteEntity,authorityEntity};
+const socRole='sensor.growatt_battery_battery_soc',socEntity=entities?entities[socRole]:socRole;
+const soc=Array.isArray(entries)?entries.find(e=>e.entity_id===socEntity&&e.platform==='growatt_modbus'):null;
+if(soc?.device_id===remote.device_id && soc.config_entry_id===remote.config_entry_id)msg.witBinding.socEntity=socEntity;
 msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:remote.device_id,register_type:'holding',start_address:30100,count:1},return_response:true}};return msg;`,[['esswit_readback_authority']]));
     add(api('esswit_readback_authority','Lees WIT-bedieningsbevoegdheid','',['esswit_readback_remote_prepare']));
     add(fn('esswit_readback_remote_prepare','Vraag afstandsbediening en netlaadtoestemming',`msg.witAuthority=msg.witReply?.response||msg.witReply;

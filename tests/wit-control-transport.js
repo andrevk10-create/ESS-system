@@ -33,6 +33,13 @@ for(const mode of ['auto','on']) {
     const command=high.run({payload:{value:25}});
     assert.equal(!!command?.[0],false,'Both modes stop at the configured 80% target');
 }
+for(const hardwareSoc of [38,80]){
+ const t=fixture();Object.assign(t.values.ess_wit_control_readback,{authority:1,ac:1});
+ delete t.states['sensor.growatt_battery_battery_soc'];delete t.states['sensor.growatt_battery_battery_power'];
+ t.values.ess_wit_battery_limits={...binding,socEntity:'sensor.growatt_battery_battery_soc',at:now,reportedSoc:hardwareSoc,chargePowerW:8000};
+ const out=t.run({payload:{value:25}});
+ assert.equal(!!out?.[0],hardwareSoc<80,'Final transport uses bound native SOC, including target cutoff during HA gaps');
+}
 {
  const f=fixture();f.values.ess_wit_hardware_grid_guard=true;
  Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});

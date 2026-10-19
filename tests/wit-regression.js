@@ -83,6 +83,18 @@ async function main() {
         return {s, values, flow, run};
     };
     let f = fixture();
+    for(const nativeSoc of [38,80]){
+        const replay=fixture();
+        delete replay.s['sensor.growatt_battery_battery_soc'];
+        delete replay.s['sensor.growatt_battery_battery_power'];
+        const binding={deviceId:'wit',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',socEntity:'sensor.growatt_battery_battery_soc',at:now};
+        replay.values.ess_wit_control_readback={...binding,authority:0,remote:0,ac:1,duration:2,periods:0,percent:0};
+        replay.values.ess_wit_battery_limits={...binding,reportedSoc:nativeSoc,chargePowerW:8000,dischargePowerW:8000};
+        const out=replay.run('esswitgrid_ctrl1');
+        assert.equal(replay.values.ess_wit_grid_charge_status.socSource,'register');
+        if(nativeSoc===38)assert(out?.[0],'Missing HA SOC and power do not force release with verified native SOC');
+        else assert.match(replay.values.ess_wit_grid_charge_status.status,/Gewenste SOC bereikt/,'Hardware SOC at target must still stop charging');
+    }
     for (const [id,key] of [['esswitgrid_set01','ess_wit_grid_charge_status'],['esswitaudi_ctrl1','ess_wit_audi_discharge_status']]) {
         const owned={sessionOwned:true,releasing:true,powerPercent:37,releaseRequestedAt:now};
         f.values[key]=owned;
