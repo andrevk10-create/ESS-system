@@ -209,4 +209,35 @@ f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
 f.values.ess_system_config={specs:{maximumBatteryChargePowerKw:18}};
 for(const [index,w]of [-1000,-2000,-3000].entries())f.states['sensor.p1_meter_vermogen_fase_'+(index+1)]=f.state(w);
 assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],44,'Even an old 18 kW setting and ample export headroom cannot exceed the 8 kW installation ceiling');
-console.log('WIT transport: real readback, atomic lease/setpoint, single pending request, current fuse limits, delayed acknowledgements and failed writes OK');
+for(const initial of [0,1]){
+ const t=fixture();t.values.ess_wit_imbalance_managed=true;
+ Object.assign(t.values.ess_wit_control_readback,{authority:1,ac:1});
+ let out=t.run({payload:{value:25}})[0];
+ assert.equal(out.payload.data.service_data.start_address,947,'Read real phase mode before each charge command');
+ const reply=values=>t.run({...out,witReply:{response:{success:true,values}}},true);
+ out=reply([initial])[0];
+ if(initial===1){
+  assert.deepEqual(out.payload.data.service_data,{device_id:binding.deviceId,register:947,value:0});
+  out=reply([])[0];
+  assert.equal(out.payload.data.service_data.start_address,947,'Disable must be read back before power');
+  out=reply([0])[0];
+ }
+ assert.deepEqual(out.payload.data.service_data.values,[1,2,25],'Only confirmed disabled phase mode permits charging');
+ assert.equal(t.values.ess_wit_imbalance_charge_restore.deviceId,binding.deviceId);
+}
+for(const bad of [null,[2],[0,1]]){
+ const t=fixture();t.values.ess_wit_imbalance_managed=true;
+ const out=t.run({payload:{value:25}})[0];
+ const result=t.run({...out,witReply:{response:{success:bad!==null,values:bad}}},true);
+ assert.equal(result[0],null,'Missing/invalid phase register must block charging');
+ assert(t.values.ess_wit_command_fault);
+}
+{
+ const t=fixture();t.values.ess_wit_imbalance_managed=true;
+ let out=t.run({payload:{value:25}})[0];
+ const reply=values=>t.run({...out,witReply:{response:{success:true,values}}},true);
+ out=reply([1])[0];out=reply([])[0];
+ assert.equal(reply([1])[0],null,'Refused disable must never send a charging setpoint');
+ assert(t.values.ess_wit_command_fault);
+}
+console.log('WIT transport: readback, atomic charge, fuse limits and verified balanced phase mode OK');

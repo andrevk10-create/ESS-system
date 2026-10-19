@@ -30,18 +30,43 @@ const enabled=nativeValid&&native.value===1;
 const enabledSince=enabled?(previous.entity===identity&&previous.enabled?previous.enabledSince||now:now):0;
 const base=previous.entity===identity?{...previous,enabledSince}:{};
 const decision=imbalanceDecision(base,currents,enabled,now);
+const charge=flow.get('ess_wit_grid_charge_status')||{};
+const readback=flow.get('ess_wit_control_readback');
+const restore=flow.get('ess_wit_imbalance_charge_restore');
+const owned=charge.sessionOwned===true || !!flow.get('ess_wit_grid_transport');
+const sameReadback=bound && readback?.deviceId===native.binding.deviceId && readback.remoteEntity===native.binding.remoteEntity && readback.authorityEntity===native.binding.authorityEntity && now-readback.at>=0 && now-readback.at<=120000;
+let chargeOverride=false;
+if(bound && owned){
+    flow.set('ess_wit_imbalance_charge_restore',{deviceId:native.binding.deviceId});
+    decision.desired=enabled?false:null;
+    decision.reason='Driefasig netladen · Power Imbalance uit';
+    chargeOverride=true;
+}else if(bound && restore?.deviceId===native.binding.deviceId){
+    chargeOverride=true;
+    if(sameReadback && readback.remote===0 && readback.authority===0){
+        decision.desired=enabled?null:true;
+        decision.reason='Netladen beëindigd · Power Imbalance herstellen';
+        if(enabled)flow.set('ess_wit_imbalance_charge_restore',null);
+    }else{
+        decision.desired=null;
+        decision.reason='Wacht op bevestigde vrijgave netladen voor fasecompensatie';
+    }
+}
+if(chargeOverride){decision.aboveSince=0;decision.belowSince=0;}
 const status={...decision,entity:identity||null,enabled,enabledSince,at:now,blocked:!bound,commandAt:previous.entity===identity?previous.commandAt||0:0};
+status.gridChargeOverride=chargeOverride;
 status.meterIncludesEV=flow.get('ess_wit_meter_includes_ev')===true;
 status.remainingImbalance=enabled&&Number.isFinite(decision.difference)&&decision.difference>4;
-if(bound&&enabled)status.reason=status.meterIncludesEV?'Fasecompensatie ingeschakeld':'Fasecompensatie ingeschakeld; laadpunten buiten Growatt-meting, WIT-netladen volgt P1';
+if(bound&&enabled&&!chargeOverride)status.reason=status.meterIncludesEV?'Fasecompensatie ingeschakeld':'Fasecompensatie ingeschakeld; laadpunten buiten Growatt-meting, WIT-netladen volgt P1';
 if(!bound){status.reason='Power Imbalance-bediening ontbreekt of is niet bevestigd';status.aboveSince=0;status.belowSince=0;}
 flow.set('ess_wit_imbalance_status',status);
 if(msg.imbalanceVerify!==undefined){status.commandConfirmed=enabled===msg.imbalanceVerify;status.reason=status.commandConfirmed?'Power Imbalance-register bevestigd':'Power Imbalance-schrijfopdracht niet bevestigd';flow.set('ess_wit_imbalance_status',status);return null;}
 if(!bound||decision.desired===null||config.modules?.inverter===false)return null;
-if(previous.entity===identity&&previous.commandAt&&now-previous.commandAt<60000)return null;
+if(!chargeOverride&&previous.entity===identity&&previous.commandAt&&now-previous.commandAt<60000)return null;
 status.commandAt=now;flow.set('ess_wit_imbalance_status',status);
 if(nativeValid){msg.imbalanceVerify=decision.desired;msg.payload={data:{type:'call_service',domain:'growatt_modbus',service:'write_register',service_data:{device_id:native.binding.deviceId,register:947,value:decision.desired?1:0}}};return msg;}
 return null;`});
+    flows.find(n=>n.id==='essimbalance_control').initialize="flow.set('ess_wit_imbalance_managed',true);";
     const api=(id,name,data,next)=>({id,type:'ha-api',z,name,server:'ess00000000000b',version:1,protocol:'websocket',method:'get',path:'',data,dataType:'json',responseType:'json',outputProperties:[{property:'imbalanceReply',propertyType:'msg',value:'',valueType:'results'}],wires:[[next]]});
     const fn=(id,name,func,next)=>({id,type:'function',z,name,func,outputs:1,wires:[[next]]});
     flows.push(api('essimbalance_registry','Zoek gekoppelde Growatt WIT','{"type":"config/entity_registry/list"}','essimbalance_prepare'));

@@ -62,6 +62,13 @@ function witGridTransport(flow, global, msg, reply, now) {
     if (reply) {
         if (!op || op.id !== msg.witOperationId) return null;
         if (msg.error) return fail('WIT-opdracht mislukt: '+String(msg.error.message || 'Modbus'));
+        if (op.stage === 'imbalanceRead' || op.stage === 'imbalanceVerify') {
+            const r=msg.witReply?.response || msg.witReply;
+            if(r?.success!==true || r.values?.length!==1 || ![0,1].includes(r.values[0])) return fail('Power Imbalance-register niet bevestigd · netladen geblokkeerd');
+            if(op.stage==='imbalanceVerify' && r.values[0]!==0) return fail('Power Imbalance blijft aan · netladen geblokkeerd');
+            flow.set('ess_wit_imbalance_charge_restore',{deviceId:op.binding.deviceId});
+            if(op.stage==='imbalanceRead' && r.values[0]===1) op.steps.splice(op.next+1,0,'imbalanceOff','imbalanceVerify');
+        }
         if (op.stage === 'authorityRead') op.authorityResult = msg.witReply?.response || msg.witReply;
         if (op.stage === 'remoteRead') {
             const readback = witReadbackResult(op.authorityResult, msg.witReply?.response || msg.witReply, op.binding, now);
@@ -112,6 +119,7 @@ function witGridTransport(flow, global, msg, reply, now) {
         // downward safety reductions must still be sent immediately.
         if (kind === 'update' && ack && now - ack.sentAt < 45000 && percent >= ack.powerPercent) return null;
         const steps = [];
+        if(flow.get('ess_wit_imbalance_managed')===true) steps.push('imbalanceRead');
         if (!snapshot.authority) steps.push('authority');
         if (!snapshot.ac) steps.push('ac');
         steps.push('power','authorityRead','remoteRead');
@@ -128,7 +136,11 @@ function witGridTransport(flow, global, msg, reply, now) {
     const stage = op.steps[op.next];
     if (!stage) return fail('Ongeldige WIT-schrijfstap');
     let data;
-    if (stage === 'authority') {
+    if (stage === 'imbalanceRead' || stage === 'imbalanceVerify') {
+        data={domain:'growatt_modbus',service:'get_register_data',service_data:{device_id:op.binding.deviceId,register_type:'holding',start_address:947,count:1},return_response:true};
+    } else if(stage==='imbalanceOff') {
+        data={domain:'growatt_modbus',service:'write_register',service_data:{device_id:op.binding.deviceId,register:947,value:0}};
+    } else if (stage === 'authority') {
         data = {domain:'growatt_modbus',service:'write_registers',service_data:{device_id:op.binding.deviceId,register:30100,values:[1]}};
     } else if (stage === 'ac') {
         data = {domain:'growatt_modbus',service:'write_registers',service_data:{device_id:op.binding.deviceId,register:30410,values:[1]}};

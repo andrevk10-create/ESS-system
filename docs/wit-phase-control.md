@@ -2,6 +2,20 @@
 
 ## Automatic Power Imbalance control
 
+ESS-owned grid charging takes priority over the household imbalance thresholds:
+Power Imbalance (holding 947) is disabled during pending, active and releasing
+grid-charge sessions. The charge transport reads this register before each
+start/update/renewal; if enabled, it writes 0 and verifies 0 before sending the
+charge command. Invalid or refused readback blocks charging through the existing
+fault/release path. This provides balanced inverter currents, not necessarily
+equal P1 imports, because household loads and other PV differ by phase.
+
+After the session ends, Power Imbalance is enabled again only after fresh,
+device-matched readback confirms both authority and remote control disabled.
+The pending restoration stays in flow context until register 947 confirms 1;
+normal household threshold control then resumes. Uncertain release or failed
+register access delays restoration rather than assuming that charging stopped.
+
 The flow includes a controller with a strict difference greater than 4 A
 between the highest and lowest signed P1 phase currents (or signed phase
 power divided by configured nominal voltage). Enable requires 30 seconds

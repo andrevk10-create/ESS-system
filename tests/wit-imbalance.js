@@ -35,4 +35,35 @@ assert.equal(memory.ess_wit_imbalance_status.remainingImbalance,true,'An enabled
 assert.equal(memory.ess_wit_imbalance_status.meterIncludesEV,false);
 message.witImbalanceNative.binding.remoteEntity='select.other';delete message.imbalanceVerify;
 assert.equal(execute(flow,global,message,DateStub),null,'Wrong inverter binding must block');
-console.log('WIT imbalance: strict 4 A threshold, debounce, hysteresis, minimum on-time, signed phases and missing binding passed');
+// Charging overrides household debounce, including pending/releasing sessions.
+for(const charge of [{sessionOwned:true,active:true},{sessionOwned:true,active:false},{sessionOwned:true,releasing:true}]){
+ const mem={ess_system_config:config,ess_wit_grid_charge_status:charge};
+ const fl={get:k=>mem[k],set:(k,v)=>mem[k]=v};
+ const binding={deviceId:'own',remoteEntity:'select.own_remote',authorityEntity:'select.own_authority'};
+ const message=value=>({witImbalanceNative:{binding,at:clock,value}});
+ let command=execute(fl,global,message(1),DateStub);
+ assert.equal(command.payload.data.service_data.value,0,'Owned charging must disable imbalance immediately');
+ assert.equal(mem.ess_wit_imbalance_status.gridChargeOverride,true);
+ assert.equal(execute(fl,global,message(0),DateStub),null,'Already disabled must not write repeatedly');
+ mem.ess_wit_grid_charge_status={sessionOwned:false};
+ assert.equal(execute(fl,global,message(0),DateStub),null,'Missing release feedback must not restore early');
+ mem.ess_wit_control_readback={...binding,at:clock,authority:0,remote:1};
+ assert.equal(execute(fl,global,message(0),DateStub),null,'Remote control must also be released');
+ mem.ess_wit_control_readback.remote=0;
+ mem.ess_wit_control_readback.at=clock-120001;
+ assert.equal(execute(fl,global,message(0),DateStub),null,'Old release feedback must not restore');
+ mem.ess_wit_control_readback.at=clock;
+ command=execute(fl,global,message(0),DateStub);
+ assert.equal(command.payload.data.service_data.value,1,'Confirmed release restores imbalance even without household imbalance');
+ assert(mem.ess_wit_imbalance_charge_restore,'Keep restoration pending until hardware confirms');
+ execute(fl,global,message(1),DateStub);
+ assert.equal(mem.ess_wit_imbalance_charge_restore,null,'Only confirmed restoration clears recovery state');
+}
+{
+ const mem={ess_system_config:config,ess_wit_grid_charge_status:{sessionOwned:false},ess_wit_imbalance_charge_restore:{deviceId:'other'}};
+ const fl={get:k=>mem[k],set:(k,v)=>mem[k]=v};
+ const binding={deviceId:'own',remoteEntity:'select.own_remote',authorityEntity:'select.own_authority'};
+ assert.equal(execute(fl,global,{witImbalanceNative:{binding,at:clock,value:0}},DateStub),null,'Recovery must not migrate to another inverter');
+ assert.equal(mem.ess_wit_imbalance_status.gridChargeOverride,false);
+}
+console.log('WIT imbalance: thresholds, binding, charging override and confirmed post-charge restoration passed');
