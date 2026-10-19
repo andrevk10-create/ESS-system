@@ -46,7 +46,7 @@ for(const role of [soc,remote,authority]){
  const f=nativeFixture();assert.equal(f.run({}, {entities:{[role]:''}}).soc,null,'An explicitly disabled role must block native fallback');
  assert.equal(f.run({}, {entities:{[role]:'other'}}).soc,null,'A changed mapping must invalidate native fallback');
 }
-// Registry proof must include the SOC sensor on the same device/config entry.
+// Battery and Grid may be sibling devices, but must share the inverter entry.
 const prepare=new Function('flow','msg',require('../flows.json').find(n=>n.id==='esswit_readback_prepare').func);
 for(const kind of ['matching','other-soc-device','other-soc-entry','missing-soc','other-authority-device']){
  const memory={ess_wit_readback_pending:1};const fl={get:k=>memory[k],set:(k,v)=>memory[k]=v};
@@ -57,6 +57,24 @@ for(const kind of ['matching','other-soc-device','other-soc-entry','missing-soc'
  if(kind==='other-authority-device')entries[1].device_id='other';
  const out=prepare(fl,{witReadId:1,witReply:entries});
  if(kind==='other-authority-device')assert.equal(out,null);
- else assert.equal(out.witBinding.socEntity,kind==='matching'?soc:undefined,'Only registry-matched SOC is attached to readback');
+ else assert.equal(out.witBinding.socEntity,['matching','other-soc-device'].includes(kind)?soc:undefined,'Only same-entry SOC is attached to readback');
+}
+{
+ const f=nativeFixture();
+ const binding={...native,configEntryId:'entry',socConfigEntryId:'entry',socDeviceId:'battery-child'};
+ const prepareCurrent=new Function('msg','flow',require('../flows.json').find(n=>n.id==='esswit_current_prepare').func);
+ f.memory.ess_wit_readback_pending=1;
+ const fl={get:k=>f.memory[k],set:(k,v)=>f.memory[k]=v};
+ const values=Array(19).fill(0);values[7]=38;
+ prepareCurrent({witReadId:1,witBinding:binding,witReply:{success:true,values}},fl);
+ const recorded=f.memory.ess_wit_soc_readback.at;
+ require('../scripts/lib/wit-control-readback').witReadbackFailure(fl,{witReadId:1},recorded);
+ assert.equal(f.run({}, {}, recorded).soc,38,'A later control/current failure must not erase independently measured SOC');
+ assert.equal(f.run({}, {}, recorded+120001).soc,null,'Independent readback cannot be refreshed by reuse');
+ f.memory.ess_wit_soc_readback.socConfigEntryId='other';
+ assert.equal(f.run({}, {}, recorded).soc,null,'Independent SOC requires proven same-entry identity');
+ f.memory.ess_wit_soc_readback.socConfigEntryId='entry';
+ f.memory.ess_wit_control_readback={...native,deviceId:'replacement'};
+ assert.equal(f.run({}, {}, recorded).soc,null,'Changed control device invalidates independent SOC');
 }
 console.log('WIT SOC: simultaneous HA gaps, native freshness/identity, near-full, remapping and registry proof checked');

@@ -128,6 +128,9 @@ ${marker}`);
     projectedMinimumSoc:knownPricePlan?.minimumSoc??null,
     houseConsumptionSource:`);
     grid.func=grid.func.replace('planComplete:remainingEnergyKwh <= 0.05','planComplete:remainingEnergyKwh <= 0.05 && (!knownPricePlan || knownPricePlan.reserveShortfallKwh <= 0.05)');
+    // Show the same conservative, deadline-limited solar credit that the
+    // inventory planner actually subtracts, even if tomorrow is unavailable.
+    grid.func=grid.func.replace('expectedSolarChargeKwh:round(expectedSolarChargeKwh)', "expectedSolarChargeKwh:round(mode==='auto'?solarBeforeDeadlineKwh:expectedSolarChargeKwh)");
     grid.func=grid.func.replace("deadlineWarning:remainingEnergyKwh > 0.05 ? 'Onvoldoende geplande laadruimte om vóór de dure periode vol te zijn' : null", "deadlineWarning:remainingEnergyKwh > 0.05 ? 'Onvoldoende rendabele laadruimte om vóór de dure periode vol te zijn' : knownPricePlan?.reserveShortfallKwh > 0.05 ? 'Overbrugging niet volledig gedekt; rechtstreeks netverbruik kan nodig zijn' : null");
     grid.func=grid.func.replace("forecastWindow:solarWindow.label","forecastWindow:'Alle bekende kwartierprijzen'");
     const mapper=flows.find(n=>n.id==='ess00000000000a');

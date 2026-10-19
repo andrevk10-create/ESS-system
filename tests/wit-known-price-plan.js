@@ -31,6 +31,35 @@ const solarStates={'sun.sun':{attributes:{next_rising:'2026-10-19T06:00:00Z',nex
 const sunny=plan(slots,now,r,{valid:true,forecastDate:'2026-10-19',tomorrowKwh:30,todayRemainingKwh:0},solarStates);
 const sum=p=>p.selectedSlots.reduce((n,s)=>n+s.energyKwh,0);
 assert(sum(sunny)<sum(result),'Conservative forecast solar reduces grid purchases');
+{
+ const {witSolarWindow}=require('../scripts/lib/wit-runtime');
+ const {witSolarBeforeDeadline}=require('../scripts/lib/wit-price-deadline');
+ const at=new Date(2026,9,19,12).getTime(),day='2026-10-19';
+ const s={'sun.sun':{state:'above_horizon',attributes:{next_rising:new Date(2026,9,20,8).toISOString(),next_setting:new Date(2026,9,19,18).toISOString()}}};
+ const remaining=[5.008,5.308,3.819];
+ for(const [i,v]of remaining.entries()){
+  const suffix=i?'_'+(i+1):'';
+  const item=(n,age)=>({state:String(n),attributes:{unit_of_measurement:'kWh'},last_updated:new Date(at-age).toISOString()});
+  s['sensor.energy_production_today'+suffix]=item(v+2,hour);
+  s['sensor.energy_production_today_remaining'+suffix]=item(v,hour);
+  s['sensor.energy_production_tomorrow'+suffix]=item(15,4*hour);
+ }
+ const solar=witSolarWindow(s,{},at,null,true);
+ assert.equal(solar.valid,false,'Rolling tomorrow input remains honestly unavailable');
+ assert.equal(solar.todayValid,true);
+ assert(Math.abs(solar.todayRemainingKwh-14.135)<1e-8);
+ assert.equal(solar.tomorrowKwh,null);
+ const deadline=at+4*hour;
+ assert(witSolarBeforeDeadline(solar,s,at,deadline)>0,'Fresh today survives stale tomorrow');
+ assert.equal(witSolarBeforeDeadline({...solar,todayValid:false},s,at,deadline),0,'Missing today cannot earn credit from tomorrow');
+ const prices=Array.from({length:24},(_,i)=>({start:at+i*hour/4,end:at+(i+1)*hour/4,allInPrice:i<16?.25:.5}));
+ const reserve={...r,storedKwh:12,houseKwh:40};
+ const withSun=plan(prices,at,reserve,solar,s),withoutSun=plan(prices,at,reserve,{valid:false},s);
+ assert(withSun.solarKwh>0);
+ assert(sum(withSun)<sum(withoutSun),'Known afternoon solar must reduce planned net charging');
+ assert(Math.abs((sum(withoutSun)-sum(withSun))*r.efficiency-withSun.solarKwh)<.01,'Solar credit is subtracted once, with charging efficiency');
+ assert(withSun.projectedSoc>=99.99);
+}
 assert(sunny.projectedSoc>=99.99);
 const restricted=plan(slots,now,{...r,chargeKw:.1},forecast,{});
 assert(restricted.remainingEnergyKwh>0&&restricted.reserveShortfallKwh>0,'Insufficient power is reported rather than inventing a feasible schedule');

@@ -45,13 +45,25 @@ Optional entity roles on Configuration:
 
 Grid-charge SOC can also come from the existing local Modbus battery readback
 when the Home Assistant SOC/power cache briefly disappears. This is a real
-measurement, not an extended cache grace: both battery and control readbacks
-must be at most two minutes old, and entity-registry proof must bind the mapped
-SOC sensor and both control entities to the same Growatt device/config entry.
+measurement, not an extended cache grace: the battery readback must be at most
+two minutes old, and entity-registry proof must bind the mapped SOC sensor and
+both control entities to the same Growatt config entry. Battery and Grid may be
+separate Home Assistant devices inside that entry; the two control entities
+must still share their Grid device. An independently validated SOC snapshot
+keeps its original timestamp if a later current/control read fails. Missing
+control feedback still blocks control through the existing hardware guards;
+it does not turn an already measured SOC into a missing SOC.
 The planner records `socSource=register`; the final write transport checks the
 same source and still stops at the SOC target. Missing identity, stale readings
 or an explicitly out-of-range sensor block this fallback. A release already
 underway still completes before another charging session starts.
+
+Forecast validity is tracked separately for today and tomorrow. A stale or
+missing tomorrow forecast cannot discard fresh remaining production today when
+the charging deadline is today. Only production before the deadline receives
+the existing conservative factor and charging efficiency. The displayed
+expected solar charging uses the same credit as the inventory/net-energy plan;
+unknown days are never filled with invented forecast energy.
 
 | Role | Accepted unit |
 | --- | --- |

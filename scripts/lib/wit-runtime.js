@@ -96,6 +96,7 @@ function witSolarWindow(states, config, now, audit, rolling) {
         inputKwh = todayRemaining === null || tomorrowTotal === null ? null : todayRemaining + tomorrowTotal;
     }
     return { valid: inputKwh !== null, inputKwh, forecastDate, todayRemainingKwh: todayRemaining,
+        todayDate:today, tomorrowDate:tomorrow, todayValid:todayRemaining!==null, tomorrowValid:tomorrowTotal!==null,
         tomorrowKwh: tomorrowTotal, sourceCount: groups.length,
         label: rolling ? 'Komende 24 uur' : (!beforeSunrise && !afterSunset ? 'Rest vandaag + morgen' : forecastDate === today ? 'Vandaag / komende ochtend' : 'Morgen') };
 }

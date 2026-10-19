@@ -129,10 +129,13 @@ const economicSlots = slots.filter(slot => expensivePeriodStart !== null && slot
 module.exports.witPriceDeadline=witPriceDeadline;
 
 function witSolarBeforeDeadline(window, states, now, deadline) {
-    if (!window.valid || !Number.isFinite(deadline)) return 0;
+    if (!Number.isFinite(deadline)) return 0;
     const local = stamp => new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));
     const day = local(deadline);
-    if (day !== window.forecastDate) return 0;
+    const isToday=day===local(now);
+    const valid=isToday?(window.todayValid??window.valid):(window.tomorrowValid??window.valid);
+    const forecastDate=isToday?(window.todayDate??window.forecastDate):(window.tomorrowDate??window.forecastDate);
+    if (!valid || day !== forecastDate) return 0;
     const sun = states['sun.sun']?.attributes || {};
     const rise = Date.parse(sun.next_rising), set = Date.parse(sun.next_setting);
     // Only count a dated forecast with a known solar window for that day.

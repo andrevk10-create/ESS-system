@@ -83,6 +83,23 @@ async function main() {
         return {s, values, flow, run};
     };
     let f = fixture();
+    {
+        const savedNow=now;now=new Date(2026,9,19,12).getTime();
+        const replay=fixture();
+        replay.s['sun.sun']={state:'above_horizon',attributes:{next_rising:new Date(2026,9,20,8).toISOString(),next_setting:new Date(2026,9,19,18).toISOString()}};
+        replay.s['sensor.energy_production_today_remaining']=reading(14,'kWh',now);
+        replay.s['sensor.energy_production_tomorrow']=reading(40,'kWh',now-4*3600000);
+        replay.run('esswitgrid_ctrl1');
+        const status=replay.values.ess_wit_grid_charge_status;
+        assert(status.solarCreditKwh>0,'Generated planner credits fresh today when tomorrow is stale');
+        assert.equal(status.expectedSolarChargeKwh,status.solarCreditKwh,'Displayed solar uses the same deadline budget as net charging');
+        const need=status.gridEnergyNeededKwh;
+        replay.s['sensor.energy_production_today_remaining']=reading('unavailable','kWh',now);
+        replay.s['sensor.energy_production_today']=reading('unavailable','kWh',now);
+        replay.run('esswitgrid_ctrl1');
+        assert(replay.values.ess_wit_grid_charge_status.gridEnergyNeededKwh>need,'Generated grid budget increases only when today forecast truly disappears');
+        now=savedNow;
+    }
     for(const nativeSoc of [38,80]){
         const replay=fixture();
         delete replay.s['sensor.growatt_battery_battery_soc'];

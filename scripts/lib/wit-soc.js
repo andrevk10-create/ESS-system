@@ -11,13 +11,15 @@ function witChargeSoc(flow, states, config, now) {
     // 30-second grace then cannot help, although local registers still report
     // the real SOC. Only use that independent reading with proven identity.
     const mapped=id=>Object.prototype.hasOwnProperty.call(config?.entities||{},id)?config.entities[id]:id;
-    const limits=flow.get('ess_wit_battery_limits'),readback=flow.get('ess_wit_control_readback');
+    const direct=flow.get('ess_wit_soc_readback');
+    const limits=direct||flow.get('ess_wit_battery_limits'),readback=flow.get('ess_wit_control_readback');
+    const independent=!!direct && !!direct.socDeviceId && !!direct.configEntryId && direct.socConfigEntryId===direct.configEntryId;
+    const controlMatches=readback?.deviceId===limits?.deviceId && readback?.remoteEntity===limits?.remoteEntity && readback?.authorityEntity===limits?.authorityEntity;
     const nativeFresh=limits && Number.isInteger(limits.reportedSoc) && limits.reportedSoc>=0 && limits.reportedSoc<=100 &&
         now-limits.at>=0 && now-limits.at<=120000 && limits.socEntity===mapped(role) && !!limits.socEntity &&
         limits.remoteEntity===mapped('select.growatt_grid_remote_power_control_enable') &&
         limits.authorityEntity===mapped('select.growatt_grid_control_authority') &&
-        !!limits.deviceId && readback?.deviceId===limits.deviceId && readback.remoteEntity===limits.remoteEntity &&
-        readback.authorityEntity===limits.authorityEntity && now-readback.at>=0 && now-readback.at<=120000;
+        !!limits.deviceId && (independent?(!readback||controlMatches):(controlMatches && now-readback.at>=0 && now-readback.at<=120000));
     const sensorAt=new Date(item?.last_reported||item?.last_updated||item?.last_changed||0).getTime();
     if(nativeFresh && (!numeric(item)||!fresh(item)||limits.at>sensorAt))
         return {soc:limits.reportedSoc,cached:false,source:'register',at:limits.at};
