@@ -83,9 +83,10 @@ function dashboardHealth(d, modules, stale, updated) {
     const smart = d.audiSmart || {}, nas = d.nas || {}, runtime = d.wit && d.wit.runtime || {};
     const checks = [{key:'data', title:'Meetdata', level:stale?'error':'ok', icon:'mdi-clock-check-outline',
         detail:stale?'Geen actuele update; controleer Home Assistant en Node-RED':'Actueel om '+updated}];
-    if (modules.energy !== false && !stale && !runtime.p1Fresh) {
+    if (modules.energy !== false && !stale && (runtime.p1Warning??!runtime.p1Fresh)) {
         checks[0] = {...checks[0], level:'warn', detail:'Dashboard bereikbaar; P1-brondata ontbreekt of is te oud'};
     }
+    if(!stale&&d.connection?.homeAssistant===false)checks[0]={...checks[0],level:'warn',detail:'Dashboard bereikbaar; verbinding met Home Assistant onderbroken'};
     if (modules.energy !== false || modules.battery !== false) checks.push({key:'core', title:'Kernmetingen', level:missing.length?'error':'ok', icon:'mdi-access-point-check',
         detail:missing.length?'Ontbreekt: '+missing.join(', '):'Ingeschakelde kernmetingen beschikbaar'});
     if (modules.ev !== false) checks.push({key:'charging', title:'EV-laadregeling', level:smart.enabled&&smart.scheduleComplete===false?'warn':'ok', icon:'mdi-ev-station',
@@ -116,6 +117,7 @@ function dashboardAlerts(d, checks, modules) {
     }
     for (const check of checks) {
         if (check.level === 'ok' || seen.has(check.detail)) continue;
+        if(check.key==='data'&&check.detail==='Dashboard bereikbaar; P1-brondata ontbreekt of is te oud'&&seen.has('P1-meetdata ontbreekt of is te oud'))continue;
         // A NAS issue already contains the exact reason; don't repeat its count.
         if (check.key === 'nas' && modules.nas !== false && (d.nas && d.nas.issues || []).some(item=>seen.has(item.text))) continue;
         add(check.level, check.title+': '+check.detail);

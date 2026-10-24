@@ -16,25 +16,32 @@ function witHealthModel(states, flow, now) {
     const active = current(grid) && grid.sessionOwned ? grid : current(ev) && ev.sessionOwned ? ev : null;
     const telemetryFresh = measured !== null;
     const p1Fresh = fresh('sensor.p1_meter_vermogen', 15000);
+    // Display grace only. Charging continues to use its strict 15 s / 120 s
+    // gates; do not present every short reporting delay as a new fault.
+    const p1Warning = !fresh('sensor.p1_meter_vermogen', 45000);
+    const telemetryWarning = raw === null || !fresh('sensor.growatt_battery_battery_power', 150000);
+    const measurementPending = (!p1Fresh&&!p1Warning)||(!telemetryFresh&&!telemetryWarning);
     const priceMeta = flow.get('ess_nordpool_forecast_meta') || {};
     const prices = flow.get('ess_nordpool_forecast') || [];
     const priceAge = now - new Date(priceMeta.updatedAt || 0).getTime();
     const pricesFresh = priceAge >= -60000 && priceAge <= 36 * 3600000 &&
         prices.some(s => new Date(s.end).getTime() > now && numeric(s.allInPrice) !== null);
-    const blocked = [grid, ev].find(s => current(s) && /ontbreekt|te oud|niet beschikbaar|ongeldig/.test(s.status || ''));
+    const blocked = [grid, ev].find(s => current(s) && /ontbreekt|te oud|niet beschikbaar|ongeldig/.test(s.status || '') &&
+        !(!p1Warning&&/^P1.*(ontbreekt|te oud|niet beschikbaar)/.test(s.status||'')) &&
+        !(!telemetryWarning&&/^Growatt-telemetrie is te oud/.test(s.status||'')));
     const problem = fault ? 'WIT reageert niet na herstelpoging; tijdelijke regeling geblokkeerd. Controleer BMS/Modbus en bevestig de stand opnieuw.' :
-        !telemetryFresh ? 'WIT-meetdata ontbreekt of is te oud; controleer Modbus' :
-        !p1Fresh ? 'P1-meetdata ontbreekt of is te oud' :
+        telemetryWarning ? 'WIT-meetdata ontbreekt of is te oud; controleer Modbus' :
+        p1Warning ? 'P1-meetdata ontbreekt of is te oud' :
         active && !active.powerConfirmed ? 'Opdracht verstuurd; accuvermogen nog niet bevestigd' :
         !current(grid) || !current(ev) ? 'WIT-regelaar heeft geen recente update' : blocked ? blocked.status : null;
     return {
-        telemetryFresh, p1Fresh, pricesFresh, measuredPowerW:measured,
+        telemetryFresh, p1Fresh, p1Warning, telemetryWarning, measurementPending, pricesFresh, measuredPowerW:measured,
         requestedPowerW:active ? numeric(active.requestedPowerW) : 0,
         commandConfirmed:!!active && active.commandConfirmed === true,
         powerConfirmed:!!active && active.powerConfirmed === true,
         direction:active === grid ? 'Laden' : active === ev ? 'Ontladen' : 'Normale regeling',
-        status:problem || (active ? 'Accuvermogen gemeten; dit bewijst niet de volledige vermogensvraag' : 'Geen tijdelijke WIT-opdracht actief'),
-        level:problem ? (!telemetryFresh || !p1Fresh ? 'error' : 'warn') : 'ok',
+        status:problem || (measurementPending?'Meting tijdelijk vertraagd · laadbeveiliging wacht op verse gegevens':active ? 'Accuvermogen gemeten; dit bewijst niet de volledige vermogensvraag' : 'Geen tijdelijke WIT-opdracht actief'),
+        level:problem ? (telemetryWarning || p1Warning ? 'error' : 'warn') : 'ok',
         forecastWindow:grid.forecastWindow || 'Komende 24 uur',
         forecastDate:grid.forecastDate || null,
         houseReserveKwh:numeric(ev.houseReserveKwh),
