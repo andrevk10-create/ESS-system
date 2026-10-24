@@ -10,7 +10,7 @@ ${housePowerSample.toString()}
 ${houseLearningStep.toString()}
 const loadEnergyTodayKwh = energyKwh('sensor.growatt_load_load_energy_today');
 const restoredHouseForecast = states['sensor.ess_woningverbruik_basis_verwacht_morgen'];
-const houseSample = housePowerSample(rawStates, essRuntimeConfig, flow.get('ess_dashboard_live') || {}, audiControlStatus, now.getTime(), flow.get('ess_house_learning_snapshot'));
+const houseSample = housePowerSample(rawStates, essRuntimeConfig, flow.get('ess_dashboard_live') || {}, audiControlStatus, now.getTime(), flow.get('ess_house_learning_snapshot'), flow.get('ess_jeep_control_status') || {});
 const houseLearning = houseLearningStep(flow.get('ess_house_consumption_learning'), restoredHouseForecast && restoredHouseForecast.attributes,
     houseSample, now.getTime(), profile.houseReserveKwh, profile.label);
 flow.set('ess_house_consumption_learning', houseLearning);

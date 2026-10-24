@@ -190,6 +190,27 @@ f.states['sensor.ess_woningverbruik_basis_verwacht_morgen'].attributes.model_ver
 assert.equal(map().house.forecastBaseTomorrow, 29.2, 'Dashboard can restore a compatible published forecast');
 
 // Ensure generation embeds these exact tested helpers, without divergent copies.
+{
+ const t=Date.parse('2026-10-24T23:59:00+02:00');
+ const previous={schemaVersion:2,currentDate:'2026-10-24',recentDays:[],currentValueKwh:18,coverageHours:18,lastBasePowerW:1000,lastSampleAt:new Date(t).toISOString()};
+ const next=houseLearningStep(previous,null,{basePowerW:3000,reason:'OK'},t+120000,10,'normal');
+ assert.equal(next.currentDate,'2026-10-25');
+ assert(Math.abs(next.currentValueKwh-2.5/60)<1e-9,'The post-midnight minute is retained with interpolated power');
+ assert(Math.abs(next.coverageHours-1/60)<1e-9);
+ assert(Math.abs(next.recentDays[0].kwh-(18+1.5/60)*24/(18+1/60))<1e-9,'The pre-midnight minute belongs to the completed day');
+ const gap=houseLearningStep(previous,null,{basePowerW:3000,reason:'OK'},t+600000,10,'normal');
+ assert.equal(gap.currentValueKwh,0,'Midnight never bridges a long measurement gap');
+ const invalid=houseLearningStep(previous,null,{basePowerW:null,reason:'Missing'},t+120000,10,'normal');
+ assert.equal(invalid.currentValueKwh,0,'Midnight never interpolates through an invalid sample');
+}
+{
+ const f=fixture();f.states[secondary]=reading(0);f.states['sensor.ev_charger_2_status']=reading('idle','');
+ const active={actualCharging:true,updatedAt:new Date(now).toISOString()};
+ assert.equal(housePowerSample(f.states,{},f.values.ess_dashboard_live,{},now,null,active).basePowerW,null,'Second controller can veto a contradictory zero meter too');
+ delete f.states[secondary];delete f.states['sensor.ev_charger_2_status'];
+ f.states['sensor.ev_charger_2_current']=reading(16,'A');
+ assert.equal(housePowerSample(f.states,{},f.values.ess_dashboard_live,{},now).basePowerW,null,'A current-only charger is installed, not an absent optional charger');
+}
 const generated = flows.find(n=>n.id === 'esswithist_prep1').func;
 assert(generated.includes(housePowerSample.toString()));
 assert(generated.includes(houseLearningStep.toString()));

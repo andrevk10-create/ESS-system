@@ -1,5 +1,5 @@
 // Self-contained helpers, embedded in the Node-RED history function at build time.
-function housePowerSample(rawStates, config, dashboard, control, now, snapshot) {
+function housePowerSample(rawStates, config, dashboard, control, now, snapshot, secondControl = {}) {
     const states = rawStates || {};
     const mapping = config.entities || {};
     const number = value => value === null || value === undefined || value === '' || typeof value === 'boolean'
@@ -24,7 +24,7 @@ function housePowerSample(rawStates, config, dashboard, control, now, snapshot) 
     const seen = new Set();
     for (const suffix of ['', '_2']) {
         const prefix = 'sensor.ev_charger' + suffix;
-        const roles = [prefix + '_power', prefix + '_status', prefix + '_energy_today'];
+        const roles = [prefix + '_power', prefix + '_status', prefix + '_energy_today',prefix+'_current','binary_sensor.ev_charger'+suffix+'_online'];
         const installed = roles.some(role => !!entity(role) || !!id(role) && id(role) !== role);
         if (!installed) { chargers.push({ powerW:0, source:'Niet gekoppeld' }); continue; }
         const identity = id(prefix + '_power') || id(prefix + '_status');
@@ -35,8 +35,9 @@ function housePowerSample(rawStates, config, dashboard, control, now, snapshot) 
         const current = entity(prefix + '_current');
         const powerW = watts(power);
         const stateText = String(state && state.state || '').toLowerCase();
-        const controllerActive = suffix === '' && ageOk(control.updatedAt, 120000)
-            && (control.actualCharging === true || control.chargingConfirmed === true || number(control.chargerPowerW) > 100);
+        const chargerControl=suffix===''?control:secondControl;
+        const controllerActive = ageOk(chargerControl.updatedAt, 120000)
+            && (chargerControl.actualCharging === true || chargerControl.chargingConfirmed === true || number(chargerControl.chargerPowerW) > 100);
         // Sub-ampere residual/current offsets do not represent EV charging.
         const currentActive = fresh(current) && number(current.state) > 1;
         // HA's current REST response can confirm an unchanged disconnected
@@ -86,7 +87,10 @@ function housePowerSample(rawStates, config, dashboard, control, now, snapshot) 
 function houseLearningStep(previous, restored, sample, now, fallback, profileLabel) {
     const number = value => value === null || value === undefined || value === '' || typeof value === 'boolean'
         ? null : Number.isFinite(Number(value)) ? Number(value) : null;
-    const dayKey = date => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    const incoming=number(sample?.basePowerW);
+    sample={...sample,basePowerW:incoming!==null&&incoming>=0&&incoming<=100000?incoming:null};
+    const dateFormat=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});
+    const dayKey = date => dateFormat.format(date);
     const today = dayKey(new Date(now));
     // Restore one complete, compatible model. Never mix new samples with old
     // HA attributes: version 1 could include EV energy in its household history.
@@ -106,15 +110,26 @@ function houseLearningStep(previous, restored, sample, now, fallback, profileLab
     let coverageHours = number(model.coverageHours) || 0;
     let lastBasePowerW = number(model.lastBasePowerW);
     let lastSampleAt = new Date(model.lastSampleAt || 0).getTime();
+    if(lastSampleAt>now)return {...model};
     if (model.currentDate !== today) {
+        // Split a short, valid interval at local midnight before finalizing
+        // yesterday. Never carry power across missing data or a restart gap.
+        let boundary=null,boundaryPower=null;
+        if(lastBasePowerW!==null&&number(sample.basePowerW)!==null&&lastSampleAt>0&&now>lastSampleAt&&now-lastSampleAt<=300000&&dayKey(new Date(lastSampleAt))===model.currentDate){
+            let lo=lastSampleAt,hi=now;
+            while(hi-lo>1){const mid=Math.floor((lo+hi)/2);if(dayKey(new Date(mid))===today)hi=mid;else lo=mid;}
+            boundary=hi;boundaryPower=lastBasePowerW+(sample.basePowerW-lastBasePowerW)*(boundary-lastSampleAt)/(now-lastSampleAt);
+            currentValueKwh+=(lastBasePowerW+boundaryPower)/2*(boundary-lastSampleAt)/3600000000;
+            coverageHours+=(boundary-lastSampleAt)/3600000;
+        }
         const normalized = coverageHours >= 18 ? currentValueKwh * 24 / Math.min(24, coverageHours) : null;
         if (model.currentDate >= dayKey(cutoff) && model.currentDate < today && normalized >= 0.5 && normalized <= 200) {
             recent.set(model.currentDate, { date:model.currentDate, kwh:normalized });
         }
         currentValueKwh = 0;
         coverageHours = 0;
-        lastBasePowerW = null;
-        lastSampleAt = 0;
+        lastBasePowerW = boundaryPower;
+        lastSampleAt = boundary||0;
     }
     const elapsedHours = lastSampleAt > 0 ? (now - lastSampleAt) / 3600000 : null;
     if (sample.basePowerW !== null && lastBasePowerW !== null && elapsedHours > 0 && elapsedHours <= 5 / 60) {
