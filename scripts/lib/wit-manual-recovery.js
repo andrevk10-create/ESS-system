@@ -1,33 +1,54 @@
-// Recover an orphaned optimistic remote selector only in manual charge mode.
-// Automatic planning never takes over an external session.
+// Manual charge is explicit takeover intent; automatic mode still needs proof
+// that a matching command came from ESS before it can resume that command.
 function witManualRecoveryReady(flow,now){
     const config=flow.get('ess_system_config')||{},rb=flow.get('ess_wit_control_readback');
+    const mapped=role=>config.entities?config.entities[role]:role;
     const statuses=['ess_wit_grid_charge_status','ess_wit_audi_discharge_status'].map(k=>flow.get(k)||{});
     const safe=flow.get('ess_wit_grid_charge_mode')==='on'&&rb?.deviceId&&
-        rb.remoteEntity===(config.entities?.['select.growatt_grid_remote_power_control_enable']||'select.growatt_grid_remote_power_control_enable')&&
-        rb.authorityEntity===(config.entities?.['select.growatt_grid_control_authority']||'select.growatt_grid_control_authority')&&
+        rb.remoteEntity===mapped('select.growatt_grid_remote_power_control_enable')&&
+        rb.authorityEntity===mapped('select.growatt_grid_control_authority')&&
         now-rb.at>=0&&now-rb.at<=120000&&rb.remote===1&&rb.periods===0&&rb.duration===2&&
         !flow.get('ess_wit_grid_transport')&&!flow.get('ess_wit_manual_recovery')&&
         !statuses.some(s=>s.sessionOwned||s.active||s.releasing||s.pendingUntil>now);
     if(!safe){flow.set('ess_wit_orphan_probe',null);return false;}
-    const signature=JSON.stringify([rb.deviceId,rb.remoteEntity,rb.authorityEntity,rb.authority,rb.remote,rb.duration,rb.percent,rb.ac,rb.periods]);
+    // A varying setpoint must not restart the manual takeover clock forever.
+    // Bind two distinct hardware reads to the same configured device instead.
+    const signature=JSON.stringify([rb.deviceId,rb.remoteEntity,rb.authorityEntity,rb.configEntryId,rb.duration,rb.periods]);
     const previous=flow.get('ess_wit_orphan_probe');
     if(!previous||previous.signature!==signature||now-previous.lastAt>120000){flow.set('ess_wit_orphan_probe',{signature,since:rb.at,lastAt:rb.at});return false;}
     flow.set('ess_wit_orphan_probe',{...previous,lastAt:rb.at});
-    return rb.at-previous.since>=180000;
+    return rb.at-previous.since>=15000;
+}
+function witRecoveryOff(flow,recovery,step,now){
+    const rb=flow.get('ess_wit_control_readback'),c=flow.get('ess_system_config')||{};
+    const mapped=role=>c.entities?c.entities[role]:role;
+    return !!rb?.deviceId&&(!recovery.deviceId||recovery.deviceId===rb.deviceId)&&
+        rb.remoteEntity===mapped('select.growatt_grid_remote_power_control_enable')&&
+        rb.authorityEntity===mapped('select.growatt_grid_control_authority')&&
+        rb.at>=recovery.startedAt&&now>=rb.at&&now-rb.at<=120000&&rb.periods===0&&
+        (step==='authority'?rb.authority===0:step==='remote'&&rb.remote===0);
 }
 module.exports = function applyManualRecovery(flows) {
     const grid = flows.find(n => n.id === 'esswitgrid_ctrl1');
     const setter = flows.find(n => n.id === 'esswitgrid_set01');
-    grid.func=witManualRecoveryReady.toString()+'\n'+grid.func;
+    grid.func=witManualRecoveryReady.toString()+'\n'+witRecoveryOff.toString()+'\n'+grid.func;
     const marker = "const commandFault = flow.get('ess_wit_command_fault');";
     if (!grid.func.includes(marker)) throw new Error('WIT recovery insertion point missing');
     grid.func = grid.func.replace(marker, `const recovery = flow.get('ess_wit_manual_recovery');
 if (recovery) {
+    const recoveryReadback=flow.get('ess_wit_control_readback');
+    if(flow.get('ess_wit_readback_enabled')===true&&recoveryReadback&&
+        ((recovery.deviceId&&recoveryReadback.deviceId!==recovery.deviceId)||recoveryReadback.periods!==0)){
+        flow.set('ess_wit_manual_recovery',null);
+        flow.set('ess_wit_command_fault',{at:now,attempts:1,deviceId:recovery.deviceId,reason:'WIT-koppeling of tijdplanning gewijzigd tijdens vrijgave'});
+        save('error',{...details,sessionOwned:false,commandFault:true,status:'WIT-vrijgave gestopt · koppeling of tijdplanning gewijzigd'});
+        return null;
+    }
     const observedOff = role => {
         const item = entity(role);
         const stamp = new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime();
         const step = role === 'select.growatt_grid_control_authority' ? 'authority' : 'remote';
+        if(flow.get('ess_wit_readback_enabled')===true)return witRecoveryOff(flow,recovery,step,now);
         const acknowledgedAt = Number(flow.get('ess_wit_release_ack')?.[step]) || 0;
         // HA does not emit state_changed when a successful Disabled write
         // leaves an already-disabled optimistic selector unchanged.
@@ -67,7 +88,7 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     flow.get('ess_wit_fault_cleanup_attempted') !== commandFault.at &&
     (remoteState === 'enabled' || String(entity('select.growatt_grid_control_authority')?.state).toLowerCase() === 'enabled')) {
     flow.set('ess_wit_fault_cleanup_attempted', commandFault.at);
-    flow.set('ess_wit_manual_recovery', { startedAt:now, sentSteps:['authority'] });
+    flow.set('ess_wit_manual_recovery', { startedAt:now, deviceId:flow.get('ess_wit_control_readback')?.deviceId, sentSteps:['authority'] });
     save('blocked', { ...details, sessionOwned:false, commandFault:true, pendingUntil:now + 90000, status:'Vertraagde WIT-opdracht na fout vrijgeven' });
     return [null, null, null, { payload:{ option:'Disabled', releaseStep:'authority' } }, null];
 }`);
@@ -84,7 +105,7 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     const hardwareRecoveryReady=witManualRecoveryReady(flow,now);
     if (mode === 'on' && (hardwareRecoveryReady||flow.get('ess_wit_readback_enabled')!==true&&staleControls) && !flow.get('ess_wit_manual_recovery_attempted')) {
         flow.set('ess_wit_manual_recovery_attempted', true);
-        flow.set('ess_wit_manual_recovery', { startedAt:now, sentSteps:['authority'] });
+        flow.set('ess_wit_manual_recovery', { startedAt:now, deviceId:flow.get('ess_wit_control_readback')?.deviceId, sentSteps:['authority'] });
         save('blocked', { ...details, sessionOwned:false, pendingUntil:now + 90000, status:'Achtergebleven WIT-sessie vrijgeven voor Nu laden' });
         return [null, null, null, { payload:{ option:'Disabled', releaseStep:'authority' } }, null];
     }`);
@@ -94,7 +115,7 @@ if (commandFault && commandFault.reason !== 'WIT-vrijgave niet bevestigd' && now
     ].every(([role, step]) => String(entity(role)?.state).toLowerCase() === 'disabled' &&
         (fresh(role, 120000) || Number(flow.get('ess_wit_release_ack')?.[step]) >= commandFault.at))) {`);
     setter.func = setter.func.replace("flow.set('ess_wit_grid_charge_mode', mode);", "flow.set('ess_wit_grid_charge_mode', mode);\n    if (mode === 'on') flow.set('ess_wit_manual_recovery_attempted', false);");
-    setter.func = setter.func.replace("flow.set('ess_wit_command_fault', { ...fault, resetRequested:true });", "{ flow.set('ess_wit_command_fault', { ...fault, resetRequested:true }); flow.set('ess_wit_manual_recovery',{startedAt:Date.now(),sentSteps:[]}); }");
+    setter.func = setter.func.replace("flow.set('ess_wit_command_fault', { ...fault, resetRequested:true });", "{ flow.set('ess_wit_command_fault', { ...fault, resetRequested:true }); flow.set('ess_wit_manual_recovery',{startedAt:Date.now(),deviceId:flow.get('ess_wit_control_readback')?.deviceId,sentSteps:[]}); }");
     // The release service selects one of two fixed, configured roles.
     const stop = flows.find(n => n.id === 'esswitaudi_stop1');
     stop.name = 'Geef externe WIT-aansturing vrij';
@@ -122,3 +143,4 @@ if (flow.get('ess_wit_command_fault') && !solarSafe) {
 ${exportGate}`);
 };
 module.exports.witManualRecoveryReady=witManualRecoveryReady;
+module.exports.witRecoveryOff=witRecoveryOff;

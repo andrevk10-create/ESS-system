@@ -153,7 +153,7 @@ function witGridTransport(flow, global, msg, reply, now) {
         if(flow.get('ess_wit_imbalance_managed')===true) steps.push('imbalanceRead');
         steps.push('power','authorityRead','remoteRead');
         op = {id:now,kind,powerPercent:percent,attempt:flow.get('ess_wit_charge_watch')?.attempts,
-            startedAt:now,phaseStartedAt:now,next:0,steps,binding:{deviceId:snapshot.deviceId,remoteEntity:snapshot.remoteEntity,authorityEntity:snapshot.authorityEntity}};
+            startedAt:now,phaseStartedAt:now,next:0,steps,binding:{deviceId:snapshot.deviceId,remoteEntity:snapshot.remoteEntity,authorityEntity:snapshot.authorityEntity,...(snapshot.configEntryId?{configEntryId:snapshot.configEntryId}:{})}};
     }
     const status = flow.get('ess_wit_grid_charge_status') || {};
     if (op.binding.remoteEntity !== mapped('select.growatt_grid_remote_power_control_enable') ||

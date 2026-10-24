@@ -1,6 +1,21 @@
 // Inventory planning over the complete published tariff horizon. Only known
 // prices can justify grid charging; unknown intervals still consume energy.
 const {witPriceDeadline,witSolarBeforeDeadline}=require('./wit-price-deadline');
+function witManualChargePlan(slots,now,neededKwh,chargeKw){
+    if(!Number.isFinite(now)||!Number.isFinite(neededKwh)||neededKwh<=0||!Number.isFinite(chargeKw)||chargeKw<=0)return [];
+    const quarter=900000,horizon=now+86400000,result=[];
+    let cursor=now,remaining=neededKwh;
+    const prices=slots.filter(s=>Number.isFinite(s.start)&&Number.isFinite(s.end)&&s.end>s.start&&s.end>now);
+    while(remaining>.000001&&cursor<horizon&&result.length<512){
+        const known=prices.find(s=>s.start<=cursor&&s.end>cursor);
+        const boundary=Math.min(horizon,(Math.floor(cursor/quarter)+1)*quarter,...prices.flatMap(s=>[s.start,s.end]).filter(t=>t>cursor));
+        const energyKwh=Math.min(remaining,chargeKw*(boundary-cursor)/3600000),end=cursor+energyKwh/chargeKw*3600000;
+        if(!(end>cursor)||!Number.isFinite(end))break;
+        result.push({start:cursor,end,energyKwh,powerKw:chargeKw,allInPrice:Number.isFinite(known?.allInPrice)?known.allInPrice:null,marketPrice:Number.isFinite(known?.marketPrice)?known.marketPrice:null});
+        remaining-=energyKwh;cursor=end;
+    }
+    return result;
+}
 function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01){
     const ordered=input.filter(s=>Number.isFinite(s.start)&&Number.isFinite(s.end)&&s.end>now&&s.end>s.start&&Number.isFinite(s.allInPrice))
         .map(s=>({...s,start:Math.max(now,s.start)})).sort((a,b)=>a.start-b.start);
@@ -106,11 +121,21 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
 }
 module.exports=function apply(flows){
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
-    grid.func=witKnownPricePlan.toString()+'\n'+grid.func;
+    grid.func=witManualChargePlan.toString()+'\n'+witKnownPricePlan.toString()+'\n'+grid.func;
     grid.func=grid.func.replace('const horizonEnd = now + planningHorizonMs;',"const horizonEnd = Math.max(now,...(flow.get('ess_nordpool_forecast')||[]).map(s=>Date.parse(s.end)).filter(Number.isFinite));");
     for(const name of ['reserveWait','bridgeDeadline','expensivePeriodStart','deadlineHouseKwh','solarBeforeDeadlineKwh'])grid.func=grid.func.replace('const '+name+'=','let '+name+'=').replace('const '+name+' =','let '+name+' =');
     const marker='const scheduledSlot = selectedSlots.find(';
     if(!grid.func.includes(marker))throw Error('WIT allocation insertion point missing');
+    const manualStart=grid.func.indexOf("} else if (mode === 'on' && remainingEnergyKwh > 0.01) {");
+    const manualEnd=grid.func.indexOf(marker,manualStart);
+    if(manualStart<0||manualEnd<0)throw Error('WIT manual planning anchor missing');
+    grid.func=grid.func.slice(0,manualStart)+`} else if (mode === 'on' && remainingEnergyKwh > 0.01) {
+    selectedSlots=witManualChargePlan(slots,now,remainingEnergyKwh,planLimitW/1000);
+    remainingEnergyKwh=Math.max(0,remainingEnergyKwh-selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0));
+    expensivePeriodStart=selectedSlots.at(-1)?.end??null;
+    deadlineHouseKwh=0;solarBeforeDeadlineKwh=0;
+}
+`+grid.func.slice(manualEnd);
     grid.func=grid.func.replace(marker,`const knownPricePlan=mode==='auto'?witKnownPricePlan(slots,now,reserveInputs,solarWindow,states,wearCostPerKwh,minimumBenefitPerKwh):null;
 if(knownPricePlan){
 selectedSlots=knownPricePlan.selectedSlots;remainingEnergyKwh=knownPricePlan.remainingEnergyKwh;
@@ -128,9 +153,14 @@ ${marker}`);
     projectedMinimumSoc:knownPricePlan?.minimumSoc??null,
     houseConsumptionSource:`);
     grid.func=grid.func.replace('planComplete:remainingEnergyKwh <= 0.05','planComplete:remainingEnergyKwh <= 0.05 && (!knownPricePlan || knownPricePlan.reserveShortfallKwh <= 0.05)');
+    grid.func=grid.func.replace('const plannedCost = selectedSlots.reduce(', 'const plannedCost = selectedSlots.every(s=>Number.isFinite(s.allInPrice)) ? selectedSlots.reduce(')
+        .replace('slot.energyKwh * slot.allInPrice : 0), 0);','slot.energyKwh * slot.allInPrice : 0), 0) : null;');
+    grid.func=grid.func.replace('plannedCost:round(plannedCost)','plannedCost:plannedCost===null?null:round(plannedCost)');
     // Show the same conservative, deadline-limited solar credit that the
     // inventory planner actually subtracts, even if tomorrow is unavailable.
-    grid.func=grid.func.replace('expectedSolarChargeKwh:round(expectedSolarChargeKwh)', "expectedSolarChargeKwh:round(mode==='auto'?solarBeforeDeadlineKwh:expectedSolarChargeKwh)");
+    grid.func=grid.func.replace('expectedSolarChargeKwh:round(expectedSolarChargeKwh)', "expectedSolarChargeKwh:round(mode==='auto'?solarBeforeDeadlineKwh:0)");
+    grid.func=grid.func.replace("solarCreditKwh:mode === 'auto' ? round(solarBeforeDeadlineKwh) : round(expectedSolarChargeKwh)","solarCreditKwh:mode === 'auto' ? round(solarBeforeDeadlineKwh) : 0");
+    grid.func=grid.func.replace("planningGoal:reserveWait?.bridge?", "planningGoal:mode==='on'?'Nu doorladen tot het ingestelde SOC-doel':reserveWait?.bridge?");
     grid.func=grid.func.replace("deadlineWarning:remainingEnergyKwh > 0.05 ? 'Onvoldoende geplande laadruimte om vóór de dure periode vol te zijn' : null", "deadlineWarning:remainingEnergyKwh > 0.05 ? 'Onvoldoende rendabele laadruimte om vóór de dure periode vol te zijn' : knownPricePlan?.reserveShortfallKwh > 0.05 ? 'Overbrugging niet volledig gedekt; rechtstreeks netverbruik kan nodig zijn' : null");
     grid.func=grid.func.replace("forecastWindow:solarWindow.label","forecastWindow:'Alle bekende kwartierprijzen'");
     const mapper=flows.find(n=>n.id==='ess00000000000a');
@@ -149,3 +179,4 @@ ${marker}`);
     }
 };
 module.exports.witKnownPricePlan=witKnownPricePlan;
+module.exports.witManualChargePlan=witManualChargePlan;

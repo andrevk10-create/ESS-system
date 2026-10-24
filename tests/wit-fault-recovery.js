@@ -12,9 +12,13 @@ f.v.ess_wit_control_readback.at=now+60000;
 assert.equal(recover(f,now+60000),true);assert.equal(f.v.ess_wit_command_fault,null);
 f.v.ess_wit_command_fault={at:now-650000,reason:'WIT-registerterugmelding ontbreekt of is ongeldig'};
 assert.equal(recover(f,now+60000),false,'One recovery per hour');
-for(const reason of ['WIT-vrijgave niet bevestigd','Geen laad- of ontlaadvermogen na herstelpoging','WIT-opdracht mislukt: Modbus','Externe WIT-tijdplanning actief · netladen geblokkeerd']) {
+for(const reason of ['Geen laad- of ontlaadvermogen na herstelpoging','WIT-opdracht mislukt: Modbus','Externe WIT-tijdplanning actief · netladen geblokkeerd']) {
     const q=fixture(reason);recover(q,now);q.v.ess_wit_control_readback.at+=60000;
     assert.equal(recover(q,now+60000),false);assert.ok(q.v.ess_wit_command_fault);
+}
+for(const reason of ['WIT-vrijgave niet bevestigd','WIT-opdracht blijft onderweg']){
+ const q=fixture(reason);assert.equal(recover(q,now),false);q.v.ess_wit_control_readback.at+=60000;
+ assert.equal(recover(q,now+60000),true,'Transient timeout clears only after cooldown and two real OFF observations');
 }
 for(const mutate of [q=>q.v.ess_wit_control_readback.remote=1,q=>q.v.ess_wit_control_readback.authority=1,
     q=>q.v.ess_wit_control_readback.periods=1,q=>q.v.ess_wit_control_readback.deviceId='other',

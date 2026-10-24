@@ -4,7 +4,8 @@ function witFaultRecovery(flow, now) {
     const reset = () => flow.set('ess_wit_fault_recovery_probe', null);
     if (!fault || !Number.isFinite(fault.at) || fault.resetRequested) { reset(); return false; }
     const transient = ['WIT-registerterugmelding ontbreekt of is ongeldig',
-        'WIT neemt de laadopdracht niet over · registerterugmelding wijkt af'];
+        'WIT neemt de laadopdracht niet over · registerterugmelding wijkt af',
+        'WIT-opdracht blijft onderweg', 'WIT-vrijgave niet bevestigd'];
     const released = flow.get('ess_wit_release_ack') || {};
     // Legacy faults had no classification. Require both explicit release ACKs.
     const legacy = !fault.reason && released.authority >= fault.at && released.remote >= fault.at;

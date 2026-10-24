@@ -121,7 +121,7 @@ async function main() {
         new Function('flow',get(id).initialize)(f.flow);
         assert.equal(f.values[key].sessionOwned,false,'An empty context starts without claiming hardware ownership');
     }
-    for (const condition of ['matching','different-device','different-power','released','stale','fault','external-schedule','legacy']) {
+    for (const condition of ['matching','different-device','different-entry','different-power','released','stale','fault','external-schedule','legacy']) {
         f=fixture();
         const binding={deviceId:'wit-device',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority'};
         f.values.ess_wit_readback_enabled=true;
@@ -129,6 +129,7 @@ async function main() {
         f.values.ess_wit_grid_write_ack={...binding,at:now-60000,sentAt:now-65000,powerPercent:27};
         f.values.ess_wit_control_readback={...binding,at:now,authority:1,remote:1,ac:1,duration:2,periods:0,percent:27};
         if(condition==='different-device')f.values.ess_wit_control_readback.deviceId='another-device';
+        if(condition==='different-entry'){f.values.ess_wit_grid_write_ack.configEntryId='original-entry';f.values.ess_wit_control_readback.configEntryId='other-entry';}
         if(condition==='different-power')f.values.ess_wit_control_readback.percent=28;
         if(condition==='released')f.values.ess_wit_release_ack={authority:now-30000};
         if(condition==='stale')f.values.ess_wit_control_readback.at=now-120001;
@@ -388,6 +389,15 @@ async function main() {
         assert.equal(f.values[key].releasing,false);
     }
     const stopExpression = jsonata(get('esswitaudi_stop1').data);
+    {
+        const manual=fixture();manual.values.ess_wit_grid_charge_mode='on';manual.values.ess_nordpool_forecast=[];
+        manual.run('esswitgrid_ctrl1');
+        const status=manual.values.ess_wit_grid_charge_status;
+        assert.equal(status.planComplete,true,'Manual plan covers the target beyond the current quarter');
+        assert(status.selectedSlots.length>1);
+        assert.equal(status.plannedCost,null,'Unknown manual tariffs are not shown as zero cost');
+        assert.equal(status.solarCreditKwh,0,'Manual fill does not claim forecast solar credit');
+    }
     stopExpression.registerFunction('flowContext',key=>key==='ess_system_config'?{entities:{'select.growatt_grid_control_authority':'select.my_authority','select.growatt_grid_remote_power_control_enable':'select.my_remote'}}:{deviceId:'verified-device',at:Date.now()-1000,remoteEntity:'select.my_remote',authorityEntity:'select.my_authority'});
     assert.deepEqual(await stopExpression.evaluate({payload:{releaseStep:'remote'}}),{device_id:'verified-device',register:30407,values:[0]});
     assert.deepEqual(await stopExpression.evaluate({payload:{releaseStep:'authority'}}),{device_id:'verified-device',register:30100,values:[0]});
@@ -445,6 +455,36 @@ async function main() {
     f = orphan();
     f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled','',now);
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'Protect a fresh external session');
+    {
+        const native=orphan();
+        native.values.ess_wit_readback_enabled=true;
+        const rb={deviceId:'native-wit',configEntryId:'native-entry',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',authority:1,remote:1,ac:1,duration:2,periods:0,percent:26,at:now};
+        native.values.ess_wit_control_readback=rb;
+        assert.equal(native.run('esswitgrid_ctrl1'),null,'Manual takeover first observes hardware');
+        now+=60000;rb.at=now;rb.percent=25;
+        const release=native.run('esswitgrid_ctrl1');
+        assert.equal(release?.[3]?.payload.releaseStep,'authority','A changing setpoint no longer postpones explicit manual recovery forever');
+        assert.equal(release?.[0],null,'Never charge during handover');
+        native.values.ess_wit_release_ack={authority:now,remote:now};
+        assert.equal(native.run('esswitgrid_ctrl1'),null,'ACK cannot hide native registers still ON');
+        now+=60000;rb.at=now;rb.authority=0;
+        assert.equal(native.run('esswitgrid_ctrl1')?.[3]?.payload.releaseStep,'remote');
+        now+=60000;rb.at=now;rb.remote=0;
+        assert.equal(native.run('esswitgrid_ctrl1'),null);
+        assert.equal(native.values.ess_wit_manual_recovery,null,'Real OFF readback completes handover');
+        for(const phase of [1,2,3])native.s['sensor.p1_meter_vermogen_fase_'+phase]=reading(500,'W',now);
+        native.s['sensor.growatt_battery_battery_soc']=reading(35,'%',now);
+        native.s['sensor.growatt_battery_battery_power']=reading(0,'W',now);
+        assert.equal(native.run('esswitgrid_ctrl1')?.[0]?.payload.option,'Charge','Manual charging resumes automatically after verified release');
+    }
+    for(const changed of ['device','schedule']){
+        const interrupted=orphan();interrupted.values.ess_wit_readback_enabled=true;
+        interrupted.values.ess_wit_manual_recovery={startedAt:now-1000,deviceId:'original',sentSteps:[]};
+        interrupted.values.ess_wit_control_readback={deviceId:changed==='device'?'other':'original',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',remote:1,authority:1,periods:changed==='schedule'?1:0,at:now};
+        assert.equal(interrupted.run('esswitgrid_ctrl1'),null,'Changing device or schedule cannot trigger release writes');
+        assert.equal(interrupted.values.ess_wit_manual_recovery,null);
+        assert.match(interrupted.values.ess_wit_command_fault.reason,/gewijzigd/);
+    }
     f = orphan();
     f.values.ess_wit_audi_discharge_status = {sessionOwned:true,updatedAt:new Date(now).toISOString()};
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'Do not take over live ESS discharge');

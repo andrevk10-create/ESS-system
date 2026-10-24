@@ -1689,7 +1689,7 @@ assert.strictEqual(witGridChargeControl.outputs, 6);
 assert.deepStrictEqual(witGridChargeControl.wires, [['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],[witEVStopAction.id],[witExportToggleAction.id],['essprefs_save']], 'Starten, bijregelen en vernieuwen moeten via één geserialiseerde WIT-opdracht lopen');
 const witTransport = flows.find(node => node.id === 'esswitgrid_transport_dispatch');
 assert(witTransport.func.includes('register:30407,values:[1,2,op.powerPercent]'), 'WIT inschakelen, looptijd en positief vermogen moeten samen worden geschreven');
-assert.deepStrictEqual(witTransport.wires, [['esswitgrid_transport_api'],['esswitgrid_ctrl1'],['esswit_readback_request'],['esswitgrid_phase_wait']], 'De laadopdracht moet via gecontroleerde registerterugmelding en begrensd wachten terugkoppelen');
+assert.deepStrictEqual(witTransport.wires, [['esswitgrid_transport_api'],['esswitgrid_ctrl1','essprefs_save'],['esswit_readback_request'],['esswitgrid_phase_wait']], 'De laadopdracht moet via gecontroleerde registerterugmelding en begrensd wachten terugkoppelen en bewijs opslaan');
 const phaseWait=flows.find(node=>node.id==='esswitgrid_phase_wait');
 assert.strictEqual(phaseWait.type,'delay');assert.strictEqual(phaseWait.timeout,'3');assert.strictEqual(phaseWait.timeoutUnits,'seconds');
 assert.deepStrictEqual(phaseWait.wires,[['esswitgrid_transport_dispatch']],'Wachten moet dezelfde opdracht hervatten, geen nieuwe laadstart maken');

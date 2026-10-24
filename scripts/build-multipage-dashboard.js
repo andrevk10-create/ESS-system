@@ -4768,5 +4768,6 @@ require('./lib/heat-pump-history')(flows);
 require('./lib/dashboard-copy')(flows);
 require('./lib/editor-layout')(flows);
 require('./lib/charging-dashboard-quality')(flows);
+require('./lib/wit-session-evidence')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
