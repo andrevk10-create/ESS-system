@@ -51,3 +51,7 @@ HomeKit push-metingen hoeven niet iedere tien minuten te veranderen. Onveranderd
 ## Snellere lokale temperatuurcontrole
 
 Wanneer de HomeKit-woonkamerhysterese actief is, vraagt ESS elke 5 minuten via `homeassistant.update_entity` de lokale bridge opnieuw uit. Daarna wordt de echte HA-entiteit gelezen en de hysterese opnieuw beoordeeld. Er staat maximaal één verzoek tegelijk uit; fouten wijzigen geen temperatuur en nieuwere pushmeldingen blijven behouden. De fysieke doeltemperatuur, minimale aan/uit-tijden en kamerkoppelingen blijven leidend. Deze verversing versnelt het ophalen van beschikbare bridge-metingen; zij kan de interne meet- of radiofrequentie van Tado niet veranderen.
+
+## Shelly-uitbreiding voorbereiden
+
+Voor twee afzonderlijke contacten, drie temperatuurkanalen en BLU/H&T-metingen is een [Shelly-voorbereiding](shelly-heat-pump-preparation.md) beschikbaar. Deze staat standaard uit en biedt alleen uitlezen en schaduwadvies.

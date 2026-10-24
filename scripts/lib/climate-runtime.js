@@ -1,6 +1,7 @@
 // Pure, embedded runtime. Installation identities remain in the private profile.
+const {shellyHeatDefaults,shellyHeatValidate,shellyHeatPreview}=require('./shelly-heat-pump-runtime');
 function climateDefaults() {
-    return {version:1,mode:'auto',profile:'normal',tadoHysteresis:true,hysteresisDegrees:0.5,maximumPowerW:0,phaseWeights:[0,0,0],
+    return {version:1,mode:'auto',profile:'normal',shelly:shellyHeatDefaults(),tadoHysteresis:true,hysteresisDegrees:0.5,maximumPowerW:0,phaseWeights:[0,0,0],
         minimumBenefit:0.04,houseReserveKwh:14,batteryFloorSoc:50,manualMinutes:120,
         heatSource:{enabled:false,adapter:'tado-zone',entity:'',roomRoles:['climate.heating_zone_1','climate.heating_zone_2','climate.heating_zone_3'],
             nightOffStart:'22:30',nightOffEnd:'07:00',heatTarget:25,minimumOnMinutes:10,minimumOffMinutes:5,leaseMinutes:20,
@@ -49,7 +50,7 @@ function climateValidate(input) {
     const w = c.water;
     if (typeof w.enabled !== 'boolean' || typeof w.restoreAcknowledged !== 'boolean') fail('Ongeldige tapwatertoestemming');
     if (w.enabled && (!num(w.minimum,40,60) || !num(w.normal,w.minimum,60) || !num(w.buffer,w.normal,60) || !num(w.litres,30,2000) || !num(w.lossKwhPerDay,0,15) || !num(w.boostMinutes,30,180))) fail('Controleer vatinhoud en tapwatergrenzen');
-    return {version:1,mode:c.mode,profile:c.profile,tadoHysteresis:c.tadoHysteresis,hysteresisDegrees:c.hysteresisDegrees,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
+    return {version:1,mode:c.mode,profile:c.profile,shelly:shellyHeatValidate(c.shelly),tadoHysteresis:c.tadoHysteresis,hysteresisDegrees:c.hysteresisDegrees,maximumPowerW:c.maximumPowerW,phaseWeights:c.phaseWeights.slice(),minimumBenefit:c.minimumBenefit,
         houseReserveKwh:c.houseReserveKwh,batteryFloorSoc:c.batteryFloorSoc,manualMinutes:c.manualMinutes,rooms:c.rooms,
         heatSource:{nightOffStart:h.nightOffStart,nightOffEnd:h.nightOffEnd,enabled:h.enabled,adapter:h.adapter,entity:h.entity,roomRoles:h.roomRoles.slice(),heatTarget:h.heatTarget,minimumOnMinutes:h.minimumOnMinutes,
             minimumOffMinutes:h.minimumOffMinutes,leaseMinutes:h.leaseMinutes,roomsDetached:h.roomsDetached,offScheduleConfirmed:h.offScheduleConfirmed,relayTested:h.relayTested,watchdogConfirmed:h.watchdogConfirmed},
@@ -240,4 +241,4 @@ function climateDecide(plan, ledger, config, now) {
     return {ledger:next,actions};
 }
 
-module.exports={climateDefaults,climateValidate,climateNumber,climateFresh,climateRoomFeedback,climateSchedule,climateCheapBlock,climatePlan,climateDecide};
+module.exports={climateDefaults,climateValidate,climateNumber,climateFresh,climateRoomFeedback,climateSchedule,climateCheapBlock,climatePlan,climateDecide,shellyHeatDefaults,shellyHeatValidate,shellyHeatPreview};
