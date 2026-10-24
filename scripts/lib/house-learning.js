@@ -129,6 +129,7 @@ function houseLearningStep(previous, restored, sample, now, fallback, profileLab
         lastBasePowerW:sample.basePowerW, lastSampleAt:new Date(now).toISOString(), forecastKwh,
         source:values.length ? 'Gemiddelde van ' + values.length + ' afgeronde dag(en), maximaal 30 dagen, zonder beide laadpunten'
             : 'Startwaarde van reserveprofiel ' + profileLabel + ' · woningverbruik opnieuw leren',
+        lastValidSampleAt:sample.basePowerW !== null ? new Date(now).toISOString() : model.lastValidSampleAt || null,
         sampleValid:sample.basePowerW !== null, sampleReason:sample.reason,
         excludedEVPowerW:sample.evPowerW, chargers:sample.chargers, updatedAt:new Date(now).toISOString()
     };

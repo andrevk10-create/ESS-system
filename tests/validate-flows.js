@@ -1,6 +1,13 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+// Solar scenarios below describe daytime with departure later the same day.
+// Keep their calendar fixed so a nightly test run does not change that premise.
+const RealDate=Date;
+global.Date=class extends RealDate {
+    constructor(...args){super(...(args.length?args:['2026-10-24T08:15:00+02:00']));}
+    static now(){return new RealDate('2026-10-24T08:15:00+02:00').getTime();}
+};
 // Structural assertions only. tests/wit-regression.js evaluates the full
 // JSONata expression with canonical, remapped, missing and invalid targets.
 function witActionLiteral(action, key) {

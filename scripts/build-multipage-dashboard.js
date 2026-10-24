@@ -4767,5 +4767,6 @@ require('./lib/house-time-profile')(flows);
 require('./lib/heat-pump-history')(flows);
 require('./lib/dashboard-copy')(flows);
 require('./lib/editor-layout')(flows);
+require('./lib/charging-dashboard-quality')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

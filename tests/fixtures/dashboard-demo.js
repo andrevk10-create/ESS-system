@@ -46,5 +46,8 @@ module.exports = function dashboardDemo(flows, scenario = 'normal') {
         today:{gridCost:4.82,batterySaving:1.36,audiCost:2.15,jeepCost:1.04,exportRevenue:.73,exportKwh:5.4},
         total:{gridCost:18.64,batterySaving:4.92,audiCost:8.16,jeepCost:4.23,exportRevenue:2.83,missingHours:0},
         cars:{audi:{saving:1.12},jeep:{saving:.58}}};
+    const {chargingDashboardQuality}=require('../../scripts/lib/charging-dashboard-quality');
+    const checkedAt=Date.parse(data.updatedAt);
+    data.chargingQuality=chargingDashboardQuality(scenario==='empty'?null:{updatedAt:data.updatedAt,sampleValid:scenario!=='offline',sampleReason:scenario==='offline'?'Laadmeting ontbreekt':'Beide laadpunten uitgesloten',recentDays:[{date:'2026-01-09',kwh:32}],lastValidSampleAt:data.updatedAt,chargers:[{powerW:0,source:'Bevestigd niet laden'}]},null,scenario==='empty'?null:{...data.wit.gridCharge,updatedAt:data.updatedAt,deadlineHouseKwh:18,currentStoredKwh:12},checkedAt);
     return data;
 };
