@@ -498,7 +498,7 @@ assert.strictEqual(dashboard.solar.forecastTomorrow, 36, 'Zon verwacht morgen mo
 assert.strictEqual(dashboard.house.forecastBaseTomorrow, 21, 'De geleerde woningbasis moet in de morgenverwachting staan');
 assert.strictEqual(dashboard.house.audiPlannedTomorrow, 4, 'Alleen EV-laadkwartieren van morgen mogen meetellen');
 assert.strictEqual(dashboard.house.witPlannedTomorrow, 3, 'Alleen WIT-laadkwartieren van morgen mogen meetellen');
-assert.strictEqual(dashboard.house.forecastTomorrow, 28, 'Verbruik verwacht morgen moet woning, EV en WIT optellen');
+assert.strictEqual(dashboard.house.forecastTomorrow, 25, 'Eindverbruik morgen telt woning en auto’s, met WIT-opslag apart');
 assert.strictEqual(dashboard.wit.today, 10);
 assert.strictEqual(dashboard.audiSmart.enabled, false, 'EV-regeling moet na een veilige start uitstaan');
 assert.strictEqual(dashboard.audiSmart.solarSoc, 100, 'Dashboard moet standaard 100% als maximale zonne-SOC tonen');
@@ -1859,7 +1859,7 @@ flowValues.ess_wit_grid_charge_status = {
 };
 const historyOutput = runWitHistoryPrepare(witEVGlobalContext, flowContext, { status: () => undefined }, {});
 assert(Array.isArray(historyOutput) && Array.isArray(historyOutput[0]), 'Historiefunctie moet een reeks Home Assistant-updates maken');
-assert.strictEqual(historyOutput[0].length, 31, 'Alle buffer-, netlaad-, EV-diagnose- en prognosewaarden moeten als afzonderlijke Home Assistant-sensor worden gepubliceerd');
+assert.strictEqual(historyOutput[0].length, 32, 'Buffer-, netlaad-, beide EV- en prognosewaarden moeten afzonderlijk worden gepubliceerd');
 const historyByPath = Object.fromEntries(historyOutput[0].map((message) => [message.payload.path, message.payload.data]));
 assert.strictEqual(historyByPath['states/sensor.ess_audi_laadregeling_status'].state, 'Actief');
 assert.strictEqual(historyByPath['states/sensor.ess_audi_laadregeling_status'].attributes.reden, 'Vertrekplanning actief');
@@ -1892,7 +1892,7 @@ assert.strictEqual(historyByPath['states/sensor.ess_woningverbruik_basis_verwach
 assert(historyByPath['states/sensor.ess_woningverbruik_basis_verwacht_morgen'].attributes.meetmethode.includes('totale dashboard-woningbalans'), 'De woningbasis mag niet rechtstreeks uit de onzekere Growatt Load-dagteller komen');
 assert.strictEqual(historyByPath['states/sensor.ess_audi_gepland_verbruik_morgen'].state, 4, 'Geplande EV-laadenergie van morgen ontbreekt');
 assert.strictEqual(historyByPath['states/sensor.ess_wit_gepland_verbruik_morgen'].state, 3, 'Geplande WIT-laadenergie van morgen ontbreekt');
-assert.strictEqual(historyByPath['states/sensor.ess_totaal_verbruik_verwacht_morgen'].state, 27, 'Totaal morgen moet woningbasis, EV en WIT optellen');
+assert.strictEqual(historyByPath['states/sensor.ess_totaal_verbruik_verwacht_morgen'].state, 24, 'Totaal eindverbruik morgen telt woningbasis en auto’s, zonder WIT-opslag');
 assert.strictEqual(historyByPath['states/sensor.ess_zon_referentieverwachting_vandaag'].state, 30, 'De laatste verwachting van de vorige dag moet als vaste dagreferentie gelden');
 assert.strictEqual(historyByPath['states/sensor.ess_zonproductie_werkelijk_vandaag'].state, 24);
 assert.strictEqual(historyByPath['states/sensor.ess_zonverwachting_afwijking_vandaag'].state, -6);

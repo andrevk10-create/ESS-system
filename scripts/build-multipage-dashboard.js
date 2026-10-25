@@ -6,6 +6,7 @@ const flows = JSON.parse(fs.readFileSync(flowPath, 'utf8'));
 require('./lib/heat-pump-history').unapply(flows);
 require('./lib/ev-solar-export').unapply(flows);
 require('./lib/ev-manual-soc').unapply(flows);
+require('./lib/shared-charging-budget').unapply(flows);
 
 function sanitizePublicFlowText(input) {
   return String(input);
@@ -613,8 +614,13 @@ function validate(config, discovery) {
         if (!currentOk && !powerOk) missing.push('sensor.ev_charger_current of sensor.ev_charger_power');
     }
     const uniqueMissing = [...new Set(missing)];
+    const invalidUnits=Object.entries(config.entities).filter(([role,id])=>{
+        if(!role.endsWith('_energy_today')||!id||!states[id])return false;
+        const e=states[id],a=e.attributes||{},daily=a.cost_day_totalEnergyUsage??a.cost_day_total_energy_usage;
+        return !['wh','kwh','mwh'].includes(String(a.unit_of_measurement||'').toLowerCase())&&!(daily!==null&&daily!==undefined&&daily!==''&&Number.isFinite(Number(daily))&&Number(daily)>=0);
+    }).map(([role])=>role);
     if (discovery) discovery.unmatched = uniqueMissing.length;
-    return { valid:uniqueMissing.length === 0, missing:uniqueMissing, unavailable:[...new Set(unavailable)], checkedAt:new Date().toISOString(), configuredEntities:Object.values(config.entities).filter(Boolean).length, discovery:discovery || null };
+    return { valid:uniqueMissing.length === 0&&invalidUnits.length===0, missing:uniqueMissing, invalidUnits, unavailable:[...new Set(unavailable)], checkedAt:new Date().toISOString(), configuredEntities:Object.values(config.entities).filter(Boolean).length, discovery:discovery || null };
 }
 
 ${require('./lib/dashboard-diagnostics').resolveNasMappings.toString()}
@@ -676,10 +682,11 @@ function discoverEntities(input) {
     });
     const chargerScore = (entry) => (/easee/.test(entry.text)?7:0)+(/(?:charger|laadpunt|laadpaal|evse)/.test(entry.text)?5:0)+(/(?:status|state)/.test(entry.text)?3:0)+(chargerStates.has(simplify(entry.item.state))?4:0)+(entry.attributes.state_outputPhase !== undefined?4:0)+(entry.attributes.config_phaseMode !== undefined?4:0)+(entry.attributes.id !== undefined?2:0)+(!['disconnected','stopped'].includes(simplify(entry.item.state))?3:0);
     const chargerRanked = ranked(chargerStatusCandidates, chargerScore, 7).map((item) => item.entry);
-    function chargerSibling(statusEntry, pattern, domains) {
+    function chargerSibling(statusEntry, pattern, domains, units) {
         if (!statusEntry) return null;
         const root = statusEntry.id.replace(/^sensor\./, '').replace(/_(?:status|state)$/, '');
-        const siblings = entries.filter((entry) => domains.includes(entry.domain) && entry.id.replace(/^[^.]+\./, '').startsWith(root));
+        const siblings = entries.filter((entry) => domains.includes(entry.domain) && entry.id.replace(/^[^.]+\./, '').startsWith(root) &&
+            (!units||units.includes(String(entry.attributes.unit_of_measurement||'').toLowerCase())||units.includes('daily-attribute')&&Number.isFinite(entry.attributes.cost_day_totalEnergyUsage??entry.attributes.cost_day_total_energy_usage)));
         return choose(siblings, (entry) => (pattern.test(entry.text)?8:0)+(entry.id.includes(root)?4:0)+(available(entry)?3:0), 8);
     }
     const activeChargers = chargerRanked.filter((entry) => !['disconnected','stopped','completed'].includes(simplify(entry.item.state)));
@@ -687,9 +694,9 @@ function discoverEntities(input) {
     const firstCharger = chargerOrderIsClear ? (activeChargers[0] || chargerRanked[0] || null) : null;
     if (firstCharger) {
         assign('sensor.ev_charger_status', firstCharger.id, 'charger-status');
-        const chargerPower = chargerSibling(firstCharger, /(?:vermogen|power)/, ['sensor']);
-        const chargerCurrent = chargerSibling(firstCharger, /(?:laadstroom|stroom|current|ampere)/, ['sensor']);
-        const chargerEnergy = chargerSibling(firstCharger, /(?:kosten.*dag|cost.*day|energy.*today|energie.*vandaag|session.*energy|sessie.*energie|total.*energy)/, ['sensor']);
+        const chargerPower = chargerSibling(firstCharger, /(?:vermogen|power)/, ['sensor'], ['w','kw']);
+        const chargerCurrent = chargerSibling(firstCharger, /(?:laadstroom|stroom|current|ampere)/, ['sensor'], ['a']);
+        const chargerEnergy = chargerSibling(firstCharger, /(?:kosten.*dag|cost.*day|energy.*today|energie.*vandaag)/, ['sensor'], ['wh','kwh','daily-attribute']);
         const chargerOnline = chargerSibling(firstCharger, /(?:online|connect)/, ['binary_sensor']);
         if (chargerPower) assign('sensor.ev_charger_power', chargerPower.id, 'charger-sibling');
         if (chargerCurrent) assign('sensor.ev_charger_current', chargerCurrent.id, 'charger-sibling');
@@ -700,12 +707,12 @@ function discoverEntities(input) {
     if (chargerRanked.length > 1) warnings.push(chargerOrderIsClear ? 'Meerdere laadpunten gevonden; controleer welk laadpunt primair is.' : 'Meerdere inactieve laadpunten gevonden; koppel primair en tweede laadpunt handmatig.');
     if (secondCharger) {
         assign('sensor.ev_charger_2_status', secondCharger.id, 'second-charger-status');
-        const secondPower = chargerSibling(secondCharger, /(?:vermogen|power)/, ['sensor']);
-        const secondCurrent = chargerSibling(secondCharger, /(?:laadstroom|stroom|current|ampere)/, ['sensor']);
+        const secondPower = chargerSibling(secondCharger, /(?:vermogen|power)/, ['sensor'], ['w','kw']);
+        const secondCurrent = chargerSibling(secondCharger, /(?:laadstroom|stroom|current|ampere)/, ['sensor'], ['a']);
         const secondOnline = chargerSibling(secondCharger, /(?:online|connect)/, ['binary_sensor']);
         if (secondCurrent) assign('sensor.ev_charger_2_current', secondCurrent.id, 'second-charger-sibling');
         if (secondOnline) assign('binary_sensor.ev_charger_2_online', secondOnline.id, 'second-charger-sibling');
-        const secondEnergy = chargerSibling(secondCharger, /(?:kosten.*dag|cost.*day|energy.*today|energie.*vandaag|session.*energy|sessie.*energie|total.*energy)/, ['sensor']);
+        const secondEnergy = chargerSibling(secondCharger, /(?:kosten.*dag|cost.*day|energy.*today|energie.*vandaag)/, ['sensor'], ['wh','kwh','daily-attribute']);
         if (secondPower) assign('sensor.ev_charger_2_power', secondPower.id, 'second-charger-sibling');
         if (secondEnergy) assign('sensor.ev_charger_2_energy_today', secondEnergy.id, 'second-charger-sibling');
     }
@@ -4770,5 +4777,9 @@ require('./lib/editor-layout')(flows);
 require('./lib/charging-dashboard-quality')(flows);
 require('./lib/wit-session-evidence')(flows);
 require('./lib/dashboard-freshness')(flows);
+require('./lib/forecast-consumption')(flows);
+require('./lib/financial-quality')(flows);
+require('./lib/measurement-audit')(flows);
+require('./lib/shared-charging-budget')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

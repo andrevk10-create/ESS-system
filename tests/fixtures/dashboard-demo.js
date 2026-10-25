@@ -11,7 +11,7 @@ module.exports = function dashboardDemo(flows, scenario = 'normal') {
         updatedAt:new Date().toISOString(),mode:'Automatisch',configuration:{config,status:{valid:true,missing:[],unavailable:[]}},
         grid:{power:-350,l1:8,l2:5,l3:7,importToday:8.4,exportToday:2.6,daySource:'P1-dagmeting'},
         solar:{power:3200,today:16,actualToday:26.4,forecastToday:29,forecastTomorrow:24.6},
-        house:{power:1850,forecastBaseTomorrow:18,audiPlannedTomorrow:12,witPlannedTomorrow:4,forecastTomorrow:34},
+        house:{power:1850,forecastBaseTomorrow:18,audiPlannedTomorrow:12,jeepPlannedTomorrow:2,witPlannedTomorrow:4,forecastTomorrow:32,forecastIncludesStorage:false},
         battery:{soc:68,power:2400,state:'Laden'},
         audiSmart:{enabled:true,forceFull:false,active:false,status:'Wacht op het geplande laadmoment',targetCurrent:0,phaseMode:3,controlMode:'departure-plan',departureSoc:80,solarSoc:80,departureTime:'06:00',allInPrice:.27,plannedChargePowerKw:11,plannedGridEnergyKwh:16.5,plannedGridCost:2.64,departureEnergyNeeded:19,solarEnergyReservedKwh:2.5,scheduleComplete:true,selectedSlots:slots(8,6,11),departureAt:new Date(now+24*3600000).toISOString(),nextScheduledStart:slots(8,1,11)[0].start,nextScheduledEnd:slots(13,1,11)[0].end,requiredSlots:6,scheduledSlots:6},
         audiClimate:{active:false,status:'Uit'},
@@ -49,5 +49,8 @@ module.exports = function dashboardDemo(flows, scenario = 'normal') {
     const {chargingDashboardQuality}=require('../../scripts/lib/charging-dashboard-quality');
     const checkedAt=Date.parse(data.updatedAt);
     data.chargingQuality=chargingDashboardQuality(scenario==='empty'?null:{updatedAt:data.updatedAt,sampleValid:scenario!=='offline',sampleReason:scenario==='offline'?'Laadmeting ontbreekt':'Beide laadpunten uitgesloten',recentDays:[{date:'2026-01-09',kwh:32}],lastValidSampleAt:data.updatedAt,chargers:[{powerW:0,source:'Bevestigd niet laden'}]},null,scenario==='empty'?null:{...data.wit.gridCharge,updatedAt:data.updatedAt,deadlineHouseKwh:18,currentStoredKwh:12},checkedAt);
+    const {financialQuality}=require('../../scripts/lib/financial-quality');
+    const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(checkedAt));
+    data.financialQuality=financialQuality(scenario==='empty'?null:{days:{[day]:{...data.energyCosts.today,audiKwh:12,audiUnpricedKwh:2,jeepKwh:4,jeepUnpricedKwh:0}},total:data.energyCosts.total},{},{},checkedAt);
     return data;
 };

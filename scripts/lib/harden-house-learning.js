@@ -1,4 +1,5 @@
 const { housePowerSample, houseLearningStep } = require('./house-learning');
+const {plannedDayEnergy,localTomorrowDay}=require('./forecast-consumption');
 
 module.exports = function hardenHouseLearning(flows) {
     const history = flows.find(node => node.id === 'esswithist_prep1');
@@ -8,6 +9,8 @@ module.exports = function hardenHouseLearning(flows) {
     history.func = history.func.slice(0, start) + `// Leer het normale woningverbruik zonder beide laadpunten.
 ${housePowerSample.toString()}
 ${houseLearningStep.toString()}
+${plannedDayEnergy.toString()}
+${localTomorrowDay.toString()}
 const loadEnergyTodayKwh = energyKwh('sensor.growatt_load_load_energy_today');
 const restoredHouseForecast = states['sensor.ess_woningverbruik_basis_verwacht_morgen'];
 const houseSample = housePowerSample(rawStates, essRuntimeConfig, flow.get('ess_dashboard_live') || {}, audiControlStatus, now.getTime(), flow.get('ess_house_learning_snapshot'), flow.get('ess_jeep_control_status') || {});
@@ -17,9 +20,11 @@ flow.set('ess_house_consumption_learning', houseLearning);
 const { recentDays:recentHouseDays, currentDate:houseLearningDate, currentValueKwh:currentHouseKwh, coverageHours,
     lastBasePowerW:previousBasePowerW, forecastKwh:houseForecastBaseKwh, source:houseForecastSource } = houseLearning;
 const lastSampleAt = now.getTime();
-const audiPlannedTomorrowKwh = plannedEnergyForDay(audiControlStatus, tomorrowKey);
-const witPlannedTomorrowKwh = plannedEnergyForDay(gridChargeStatus, tomorrowKey);
-const totalConsumptionTomorrowKwh = houseForecastBaseKwh + audiPlannedTomorrowKwh + witPlannedTomorrowKwh;
+const householdTomorrowDay=localTomorrowDay(now.getTime());
+const audiPlannedTomorrowKwh = plannedDayEnergy(audiControlStatus, householdTomorrowDay, now.getTime());
+const jeepPlannedTomorrowKwh = plannedDayEnergy(flow.get('ess_jeep_control_status'), householdTomorrowDay, now.getTime());
+const witPlannedTomorrowKwh = plannedDayEnergy(gridChargeStatus, householdTomorrowDay, now.getTime());
+const totalConsumptionTomorrowKwh = audiPlannedTomorrowKwh===null||jeepPlannedTomorrowKwh===null?null:houseForecastBaseKwh + audiPlannedTomorrowKwh + jeepPlannedTomorrowKwh;
 ` + history.func.slice(end);
     history.func = history.func.replace('bron:houseForecastSource,', `bron:houseForecastSource,
         model_version:2,
@@ -29,6 +34,8 @@ const totalConsumptionTomorrowKwh = houseForecastBaseKwh + audiPlannedTomorrowKw
         charger_measurements:houseLearning.chargers,`)
         .replace("meetmethode:'Integraal van totale dashboard-woningbalans minus werkelijk EV-laadvermogen'",
             "meetmethode:'Integraal van totale dashboard-woningbalans minus beide laadpunten; alleen geldige meetmomenten'");
+    history.func=history.func.replace("    sensor('sensor.ess_wit_gepland_verbruik_morgen'", "    sensor('sensor.ess_jeep_gepland_verbruik_morgen', rounded(jeepPlannedTomorrowKwh, 2), measurement('ESS Jeep gepland verbruik morgen','kWh','energy','mdi:car-electric')),\n    sensor('sensor.ess_wit_gepland_verbruik_morgen'")
+        .replace('wit_gepland_kwh:rounded(witPlannedTomorrowKwh, 2)', 'jeep_gepland_kwh:rounded(jeepPlannedTomorrowKwh, 2),\n        accu_opslag_apart_kwh:rounded(witPlannedTomorrowKwh, 2),\n        inclusief_accu_opslag:false');
     // Preserve the historical primary-charger sensor while respecting its unit.
     history.func = history.func.replace("const audiPowerW = value('sensor.ev_charger_power', 1000);",
         "const audiPowerUnit = String(states['sensor.ev_charger_power']?.attributes?.unit_of_measurement || 'kW').trim().toLowerCase();\nconst audiPowerW = ['w','kw'].includes(audiPowerUnit) ? value('sensor.ev_charger_power', audiPowerUnit === 'kw' ? 1000 : 1) : null;");

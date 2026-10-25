@@ -44,6 +44,8 @@ function chargingDashboardQuality(daily,hourly,grid,now){
 }
 module.exports=function apply(flows){
     const get=id=>flows.find(n=>n.id===id),mapper=get('ess00000000000a');
+    mapper.func=mapper.func.replace(/^function chargingDashboardQuality\([\s\S]*?^\}\r?\n/gm,'')
+        .replace(/^dashboard\.chargingQuality=chargingDashboardQuality\([^\n]*\);\r?\n/gm,'');
     mapper.func=chargingDashboardQuality.toString()+'\n'+mapper.func;
     const anchor="flow.set('ess_dashboard_live', dashboard);";
     mapper.func=mapper.func.replace(anchor,`dashboard.chargingQuality=chargingDashboardQuality(flow.get('ess_house_consumption_learning'),flow.get('ess_house_time_profile'),flow.get('ess_wit_grid_charge_status'),Date.now());\n${anchor}`);

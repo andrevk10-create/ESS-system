@@ -1,8 +1,12 @@
 function configurationAudit(states,entities) {
     return Object.entries(entities||{}).map(([role,entity])=>{
         const e=states[entity], unavailable=!e||['unknown','unavailable',''].includes(String(e.state).toLowerCase());
+        const energyRole=role.endsWith('_energy_today'),attr=e?.attributes?.cost_day_totalEnergyUsage??e?.attributes?.cost_day_total_energy_usage;
+        const derived=energyRole&&attr!==null&&attr!==undefined&&attr!==''&&Number.isFinite(Number(attr))&&Number(attr)>=0;
+        const unit=e?.attributes?.unit_of_measurement||'';
+        const wrongUnit=energyRole&&!derived&&!['wh','kwh','mwh'].includes(String(unit).toLowerCase());
         return {role,entity:entity||null,name:e?.attributes?.friendly_name||role,unit:e?.attributes?.unit_of_measurement||'',
-            status:!entity?'Niet gekoppeld':unavailable?'Geen bruikbare waarde':'Beschikbaar'};
+            measurementUnit:derived?'kWh':unit,status:!entity?'Niet gekoppeld':unavailable?'Geen bruikbare waarde':wrongUnit?'Verkeerde meeteenheid':'Beschikbaar'};
     });
 }
 function consumerMeterInventory(states,entities) {

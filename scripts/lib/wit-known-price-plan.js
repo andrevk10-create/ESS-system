@@ -9,9 +9,11 @@ function witManualChargePlan(slots,now,neededKwh,chargeKw){
     while(remaining>.000001&&cursor<horizon&&result.length<512){
         const known=prices.find(s=>s.start<=cursor&&s.end>cursor);
         const boundary=Math.min(horizon,(Math.floor(cursor/quarter)+1)*quarter,...prices.flatMap(s=>[s.start,s.end]).filter(t=>t>cursor));
-        const energyKwh=Math.min(remaining,chargeKw*(boundary-cursor)/3600000),end=cursor+energyKwh/chargeKw*3600000;
+        const availableKw=Math.min(chargeKw,Number.isFinite(known?.sharedChargeKw)?Math.max(0,known.sharedChargeKw):chargeKw);
+        if(availableKw<=0){cursor=boundary;continue;}
+        const energyKwh=Math.min(remaining,availableKw*(boundary-cursor)/3600000),end=cursor+energyKwh/availableKw*3600000;
         if(!(end>cursor)||!Number.isFinite(end))break;
-        result.push({start:cursor,end,energyKwh,powerKw:chargeKw,allInPrice:Number.isFinite(known?.allInPrice)?known.allInPrice:null,marketPrice:Number.isFinite(known?.marketPrice)?known.marketPrice:null});
+        result.push({start:cursor,end,energyKwh,powerKw:availableKw,allInPrice:Number.isFinite(known?.allInPrice)?known.allInPrice:null,marketPrice:Number.isFinite(known?.marketPrice)?known.marketPrice:null});
         remaining-=energyKwh;cursor=end;
     }
     return result;
@@ -27,7 +29,8 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const opportunities=ordered.map(s=>{
         const future=ordered.filter(p=>p.start>=s.end).map(p=>p.allInPrice);
         const benefit=future.length?Math.max(...future)-s.allInPrice/r.efficiency-wear:-Infinity;
-        return {...s,eligible:benefit>=minimumBenefit};
+        const chargeKw=Math.min(r.chargeKw,Number.isFinite(s.sharedChargeKw)?Math.max(0,s.sharedChargeKw):r.chargeKw);
+        return {...s,chargeKw,eligible:benefit>=minimumBenefit&&chargeKw>0};
     });
     // Finish at the end of the affordable window. Holding 100% through an
     // already unprofitable quarter would demand precisely the expensive
@@ -52,14 +55,14 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const points=[...new Set([now,deadline,...sunPoints,...hourPoints,...candidates.flatMap(s=>[s.start,s.end])])].sort((a,b)=>a-b);
     const chosen=new Map();
     const simulate=()=>{
-        const starts=[...chosen].map(([s,e])=>s.end-e/r.chargeKw*3600000);
+        const starts=[...chosen].map(([s,e])=>s.end-e/s.chargeKw*3600000);
         const times=[...new Set([...points,...starts])].filter(t=>t>=now&&t<=deadline).sort((a,b)=>a-b);
         let stored=Math.min(r.capacityKwh,Math.max(0,r.storedKwh)),overflow=0,directGrid=0,min=stored;
         const trace=[];
         for(let i=1;i<times.length;i++){
             const from=times[i-1],to=times[i];
             let input=0;
-            for(const [s,e]of chosen){const start=s.end-e/r.chargeKw*3600000;input+=Math.max(0,Math.min(to,s.end)-Math.max(from,start))/3600000*r.chargeKw;}
+            for(const [s,e]of chosen){const start=s.end-e/s.chargeKw*3600000;input+=Math.max(0,Math.min(to,s.end)-Math.max(from,start))/3600000*s.chargeKw;}
             const raw=stored+input*r.efficiency-(demandAt(to)-demandAt(from))+Math.max(0,solarAt(to)-solarAt(from));
             overflow+=Math.max(0,raw-(input>1e-9?target:r.capacityKwh));
             directGrid+=Math.max(0,hardwareFloor-raw);
@@ -83,9 +86,9 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
         let remaining=need;
         const eligible=candidates.filter(s=>s.eligible&&s.end<=until).sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start);
         for(const s of eligible){
-            const used=chosen.get(s)||0,available=(s.end-s.start)/3600000*r.chargeKw-used;
+            const used=chosen.get(s)||0,available=(s.end-s.start)/3600000*s.chargeKw-used;
             if(available<=.001)continue;
-            const wanted=Math.min(available,wholeQuarter?Math.max(remaining,r.chargeKw*.25):remaining);
+            const wanted=Math.min(available,wholeQuarter?Math.max(remaining,s.chargeKw*.25):remaining);
             const add=room(s,wanted);
             if(add<=.001)continue;
             chosen.set(s,used+add);remaining-=add;
@@ -111,7 +114,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
         if([...chosen.values()].reduce((a,b)=>a+b,0)-before<=.001)break;
     }
     const projected=simulate();
-    const selectedSlots=[...chosen].filter(([,e])=>e>.001).map(([s,energyKwh])=>({start:s.end-energyKwh/r.chargeKw*3600000,end:s.end,allInPrice:s.allInPrice,marketPrice:s.marketPrice,energyKwh,powerKw:r.chargeKw})).sort((a,b)=>a.start-b.start);
+    const selectedSlots=[...chosen].filter(([,e])=>e>.001).map(([s,energyKwh])=>({start:s.end-energyKwh/s.chargeKw*3600000,end:s.end,allInPrice:s.allInPrice,marketPrice:s.marketPrice,energyKwh,powerKw:s.chargeKw})).sort((a,b)=>a.start-b.start);
     const bridgeEnergyKwh=selectedSlots.filter(s=>s.end<=cheapest.start).reduce((sum,s)=>sum+s.energyKwh,0);
     return {selectedSlots,deadline,horizon,bridgeDeadline:cheapest.start>now?cheapest.start:null,bridgeEnergyKwh,
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,

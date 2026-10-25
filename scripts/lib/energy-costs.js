@@ -10,12 +10,20 @@ function costLedgerValid(v){
         const c=v.cars[car];if(!c||!Number.isFinite(c.kwh)||!Number.isFinite(c.cost))return null;
         if(c.session&&(!Number.isFinite(c.session.kwh)||!Number.isFinite(c.session.cost)||!Array.isArray(c.session.prices)||c.session.prices.length>200))return null;
     }
+    if(v.quality){
+        const keys=['audiMissingHours','jeepMissingHours','batteryMissingHours','batteryCoveredHours'];
+        const valid=q=>q&&keys.every(k=>Number.isFinite(q[k])&&q[k]>=0);
+        if(v.quality.version!==1||!Number.isFinite(v.quality.since)||!valid(v.quality.total)||!v.quality.days||Object.keys(v.quality.days).length>32||!Object.values(v.quality.days).every(valid))return null;
+    }
     return v;
 }
 function costLedgerStep(previous,sample,prices,now,saldering2026){
     if(previous!=null&&!costLedgerValid(previous))throw new Error('Bestaande kostenregistratie ongeldig; bewaard voor herstel');
     const zero=()=>({gridKwh:0,gridCost:0,batterySaving:0,audiKwh:0,audiCost:0,jeepKwh:0,jeepCost:0,coveredHours:0,missingHours:0,audiUnpricedKwh:0,jeepUnpricedKwh:0,exportKwh:0,exportRevenue:0,exportUnpricedKwh:0});
     const ledger=costLedgerValid(previous)||{version:2,startedAt:now,chargingCostStartedAt:now,total:zero(),days:{},quarters:[],cars:{audi:{kwh:0,cost:0},jeep:{kwh:0,cost:0}}};
+    if(ledger.last&&now<=ledger.last.at)return ledger;
+    const qualityZero=()=>({audiMissingHours:0,jeepMissingHours:0,batteryMissingHours:0,batteryCoveredHours:0});
+    ledger.quality??={version:1,since:ledger.last?.at||now,total:qualityZero(),days:{}};
     if(ledger.version===1){
         ledger.legacyChargingCosts={audi:ledger.total.audiCost,jeep:ledger.total.jeepCost};
         for(const record of [ledger.total,...Object.values(ledger.days),...ledger.quarters])for(const car of ['audi','jeep']){record[car+'Cost']=0;record[car+'UnpricedKwh']=0;}
@@ -91,15 +99,33 @@ function costLedgerStep(previous,sample,prices,now,saldering2026){
                 }
             }
             const day=date(cursor),daily=ledger.days[day]||(ledger.days[day]=zero());
+            const quality=ledger.quality.days[day]??=qualityZero();
+            const batteryOk=gridOk&&finite(prior.battery)&&finite(sample.battery);
+            const qv={audiMissingHours:finite(prior.audi?.power)&&finite(sample.audi?.power)&&prior.audi.binding===sample.audi.binding?0:h,
+                jeepMissingHours:finite(prior.jeep?.power)&&finite(sample.jeep?.power)&&prior.jeep.binding===sample.jeep.binding?0:h,
+                batteryMissingHours:batteryOk?0:h,batteryCoveredHours:batteryOk?h:0};
+            for(const [k,v]of Object.entries(qv)){quality[k]+=v;ledger.quality.total[k]+=v;}
             const quarterStart=Math.floor(cursor/900000)*900000;
             let q=ledger.quarters.find(q=>q.start===quarterStart);
             if(!q){q={start:quarterStart,...zero()};ledger.quarters.push(q);}
             for(const k of Object.keys(value)){ledger.total[k]+=value[k];daily[k]+=value[k];q[k]+=value[k];}
             cursor=end;
         }
-    }else if(prior&&elapsed>120000){ledger.total.missingHours+=elapsed/3600000;}
+    }else if(prior&&elapsed>0){
+        ledger.total.missingHours+=elapsed/3600000;
+        for(const k of ['audiMissingHours','jeepMissingHours','batteryMissingHours'])ledger.quality.total[k]+=elapsed/3600000;
+        // Record the day of a gap too, without inventing energy or prices.
+        for(let cursor=Math.max(prior.at,now-32*86400000);cursor<now;){
+            const end=Math.min(now,(Math.floor(cursor/900000)+1)*900000),h=(end-cursor)/3600000,day=date(cursor);
+            (ledger.days[day]??=zero()).missingHours+=h;
+            const quality=ledger.quality.days[day]??=qualityZero();
+            for(const k of ['audiMissingHours','jeepMissingHours','batteryMissingHours'])quality[k]+=h;
+            cursor=end;
+        }
+    }
     ledger.last={...sample,at:now};ledger.quarters=ledger.quarters.slice(-192);
     ledger.days=Object.fromEntries(Object.entries(ledger.days).sort(([a],[b])=>a.localeCompare(b)).slice(-32));
+    ledger.quality.days=Object.fromEntries(Object.entries(ledger.quality.days).sort(([a],[b])=>a.localeCompare(b)).slice(-32));
     ledger.updatedAt=now;return ledger;
 }
 function costDirectBaseline(session){

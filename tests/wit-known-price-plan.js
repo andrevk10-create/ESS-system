@@ -124,7 +124,7 @@ for(const shift of [86400000,7*86400000,13*86400000]){
     assert(Math.abs(sum(moved)-sum(result))<.001,'Other dates and the daylight-saving boundary do not change the energy arithmetic');
 }
 const code=require('../flows.json').find(n=>n.id==='esswitgrid_ctrl1').func;
-assert(code.includes('witKnownPricePlan(slots,now,{...reserveInputs,hourlyProfile:houseTimeProfile}'));
+assert(code.includes('witKnownPricePlan(sharedPriceSlots,now,{...reserveInputs,hourlyProfile:houseTimeProfile}'));
 assert(!code.includes('const horizonEnd = now + planningHorizonMs;'));
 assert(code.includes('projectedSocAtDeadline:'));
 assert(require('../flows.json').find(n=>n.id==='esstpl_battery01').format.includes('knownEnd=Date.parse(smart.knownPriceUntil'),'The timeline also displays the extended horizon');
