@@ -4781,5 +4781,6 @@ require('./lib/forecast-consumption')(flows);
 require('./lib/financial-quality')(flows);
 require('./lib/measurement-audit')(flows);
 require('./lib/shared-charging-budget')(flows);
+require('./lib/dashboard-concise')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

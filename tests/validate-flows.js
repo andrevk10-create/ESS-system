@@ -107,7 +107,7 @@ for (const template of [ui, configTemplate, ...Object.values(detailTemplates)]) 
 }
 assert(detailTemplates.energy.format.includes('Netbelasting per fase'), 'Energiepagina mist fasebelasting');
 assert(detailTemplates.energy.format.includes('Dagtotalen'), 'Energiepagina mist de werkelijke dagtotalen');
-assert(detailTemplates.energy.format.includes('Verwachting morgen') && detailTemplates.energy.format.includes('ZON VERWACHT MORGEN') && detailTemplates.energy.format.includes('VERBRUIK VERWACHT MORGEN'), 'Energiepagina mist de zon- en verbruiksverwachting voor morgen');
+assert(detailTemplates.energy.format.includes('Verwachting morgen') && detailTemplates.energy.format.includes('ZON VERWACHT MORGEN') && detailTemplates.energy.format.includes('WONING + GEPLAND AUTOLADEN MORGEN'), 'Energiepagina mist de zon- en verbruiksverwachting voor morgen');
 assert(detailTemplates.energy.format.includes('audiPlannedTomorrow') && detailTemplates.energy.format.includes('witPlannedTomorrow'), 'Morgenverwachting moet de geplande EV- en WIT-lading afzonderlijk tonen');
 assert(detailTemplates.energy.format.includes('NET AFGENOMEN') && detailTemplates.energy.format.includes('TERUGGELEVERD'), 'Energiepagina mist de net-dagmeters');
 assert(detailTemplates.battery.format.includes('Growatt WIT'), 'Accupagina mist WIT-details');
