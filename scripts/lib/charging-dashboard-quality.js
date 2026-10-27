@@ -64,8 +64,6 @@ module.exports=function apply(flows){
     // The existing daily reserve card must not look like demand until deadline.
     battery.format=battery.format.replace('voor de woning gereserveerd','daggemiddelde woning · zie laadbudget hieronder');
     const overview=get('ess000000000004');
-    const priority=`<article class="panel span-12" v-if="modules.battery!==false"><div class="panel-head"><b>Laden · nu en straks</b><span>{{d.wit?.runtime?.level==='ok'?'Regeling beschikbaar':'Controle nodig'}}</span></div><p>{{d.wit?.runtime?.level!=='ok'?d.wit?.runtime?.status:d.wit?.gridCharge?.status||'Wacht op regeldata'}}</p><p>Volgend laadmoment: {{d.chargingQuality?.budget?.fresh&&d.wit?.gridCharge?.nextScheduledStart?slotRange(d.wit.gridCharge.nextScheduledStart,d.wit.gridCharge.nextScheduledEnd):'Geen actueel laadblok beschikbaar'}}</p><p v-if="!d.chargingQuality?.learning?.active">Woningleren gepauzeerd: {{d.chargingQuality?.learning?.reason||'Wacht op leergegevens'}}</p></article>`;
-    overview.format=overview.format.replace('<section class="overview-finances"',priority+'<section class="overview-finances"');
     overview.format=overview.format.replace('<summary>Details & instellingen kosten</summary>',`<summary>Details & instellingen kosten</summary><p>Beoordeel besparing over meerdere dagen met complete metingen. Vandaag kan tussentijds negatief zijn doordat laadkosten vóór de latere opbrengst vallen. Meetgaten maken de vergelijking onvolledig. Accubesparing blijft een schatting zonder slijtage en gemiste terugleververgoeding.</p>`);
 };
 module.exports.chargingDashboardQuality=chargingDashboardQuality;

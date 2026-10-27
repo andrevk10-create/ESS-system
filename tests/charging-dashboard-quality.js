@@ -36,6 +36,6 @@ const flows=require('../flows.json'),get=id=>flows.find(n=>n.id===id);
 assert(get('esstpl_battery01').format.includes('Hoe goed leert de regeling?'));
 assert(get('esstpl_battery01').format.includes('Opbouw van het laadbudget'));
 const overview=get('ess000000000004').format;
-assert(overview.indexOf('Laden · nu en straks')<overview.indexOf('<section class="overview-finances"'),'Charging attention precedes finance blocks');
+assert(!overview.includes('Laden · nu en straks'),'Removed overview charging panel stays absent');
 assert(get('ess00000000000a').func.includes('dashboard.chargingQuality='));
 console.log('Charging dashboard: measured coverage, paused/stale learning, last valid sample, DST, period budgets and read-only presentation passed');
