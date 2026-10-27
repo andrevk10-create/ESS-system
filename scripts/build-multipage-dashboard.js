@@ -4773,6 +4773,7 @@ require('./lib/wit-known-price-plan')(flows);
 require('./lib/house-time-profile')(flows);
 require('./lib/heat-pump-history')(flows);
 require('./lib/dashboard-copy')(flows);
+require('./lib/analytics-recovery')(flows);
 require('./lib/editor-layout')(flows);
 require('./lib/charging-dashboard-quality')(flows);
 require('./lib/wit-session-evidence')(flows);

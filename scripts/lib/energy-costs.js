@@ -6,6 +6,7 @@ function costLedgerValid(v){
     if(!fields.every(k=>Number.isFinite(v.total[k]))||Object.keys(v.days).length>32)return null;
     if(!Object.values(v.days).every(d=>fields.every(k=>Number.isFinite(d[k]))))return null;
     if(!Array.isArray(v.quarters)||v.quarters.length>192)return null;
+    if(v.priceArchive!==undefined&&(!Array.isArray(v.priceArchive)||v.priceArchive.length>3400||!v.priceArchive.every(s=>s&&Number.isFinite(s.start)&&Number.isFinite(s.end)&&s.end>s.start&&Number.isFinite(s.price))))return null;
     for(const car of ['audi','jeep']){
         const c=v.cars[car];if(!c||!Number.isFinite(c.kwh)||!Number.isFinite(c.cost))return null;
         if(c.session&&(!Number.isFinite(c.session.kwh)||!Number.isFinite(c.session.cost)||!Array.isArray(c.session.prices)||c.session.prices.length>200))return null;
@@ -30,7 +31,10 @@ function costLedgerStep(previous,sample,prices,now,saldering2026){
         for(const car of ['audi','jeep']){ledger.cars[car].cost=0;if(ledger.cars[car].session){ledger.cars[car].session.cost=0;ledger.cars[car].session.unpriced=true;}}
         ledger.version=2;ledger.chargingCostStartedAt=now;ledger.last=null;
     }
-    const slots=prices.map(s=>({start:Date.parse(s.start),end:Date.parse(s.end),price:typeof s.allInPrice==='number'?s.allInPrice:NaN,exportPrice:essExportPrice(s.marketPrice,s.allInPrice,s.start,saldering2026)})).filter(s=>Number.isFinite(s.start)&&s.end>s.start&&Number.isFinite(s.price));
+    const priceArchive=new Map((Array.isArray(ledger.priceArchive)?ledger.priceArchive:[]).map(s=>[s.start,s]));
+    for(const s of prices){const start=Date.parse(s.start),end=Date.parse(s.end);if(Number.isFinite(start)&&end>start&&typeof s.allInPrice==='number'&&Number.isFinite(s.allInPrice))priceArchive.set(start,{start,end,price:s.allInPrice,exportPrice:essExportPrice(s.marketPrice,s.allInPrice,s.start,saldering2026)});}
+    ledger.priceArchive=[...priceArchive.values()].filter(s=>s.end>=now-32*86400000&&s.start<=now+3*86400000).sort((a,b)=>a.start-b.start).slice(-3400);
+    const slots=ledger.priceArchive;
     const date=t=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));
     const finite=v=>typeof v==='number'&&Number.isFinite(v);
     const positiveIntegral=(a,b,h)=>a>=0&&b>=0?(a+b)/2*h:a<=0&&b<=0?0:Math.max(a,b)*h*Math.abs((a>0?a:b)/(b-a))/2;
