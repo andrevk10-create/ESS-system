@@ -128,8 +128,8 @@ const currentForcedPowerW = previous.sessionOwned`).replace('Math.min(measuredCh
         const watchKey = n === grid ? 'ess_wit_charge_watch' : 'ess_wit_discharge_watch';
         n.func = n.func.replace(`function ${stop}(reason, details = {}) {`, `function ${stop}(reason, details = {}) {
     flow.set('${watchKey}', null);`);
-        // A shared latched fault also prevents the other direction from taking
-        // over. Only an explicit settings action plus Disabled readback resets it.
+        // Both directions wait for release. Recoverable command failures may
+        // clear automatically once independent OFF readbacks are confirmed.
         const faultGate = `const commandFault = flow.get('ess_wit_command_fault');
 if (commandFault) {
     if (commandFault.resetRequested && fresh('select.growatt_grid_remote_power_control_enable', 120000) && remoteState === 'disabled') {
@@ -137,7 +137,10 @@ if (commandFault) {
         flow.set('ess_wit_charge_watch', null);
         flow.set('ess_wit_discharge_watch', null);
     } else {
-        return ${stop}((commandFault.reason || 'WIT reageert niet')+' · sinds '+new Date(commandFault.at).toLocaleTimeString('nl-NL', {timeZone:'Europe/Amsterdam'})+' · regeling geblokkeerd; controleer BMS/Modbus en bevestig de stand opnieuw', { ...details, commandFault:true, faultReason:commandFault.reason || 'Oude opdrachtfout', faultAt:commandFault.at, recoveryAttempts:commandFault.attempts - 1 });
+        const retryMessage = commandFault.reason === 'Geen laad- of ontlaadvermogen na herstelpoging'
+            ? 'Laadopdracht niet uitgevoerd · wacht op automatische herstart'
+            : (commandFault.reason || 'WIT reageert niet')+' · regeling geblokkeerd';
+        return ${stop}(retryMessage, { ...details, commandFault:true, faultReason:commandFault.reason || 'Oude opdrachtfout', faultAt:commandFault.at, recoveryAttempts:commandFault.attempts - 1 });
     }
 }
 `;

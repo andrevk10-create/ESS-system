@@ -12,10 +12,22 @@ f.v.ess_wit_control_readback.at=now+60000;
 assert.equal(recover(f,now+60000),true);assert.equal(f.v.ess_wit_command_fault,null);
 f.v.ess_wit_command_fault={at:now-650000,reason:'WIT-registerterugmelding ontbreekt of is ongeldig'};
 assert.equal(recover(f,now+60000),false,'One recovery per hour');
-for(const reason of ['Geen laad- of ontlaadvermogen na herstelpoging','WIT-opdracht mislukt: Modbus','Externe WIT-tijdplanning actief · netladen geblokkeerd']) {
+for(const reason of ['WIT-opdracht mislukt: Modbus','Externe WIT-tijdplanning actief · netladen geblokkeerd']) {
     const q=fixture(reason);recover(q,now);q.v.ess_wit_control_readback.at+=60000;
     assert.equal(recover(q,now+60000),false);assert.ok(q.v.ess_wit_command_fault);
 }
+const noPower=fixture('Geen laad- of ontlaadvermogen na herstelpoging');
+noPower.v.ess_wit_command_fault.at=now-299000;
+assert.equal(recover(noPower,now),false,'Wait between failed starts');
+noPower.v.ess_wit_control_readback.at=now+20000;
+assert.equal(recover(noPower,now+20000),false,'First independent OFF observation');
+noPower.v.ess_wit_control_readback.at=now+40000;
+assert.equal(recover(noPower,now+40000),true,'No-power failure automatically permits the next start');
+noPower.v.ess_wit_command_fault={at:now+50000,reason:'Geen laad- of ontlaadvermogen na herstelpoging'};
+noPower.v.ess_wit_control_readback.at=now+360000;
+assert.equal(recover(noPower,now+360000),false);
+noPower.v.ess_wit_control_readback.at=now+380000;
+assert.equal(recover(noPower,now+380000),true,'A second failed start cannot block the rest of the night');
 for(const reason of ['WIT-vrijgave niet bevestigd','WIT-opdracht blijft onderweg']){
  const q=fixture(reason);assert.equal(recover(q,now),false);q.v.ess_wit_control_readback.at+=60000;
  assert.equal(recover(q,now+60000),true,'Transient timeout clears only after cooldown and two real OFF observations');
@@ -33,4 +45,4 @@ assert.equal(recover(legacy,now),false);
 legacy.v.ess_wit_release_ack={authority:now-500000,remote:now-400000};
 recover(legacy,now);legacy.v.ess_wit_control_readback.at+=60000;
 assert.equal(recover(legacy,now+60000),true);
-console.log('WIT recovery: independent readings, cooldown, binding, ownership and hard fault protection passed');
+console.log('WIT recovery: repeated automatic no-power retries, independent readings, cooldown, binding and ownership passed');

@@ -1,9 +1,10 @@
-// Only transport feedback faults may expire. Hardware/no-power faults require review.
+// A failed ESS command is retried after release; it must not disable later plans.
 function witFaultRecovery(flow, now) {
     const fault = flow.get('ess_wit_command_fault');
     const reset = () => flow.set('ess_wit_fault_recovery_probe', null);
     if (!fault || !Number.isFinite(fault.at) || fault.resetRequested) { reset(); return false; }
     const transient = ['WIT-registerterugmelding ontbreekt of is ongeldig',
+        'Geen laad- of ontlaadvermogen na herstelpoging',
         'WIT neemt de laadopdracht niet over · registerterugmelding wijkt af',
         'WIT-opdracht blijft onderweg', 'WIT-vrijgave niet bevestigd'];
     const released = flow.get('ess_wit_release_ack') || {};
@@ -14,8 +15,9 @@ function witFaultRecovery(flow, now) {
     const rb = flow.get('ess_wit_control_readback');
     const status = ['ess_wit_grid_charge_status', 'ess_wit_audi_discharge_status'].map(k => flow.get(k) || {});
     const audit = flow.get('ess_wit_fault_recovery_audit');
-    if ((!legacy && !transient.includes(fault.reason)) || now - fault.at < 600000 ||
-        (audit && (audit.faultAt === fault.at || now - audit.at < 3600000)) ||
+    const noPower = fault.reason === 'Geen laad- of ontlaadvermogen na herstelpoging';
+    if ((!legacy && !transient.includes(fault.reason)) || now - fault.at < (noPower ? 300000 : 600000) ||
+        (audit && (audit.faultAt === fault.at || (!noPower && now - audit.at < 3600000))) ||
         flow.get('ess_wit_manual_recovery') || flow.get('ess_wit_grid_transport') ||
         status.some(s => s.sessionOwned || s.active || s.releasing || s.pendingUntil > now) ||
         !rb?.deviceId || rb.remoteEntity !== mapped('select.growatt_grid_remote_power_control_enable') ||
