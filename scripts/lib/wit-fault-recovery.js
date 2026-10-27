@@ -6,7 +6,11 @@ function witFaultRecovery(flow, now) {
     const transient = ['WIT-registerterugmelding ontbreekt of is ongeldig',
         'Geen laad- of ontlaadvermogen na herstelpoging',
         'WIT neemt de laadopdracht niet over · registerterugmelding wijkt af',
-        'WIT-opdracht blijft onderweg', 'WIT-vrijgave niet bevestigd'];
+        'WIT-opdracht blijft onderweg', 'WIT-vrijgave niet bevestigd',
+        'Verse WIT-registerterugmelding of koppeling ontbreekt',
+        'Verse WIT-devicebinding ontbreekt tijdens fasecontrole',
+        'Power Imbalance niet tijdig uit bevestigd · netladen geblokkeerd',
+        'Power Imbalance niet recent uit bevestigd · netladen geblokkeerd'];
     const released = flow.get('ess_wit_release_ack') || {};
     // Legacy faults had no classification. Require both explicit release ACKs.
     const legacy = !fault.reason && released.authority >= fault.at && released.remote >= fault.at;
@@ -15,9 +19,9 @@ function witFaultRecovery(flow, now) {
     const rb = flow.get('ess_wit_control_readback');
     const status = ['ess_wit_grid_charge_status', 'ess_wit_audi_discharge_status'].map(k => flow.get(k) || {});
     const audit = flow.get('ess_wit_fault_recovery_audit');
-    const noPower = fault.reason === 'Geen laad- of ontlaadvermogen na herstelpoging';
-    if ((!legacy && !transient.includes(fault.reason)) || now - fault.at < (noPower ? 300000 : 600000) ||
-        (audit && (audit.faultAt === fault.at || (!noPower && now - audit.at < 3600000))) ||
+    const recoverable = transient.includes(fault.reason) || String(fault.reason || '').startsWith('WIT-opdracht mislukt: ');
+    if ((!legacy && !recoverable) || now - fault.at < 300000 ||
+        (audit && audit.faultAt === fault.at) ||
         flow.get('ess_wit_manual_recovery') || flow.get('ess_wit_grid_transport') ||
         status.some(s => s.sessionOwned || s.active || s.releasing || s.pendingUntil > now) ||
         !rb?.deviceId || rb.remoteEntity !== mapped('select.growatt_grid_remote_power_control_enable') ||

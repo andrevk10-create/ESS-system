@@ -1,5 +1,26 @@
 const assert=require('node:assert/strict');
 const {witKnownPricePlan:plan}=require('../scripts/lib/wit-known-price-plan');
+{
+ const {witRunningBlock:keep}=require('../scripts/lib/wit-running-block');
+ const now=1800000000000, end=now+120000;
+ const current={start:now-60000,end,powerKw:8,energyKwh:.4,allInPrice:.2};
+ const previous={sessionOwned:true,selectedSlots:[current]};
+ const prices=[{start:now-60000,end:now+600000,allInPrice:.2,sharedChargeKw:5}];
+ const future=[{start:now+60000,end:now+900000,powerKw:8,energyKwh:8*840000/3600000,allInPrice:.2}];
+ const held=keep(future,previous,prices,now,8);
+ assert.equal(held[0].start,now);assert.equal(held[0].end,end,'Never extend the original block');
+ assert.equal(held[0].powerKw,5,'Respect shared capacity');
+ assert.equal(held[1].start,end,'No overlapping purchased energy');
+ assert(Math.abs(held.reduce((sum,s)=>sum+s.energyKwh,0)-future[0].energyKwh)<1e-9,'Holding a block never increases purchases');
+ const tiny=keep([{...future[0],energyKwh:.01}],previous,prices,now,8);
+ assert(Math.abs(tiny[0].energyKwh-.01)<1e-9,'Small remaining demand shortens the held block');
+ assert.deepEqual(keep([],previous,prices,now,8),[],'No charge when the new plan needs no energy');
+ for(const p of [{...previous,sessionOwned:false},{...previous,releasing:true}])assert.equal(keep(future,p,prices,now,8),future);
+ assert.equal(keep(future,previous,[{...prices[0],allInPrice:.5}],now,8),future,'Do not retain a changed price');
+ assert.equal(keep(future,previous,[{...prices[0],sharedChargeKw:0}],now,8),future);
+ assert.equal(keep(future,previous,prices,end,8),future,'Expired blocks cannot restart');
+ assert.equal(keep([current],previous,prices,now,8)[0],current,'Do not replace an already running new plan');
+}
 const now=Date.parse('2026-10-18T18:00:00Z'),hour=3600000;
 const prices=Array.from({length:30*4},(_,i)=>{const h=i/4;return h<4?.45:h<12?.34:h<17?.48:h<21?.26+(i%4)*.001:h<25?.52:.38;});
 const slots=prices.map((allInPrice,i)=>({start:now+i*hour/4,end:now+(i+1)*hour/4,allInPrice}));

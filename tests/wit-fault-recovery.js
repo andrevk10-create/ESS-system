@@ -11,8 +11,10 @@ assert.equal(recover(f,now+20000),false,'Repeated evaluation of one snapshot is 
 f.v.ess_wit_control_readback.at=now+60000;
 assert.equal(recover(f,now+60000),true);assert.equal(f.v.ess_wit_command_fault,null);
 f.v.ess_wit_command_fault={at:now-650000,reason:'WIT-registerterugmelding ontbreekt of is ongeldig'};
-assert.equal(recover(f,now+60000),false,'One recovery per hour');
-for(const reason of ['WIT-opdracht mislukt: Modbus','Externe WIT-tijdplanning actief · netladen geblokkeerd']) {
+assert.equal(recover(f,now+60000),false,'Every failure requires new independent OFF observations');
+f.v.ess_wit_control_readback.at=now+80000;
+assert.equal(recover(f,now+80000),true,'A second temporary failure need not wait an hour');
+for(const reason of ['Ongeldige WIT-schrijfstap','WIT-koppeling gewijzigd tijdens opdracht','Externe WIT-tijdplanning actief · netladen geblokkeerd']) {
     const q=fixture(reason);recover(q,now);q.v.ess_wit_control_readback.at+=60000;
     assert.equal(recover(q,now+60000),false);assert.ok(q.v.ess_wit_command_fault);
 }
@@ -28,7 +30,9 @@ noPower.v.ess_wit_control_readback.at=now+360000;
 assert.equal(recover(noPower,now+360000),false);
 noPower.v.ess_wit_control_readback.at=now+380000;
 assert.equal(recover(noPower,now+380000),true,'A second failed start cannot block the rest of the night');
-for(const reason of ['WIT-vrijgave niet bevestigd','WIT-opdracht blijft onderweg']){
+for(const reason of ['WIT-vrijgave niet bevestigd','WIT-opdracht blijft onderweg','WIT-opdracht mislukt: Modbus',
+ 'Verse WIT-registerterugmelding of koppeling ontbreekt','Verse WIT-devicebinding ontbreekt tijdens fasecontrole',
+ 'Power Imbalance niet tijdig uit bevestigd · netladen geblokkeerd','Power Imbalance niet recent uit bevestigd · netladen geblokkeerd']){
  const q=fixture(reason);assert.equal(recover(q,now),false);q.v.ess_wit_control_readback.at+=60000;
  assert.equal(recover(q,now+60000),true,'Transient timeout clears only after cooldown and two real OFF observations');
 }
