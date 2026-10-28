@@ -104,10 +104,14 @@ assert(sum(sunny)<sum(result),'Conservative forecast solar reduces grid purchase
  const withSun=plan(prices,at,reserve,solar,s),withoutSun=plan(prices,at,reserve,{valid:false},s);
  assert(withSun.solarKwh>0);
  assert(sum(withSun)<sum(withoutSun),'Known afternoon solar must reduce planned net charging');
- assert(Math.abs((sum(withoutSun)-sum(withSun))*r.efficiency-withSun.solarKwh)<.01,'Solar credit is subtracted once, with charging efficiency');
- assert(withSun.projectedSoc>=99.99);
+ const fillEnd=withSun.selectedSlots.at(-1).end;
+ const sunUntilFill=witSolarBeforeDeadline(solar,s,at,fillEnd)*.35*r.efficiency;
+ const expectedStored=reserve.storedKwh+sum(withSun)*r.efficiency-reserve.houseKwh*(fillEnd-at)/(24*hour)+sunUntilFill;
+ assert(Math.abs(expectedStored-30)<.01,'Independently balance purchases, consumption and one solar credit at refill completion');
+ assert(withSun.targetReachedSoc>=99.99,'Solar-aware charging reaches the target during the refill window');
+ assert(withSun.projectedSoc<=withSun.targetReachedSoc+.001,'Deadline SOC honestly includes consumption after filling');
 }
-assert(sunny.projectedSoc>=99.99);
+assert(sunny.targetReachedSoc>=99.99);
 {
  const at=Date.parse('2026-10-19T13:00:00Z');
  const prices=Array.from({length:33*4},(_,i)=>{const h=i/4;return {start:at+i*hour/4,end:at+(i+1)*hour/4,allInPrice:h<2?.34:h<7?.50:h<17?.33:h<21?.48:h<26?.25:.52};});
@@ -119,7 +123,7 @@ assert(sunny.projectedSoc>=99.99);
  assert(tomorrow.solarKwh>todayOnly.solarKwh,'Daytime replan must include tomorrow before tomorrow deadline');
  assert(sum(tomorrow)<sum(todayOnly)-5,'Tomorrow sun substantially reduces total net purchases');
  assert(night(tomorrow)<night(todayOnly),'A near-full tapered battery must not plan an oversized night bridge because tomorrow sun was discarded');
- assert(tomorrow.projectedSoc>=99.99);
+ assert(tomorrow.targetReachedSoc>=99.99);
  assert(tomorrow.minimumSoc>=20-.001);
 }
 const restricted=plan(slots,now,{...r,chargeKw:.1},forecast,{});
@@ -134,7 +138,7 @@ const late=plan(lateCheap,now,{...r,houseKwh:10},forecast,{});
 assert(late.selectedSlots.some(s=>s.start>=now+25*hour),'Known cheap prices outside 24 hours can be selected');
 assert.equal(plan([],now,r,forecast,{}).selectedSlots.length,0);
 const lower=plan(slots,now,{...r,targetSoc:80},forecast,{});
-assert(lower.projectedSoc>=79.99&&lower.projectedSoc<=80.001,'The chosen target remains the ceiling for grid charging');
+assert(lower.targetReachedSoc>=79.99&&lower.targetReachedSoc<=80.001,'The chosen target is reached without holding it until the deadline');
 assert(replay(lower,{...r,targetSoc:80}).max<=24.001,'Bridge charging also respects a lower configured target');
 const zeroPower=plan(slots,now,{...r,chargeKw:0},forecast,{});
 assert(zeroPower.remainingEnergyKwh>0&&zeroPower.selectedSlots.length===0,'A zero BMS limit is never reported as a complete plan');
@@ -143,6 +147,32 @@ assert(gap.reserveShortfallKwh>0,'Unknown early prices cannot produce fictitious
 for(const shift of [86400000,7*86400000,13*86400000]){
     const moved=plan(slots.map(s=>({...s,start:s.start+shift,end:s.end+shift})),now+shift,r,forecast,{});
     assert(Math.abs(sum(moved)-sum(result))<.001,'Other dates and the daylight-saving boundary do not change the energy arithmetic');
+}
+// A full cheap refill may fall with household use afterwards: no costly
+// maintenance pulses, including on the next controller tick.
+{
+ const prices=Array.from({length:16},(_,i)=>({start:now+i*hour/4,end:now+(i+1)*hour/4,allInPrice:i<4?.2:i<12?.3:.6}));
+ const reserve={...r,storedKwh:27,houseKwh:48};
+ const p=plan(prices,now,reserve,forecast,{});
+ assert(p.selectedSlots.every(s=>s.allInPrice===.2),'Use available cheap quarters instead of later expensive top-ups');
+ assert(p.selectedSlots.some(s=>s.end-s.start===hour/4),'Fill complete cheap quarters where capacity allows');
+ assert(p.targetReachedSoc>=99.99&&p.projectedSoc<99,'Target is reached before the boundary and may subsequently fall');
+ assert(p.remainingEnergyKwh<.001);
+ const reached=plan(prices,now,{...reserve,storedKwh:30},forecast,{});
+ assert(reached.goal.reached);
+ assert(plan(prices,now,{...reserve,storedKwh:29.95},forecast,{}).goal.reached,'Match the actual controller target tolerance');
+ const rearmed=plan(prices,now+60000,{...reserve,storedKwh:26.9,previousGoal:reached.goal},forecast,{});
+ assert(!rearmed.goal.reached&&rearmed.selectedSlots.length>0,'A ten-point SOC drop rearms a genuine refill');
+ const next=plan(prices,now+60000,{...reserve,storedKwh:29.8,previousGoal:reached.goal},forecast,{});
+ assert.equal(next.selectedSlots.length,0,'Replanning after reaching the target must not restart top-ups');
+ const changed=plan(prices,now+60000,{...reserve,storedKwh:29.8,previousGoal:{...reached.goal,deadline:reached.goal.deadline-1}},forecast,{});
+ assert.equal(changed.goal.reached,false,'A different deadline resets the achieved goal');
+ const rescue=plan(prices,now+60000,{...reserve,storedKwh:6,previousGoal:reached.goal},forecast,{});
+ assert(rescue.selectedSlots.length>0,'An achieved target never disables minimum-reserve protection');
+ assert(rescue.minimumSoc>=20-.01);
+ const congested=prices.map((s,i)=>({...s,sharedChargeKw:i<4?0:8}));
+ const waiting=plan(congested,now,reserve,forecast,{});
+ assert(waiting.selectedSlots.every(s=>s.start>=now+hour),'Cheap EV-occupied quarters cannot be claimed by the battery');
 }
 const code=require('../flows.json').find(n=>n.id==='esswitgrid_ctrl1').func;
 assert(code.includes('witKnownPricePlan(sharedPriceSlots,now,{...reserveInputs,hourlyProfile:houseTimeProfile}'));

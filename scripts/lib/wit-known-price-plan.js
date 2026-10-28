@@ -39,6 +39,9 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const deadline=lastAffordable&&lastAffordable.end>=cheapest.end?lastAffordable.end:nominalDeadline;
     const target=Math.min(r.capacityKwh,Math.max(0,r.targetSoc/100*r.capacityKwh));
     const reserveFloor=Math.min(target,r.capacityKwh*.20),hardwareFloor=r.capacityKwh*.10;
+    // Match the controller stop tolerance (0.2 percentage point). Rearm only
+    // after a real 10-point drop, or when the goal/window changes.
+    const goalReached=r.storedKwh>=target-r.capacityKwh*.002||(r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.storedKwh>target-r.capacityKwh*.10);
     const houseRate=r.houseKwh/86400000;
     const demandCache=new Map();
     const demandAt=at=>{
@@ -103,11 +106,12 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
         const after=simulate(),actual=after.trace.find(p=>p.at===t);
         reserveShortfallKwh=Math.max(reserveShortfallKwh,reserveFloor-(actual?.raw??stateAt(after,t)));
     }
-    // Earlier input can replace direct grid use in a previously uncovered gap.
-    // Re-evaluate the actual final stock instead of treating every input kWh as
-    // an equal increase of the final SOC.
+    // Reach the target in the refill window; do not buy later maintenance
+    // pulses merely to keep the exact target at the final boundary. Every
+    // reserve checkpoint remains protected by the reserve pass above.
+    const refillStock=simulation=>Math.max(0,...simulation.trace.filter(p=>p.at>=cheapest.end).map(p=>p.stored));
     for(let pass=0;pass<=candidates.length;pass++){
-        const need=Math.max(0,target-simulate().stored)/r.efficiency;
+        const need=goalReached?0:Math.max(0,target-refillStock(simulate()))/r.efficiency;
         if(need<=.001)break;
         const before=[...chosen.values()].reduce((a,b)=>a+b,0);
         allocate(deadline,need,false);
@@ -118,7 +122,9 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const bridgeEnergyKwh=selectedSlots.filter(s=>s.end<=cheapest.start).reduce((sum,s)=>sum+s.energyKwh,0);
     return {selectedSlots,deadline,horizon,bridgeDeadline:cheapest.start>now?cheapest.start:null,bridgeEnergyKwh,
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,
-        remainingEnergyKwh:Math.max(0,target-projected.stored)/r.efficiency,
+        remainingEnergyKwh:goalReached?0:Math.max(0,target-refillStock(projected))/r.efficiency,
+        goal:{reached:goalReached,deadline,targetSoc:r.targetSoc},
+        targetReachedSoc:refillStock(projected)/r.capacityKwh*100,
         reserveShortfallKwh:Math.max(0,reserveShortfallKwh),projectedSoc:projected.stored/r.capacityKwh*100,
         minimumSoc:projected.min/r.capacityKwh*100,houseKwh:demandAt(deadline),solarKwh:solarAt(deadline)};
 }
@@ -127,6 +133,7 @@ module.exports=function apply(flows){
     grid.func=witManualChargePlan.toString()+'\n'+witKnownPricePlan.toString()+'\n'+grid.func;
     grid.func=grid.func.replace('const horizonEnd = now + planningHorizonMs;',"const horizonEnd = Math.max(now,...(flow.get('ess_nordpool_forecast')||[]).map(s=>Date.parse(s.end)).filter(Number.isFinite));");
     for(const name of ['reserveWait','bridgeDeadline','expensivePeriodStart','deadlineHouseKwh','solarBeforeDeadlineKwh'])grid.func=grid.func.replace('const '+name+'=','let '+name+'=').replace('const '+name+' =','let '+name+' =');
+    grid.func=grid.func.replace('const reserveInputs={','const reserveInputs={previousGoal:previous.knownPriceGoal,');
     const marker='const scheduledSlot = selectedSlots.find(';
     if(!grid.func.includes(marker))throw Error('WIT allocation insertion point missing');
     const manualStart=grid.func.indexOf("} else if (mode === 'on' && remainingEnergyKwh > 0.01) {");
@@ -148,7 +155,9 @@ deadlineHouseKwh=knownPricePlan.houseKwh;solarBeforeDeadlineKwh=knownPricePlan.s
 gridEnergyNeededKwh=selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)+remainingEnergyKwh;
 }
 ${marker}`);
-    grid.func=grid.func.replace('    houseConsumptionSource:',`    knownPriceUntil:new Date(horizonEnd).toISOString(),
+    grid.func=grid.func.replace('    houseConsumptionSource:',`    knownPriceGoal:knownPricePlan?.goal??null,
+    targetReachedSoc:knownPricePlan?.targetReachedSoc??null,
+    knownPriceUntil:new Date(horizonEnd).toISOString(),
     bridgeGridEnergyKwh:knownPricePlan?.bridgeEnergyKwh??null,
     refillGridEnergyKwh:knownPricePlan?.refillEnergyKwh??null,
     reserveShortfallKwh:knownPricePlan?.reserveShortfallKwh??null,
