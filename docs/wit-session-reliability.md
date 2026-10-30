@@ -1,5 +1,29 @@
 # Laadsessies herstellen en Nu laden laten doorlopen
 
+## Achtergebleven besturingsbevoegdheid
+
+Een verlopen ESS-laadopdracht kan afstandsbediening uit laten staan terwijl de
+besturingsbevoegdheid nog aan staat. Een tijdelijke fout kon daardoor blijven
+wachten op volledige vrijgave. Automatisch en Nu laden mogen deze toestand nu
+vrijgeven als een bevestigde ESS-opdracht van hetzelfde apparaat en dezelfde
+integratie vlak voor de fout is opgeslagen. Twee afzonderlijke verse
+registermetingen moeten afstandsbediening uit, bevoegdheid aan, een lease van
+twee minuten en geen externe tijdplanning bevestigen. De fout moet minimaal
+vijf minuten oud zijn; vrijgavepogingen liggen minimaal vijftien minuten uiteen.
+
+De bestaande vrijgaveprocedure controleert daarna beide uit-standen met nieuwe
+registermetingen. Pas daarna kan het bestaande foutherstel de fout wissen.
+Vervolgens bepaalt de actuele planning of laden nodig en toegestaan is.
+Onbekende opdrachten, actieve externe bediening, gewijzigde koppelingen en
+externe tijdplanningen geven geen toestemming voor deze automatische vrijgave.
+
+Laadbeslissingen worden daarnaast direct als JSON-regels opgeslagen in
+`/config/node-red/ess-wit-audit-YYYY-MM-DD.jsonl` (UTC-datum), buiten Git.
+Deze dagbestanden bevatten ook foutreden en de relevante besturingsregisters.
+Ze blijven bij herstart beschikbaar, ook wanneer de laatste 512 gebeurtenissen
+in het geheugen zijn overschreven. Dagbestanden worden toegevoegd en niet
+automatisch verwijderd; neem ze mee in lokaal opslagbeheer en back-ups.
+
 ## Expliciet Nu laden
 
 Nu laden toont een aaneengesloten plan voor de benodigde netenergie tot het

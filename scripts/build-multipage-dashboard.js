@@ -4777,6 +4777,7 @@ require('./lib/analytics-recovery')(flows);
 require('./lib/editor-layout')(flows);
 require('./lib/charging-dashboard-quality')(flows);
 require('./lib/wit-session-evidence')(flows);
+require('./lib/wit-idle-recovery')(flows);
 require('./lib/dashboard-freshness')(flows);
 require('./lib/forecast-consumption')(flows);
 require('./lib/financial-quality')(flows);

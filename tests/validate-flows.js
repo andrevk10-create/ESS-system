@@ -1685,8 +1685,8 @@ assert(witGridChargeControl.func.includes('planningHorizonMs = 24 * 60 * 60 * 10
 assert(witGridChargeControl.func.includes('chargeEfficiency = 0.90') && witGridChargeControl.func.includes('wearCostPerKwh'), 'Laadverlies en accuslijtage moeten in de prijsselectie meetellen');
 assert(witGridChargeControl.func.includes('specs?.maximumBatteryChargePowerKw') && witGridChargeControl.func.includes('directBatteryLimitW'), 'WIT-netladen moet de installatie- en BMS-vermogensgrens respecteren');
 assert(witGridChargeControl.func.includes('growattTelemetryFresh') && witGridChargeControl.func.includes('socUsable'), 'WIT-netladen moet een onveranderde SOC via actuele Growatt-telemetrie valideren');
-assert.strictEqual(witGridChargeControl.outputs, 6);
-assert.deepStrictEqual(witGridChargeControl.wires, [['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],[witEVStopAction.id],[witExportToggleAction.id],['essprefs_save']], 'Starten, bijregelen en vernieuwen moeten via één geserialiseerde WIT-opdracht lopen');
+assert.strictEqual(witGridChargeControl.outputs, 7);
+assert.deepStrictEqual(witGridChargeControl.wires, [['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],['esswitgrid_transport_dispatch'],[witEVStopAction.id],[witExportToggleAction.id],['essprefs_save'],['esswit_audit_write']], 'Starten, bijregelen en vernieuwen moeten via één geserialiseerde WIT-opdracht lopen');
 const witTransport = flows.find(node => node.id === 'esswitgrid_transport_dispatch');
 assert(witTransport.func.includes('register:30407,values:[1,2,op.powerPercent]'), 'WIT inschakelen, looptijd en positief vermogen moeten samen worden geschreven');
 assert.deepStrictEqual(witTransport.wires, [['esswitgrid_transport_api'],['esswitgrid_ctrl1','essprefs_save'],['esswit_readback_request'],['esswitgrid_phase_wait']], 'De laadopdracht moet via gecontroleerde registerterugmelding en begrensd wachten terugkoppelen en bewijs opslaan');
