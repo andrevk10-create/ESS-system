@@ -1661,8 +1661,6 @@ flowValues.ess_wit_audi_discharge_status = { sessionOwned:false, active:false };
 witEVStates['sensor.energy_production_tomorrow'] = state(14, { unit_of_measurement:'kWh' });
 witEVStates['sensor.energy_production_tomorrow_2'] = state(12, { unit_of_measurement:'kWh' });
 witEVStates['sensor.energy_production_tomorrow_3'] = state(10, { unit_of_measurement:'kWh' });
-assert.strictEqual(runWitEVControl(witEVGlobalContext, flowContext, witNode, {}), null, 'Een externe actieve WIT-sessie mag nooit door de EV-regelaar worden overgenomen');
-assert(flowValues.ess_wit_audi_discharge_status.status.includes('Externe WIT-bediening'));
 
 witEVStates['select.growatt_grid_remote_power_control_enable'] = state('Disabled');
 witEVStates['select.growatt_grid_vpp_export_limit_enable'] = state('Enabled');

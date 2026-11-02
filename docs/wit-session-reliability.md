@@ -1,5 +1,24 @@
 # Laadsessies herstellen en Nu laden laten doorlopen
 
+## HA/ESS als enige aansturing
+
+De installatie gebruikt HA/ESS als enige regelaar voor remote WIT-opdrachten.
+De blokkades `Externe WIT-laadopdracht actief` en `Externe WIT-bediening actief`
+zijn daarom verwijderd, voor zowel automatisch netladen als de EV-accubuffer.
+Een ontbrekende oude opdrachtbevestiging veroorzaakt geen wachtstand meer.
+De huidige planning bepaalt opnieuw het laadvermogen.
+
+Met verse, correct gekoppelde registermetingen neemt de netlaadregelaar ook
+achtergebleven besturing over om die buiten een laadblok, bij Uit, op doel-SOC
+of bij een fout gecontroleerd te stoppen. De interne vergrendeling met de
+EV-accubuffer blijft gelden. Native zonneladen blijft zelfstandig werken.
+Werkelijke hardwaretijdschema's, ongeldige metingen, BMS- en stroomgrenzen en
+registerbevestiging bij schrijven blijven gecontroleerd.
+
+De onderstaande oudere herstelprocedures blijven beschikbaar voor fouten en
+expliciete vrijgave; ze blokkeren geen onbekende remote opdracht meer op basis
+van veronderstelde externe aansturing.
+
 ## Achtergebleven besturingsbevoegdheid
 
 Een verlopen ESS-laadopdracht kan afstandsbediening uit laten staan terwijl de

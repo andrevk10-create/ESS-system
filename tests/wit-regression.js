@@ -137,7 +137,7 @@ async function main() {
         if(condition==='external-schedule')f.values.ess_wit_control_readback.periods=1;
         if(condition==='legacy')delete f.values.ess_wit_grid_write_ack.deviceId;
         f.run('esswitgrid_ctrl1');
-        assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned,condition==='matching','Ownership recovery: '+condition);
+        assert.equal(f.values.ess_wit_grid_charge_status.sessionOwned,!['stale','fault'].includes(condition),'HA-only planning does not require an old matching acknowledgement: '+condition);
     }
     for(const solarSafe of [true,false]){
         f=fixture();f.values.ess_wit_command_fault={at:now-120000,reason:'WIT-opdracht blijft onderweg'};
@@ -416,66 +416,28 @@ async function main() {
         f.s['number.growatt_battery_remote_charge_and_discharge_power'] = reading(-44,'%',now-600000);
         return f;
     };
-    f = orphan();
-    output = f.run('esswitgrid_ctrl1');
-    assert.equal(output[3].payload.releaseStep, 'authority');
-    assert.equal(output[0], null, 'Never start charge while releasing old controls');
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Do not repeat a release write');
-    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now-1000);
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Pre-request Disabled state is not confirmation');
-    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now);
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Allow 35 seconds after authority release');
-    now += 35000;
-    for (const phase of [1,2,3]) f.s['sensor.p1_meter_vermogen_fase_'+phase] = reading(500,'W',now);
-    output = f.run('esswitgrid_ctrl1');
-    assert.equal(output[3].payload.releaseStep, 'remote');
-    assert.equal(f.run('esswitgrid_ctrl1'), null);
-    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled','',now);
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Finish handover before starting');
-    assert.equal(f.values.ess_wit_manual_recovery, null);
-    assert.equal(f.run('esswitgrid_ctrl1')[0].payload.option, 'Charge');
-    assert.equal(f.values.ess_wit_manual_recovery_attempted, true);
-    // Unchanged optimistic selectors do not generate an HA state_changed event.
-    // Only a successful release service result from this attempt may substitute.
-    f = orphan();
-    f.run('esswitgrid_ctrl1');
-    f.s['select.growatt_grid_control_authority'] = reading('Disabled','',now-600000);
-    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Disabled','',now-600000);
-    f.values.ess_wit_release_ack = {authority:now-1,remote:now-1};
-    assert.equal(f.run('esswitgrid_ctrl1'),null);
-    assert(f.values.ess_wit_manual_recovery,'Old service results cannot confirm a new release');
-    f.values.ess_wit_release_ack = {authority:now,remote:now};
-    assert.equal(f.run('esswitgrid_ctrl1'),null);
-    assert.equal(f.values.ess_wit_manual_recovery,null,'Successful current release can confirm unchanged selectors');
-    f = orphan();
-    f.values.ess_wit_grid_charge_mode = 'auto';
-    f.s['sensor.energy_production_tomorrow'] = reading(2,'kWh',now);
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Auto never takes over external controls');
-    assert.equal(f.values.ess_wit_manual_recovery, undefined);
-    f = orphan();
-    f.s['select.growatt_grid_remote_power_control_enable'] = reading('Enabled','',now);
-    assert.equal(f.run('esswitgrid_ctrl1'), null, 'Protect a fresh external session');
-    {
-        const native=orphan();
-        native.values.ess_wit_readback_enabled=true;
-        const rb={deviceId:'native-wit',configEntryId:'native-entry',remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',authority:1,remote:1,ac:1,duration:2,periods:0,percent:26,at:now};
-        native.values.ess_wit_control_readback=rb;
-        assert.equal(native.run('esswitgrid_ctrl1'),null,'Manual takeover first observes hardware');
-        now+=60000;rb.at=now;rb.percent=25;
-        const release=native.run('esswitgrid_ctrl1');
-        assert.equal(release?.[3]?.payload.releaseStep,'authority','A changing setpoint no longer postpones explicit manual recovery forever');
-        assert.equal(release?.[0],null,'Never charge during handover');
-        native.values.ess_wit_release_ack={authority:now,remote:now};
-        assert.equal(native.run('esswitgrid_ctrl1'),null,'ACK cannot hide native registers still ON');
-        now+=60000;rb.at=now;rb.authority=0;
-        assert.equal(native.run('esswitgrid_ctrl1')?.[3]?.payload.releaseStep,'remote');
-        now+=60000;rb.at=now;rb.remote=0;
-        assert.equal(native.run('esswitgrid_ctrl1'),null);
-        assert.equal(native.values.ess_wit_manual_recovery,null,'Real OFF readback completes handover');
-        for(const phase of [1,2,3])native.s['sensor.p1_meter_vermogen_fase_'+phase]=reading(500,'W',now);
-        native.s['sensor.growatt_battery_battery_soc']=reading(35,'%',now);
-        native.s['sensor.growatt_battery_battery_power']=reading(0,'W',now);
-        assert.equal(native.run('esswitgrid_ctrl1')?.[0]?.payload.option,'Charge','Manual charging resumes automatically after verified release');
+    for(const mode of ['auto','on']) {
+        f=orphan(); f.values.ess_wit_grid_charge_mode=mode;
+        f.s['sensor.energy_production_tomorrow']=reading(2,'kWh',now);
+        const result=f.run('esswitgrid_ctrl1');
+        assert(result?.[0]||result?.[1], 'HA-only control starts or updates without an external-command wait');
+        assert(!f.values.ess_wit_manual_recovery);
+    }
+    for(const reason of ['off','target','outside-plan']) {
+        f=fixture();
+        f.values.ess_wit_grid_charge_mode=reason==='off'?'off':'auto';
+        f.values.ess_wit_readback_enabled=true;
+        f.values.ess_wit_control_readback={deviceId:'wit',configEntryId:'entry',at:now,
+            remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority',
+            authority:1,remote:1,ac:1,duration:2,periods:0,percent:26};
+        if(reason==='target')f.s['sensor.growatt_battery_battery_soc']=reading(80,'%',now);
+        if(reason==='outside-plan'){
+            f.s['sensor.energy_production_tomorrow']=reading(2,'kWh',now);
+            f.values.ess_nordpool_forecast.forEach((slot,i)=>slot.allInPrice=i===0?.99:.01);
+        }
+        const stop=f.run('esswitgrid_ctrl1');
+        assert.equal(stop?.[3]?.payload.releaseStep,'authority','Untracked HA controls are stopped when '+reason);
+        assert(!stop?.[0]&&!stop?.[1],'No charge request during stop');
     }
     for(const changed of ['device','schedule']){
         const interrupted=orphan();interrupted.values.ess_wit_readback_enabled=true;
@@ -489,8 +451,7 @@ async function main() {
     f.values.ess_wit_audi_discharge_status = {sessionOwned:true,updatedAt:new Date(now).toISOString()};
     assert.equal(f.run('esswitgrid_ctrl1'), null, 'Do not take over live ESS discharge');
     f = orphan();
-    f.run('esswitgrid_ctrl1');
-    now += 180000;
+    f.values.ess_wit_manual_recovery={startedAt:now-180000,sentSteps:[]};
     assert.equal(f.run('esswitgrid_ctrl1'), null);
     assert(f.values.ess_wit_command_fault, 'Unconfirmed release latches a fault');
     assert.equal(f.values.ess_wit_manual_recovery, null);

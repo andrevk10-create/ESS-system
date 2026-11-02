@@ -4785,5 +4785,6 @@ require('./lib/measurement-audit')(flows);
 require('./lib/shared-charging-budget')(flows);
 require('./lib/wit-running-block')(flows);
 require('./lib/dashboard-concise')(flows);
+require('./lib/wit-sole-controller')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
