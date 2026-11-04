@@ -1,6 +1,6 @@
 // WIT VPP addresses: integration's WIT guide and v1.9.8 diagnostic/select code.
 // No SOC, BMS, base mode, TOU schedule or installation limit is written here.
-const {witBatteryLimit} = require('./wit-runtime');
+const {witBatteryLimit,witMeasurementStamp} = require('./wit-runtime');
 const {witChargeSoc} = require('./wit-soc');
 function witApplyReadback(states, config, snapshot, enabled, now) {
     if (!enabled || !states) return;
@@ -185,7 +185,7 @@ function witGridTransport(flow, global, msg, reply, now) {
         const raw = global.get('homeassistant')?.homeAssistant?.states;
         const role = id => raw?.[mapped(id)];
         const freshNumber = (id,maxAge=15000) => {
-            const item=role(id),stamp=new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime();
+            const item=role(id),stamp=witMeasurementStamp(item);
             if (!item || ['unknown','unavailable',''].includes(String(item.state)) || now-stamp<0 || now-stamp>maxAge) return null;
             const n=Number(item.state);return Number.isFinite(n)?n:null;
         };

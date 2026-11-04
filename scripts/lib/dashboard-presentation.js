@@ -28,7 +28,10 @@ function planView(d, now) {
     const wit = read((d.wit && d.wit.gridCharge || {}).selectedSlots);
     const prices = d.presentation && d.presentation.pricesFresh ? read(d.presentation.priceSlots) : [];
     const priceValues = prices.map(slot=>num(slot.allInPrice)).filter(value=>value!==null);
-    const min = priceValues.length ? Math.min(...priceValues) : 0, max = priceValues.length ? Math.max(...priceValues) : 0;
+    const min = Math.min(0, ...priceValues);
+    const max = Math.max(0, ...priceValues);
+    const range = max - min || 1;
+    const zeroTop = max === min ? 100 : max / range * 100;
     const cells = Array.from({length:96}, (_,i) => {
         const a = start + i * quarter, b = a + quarter;
         const price = prices.find(slot=>slot.a<=a && slot.b>=b);
@@ -39,7 +42,8 @@ function planView(d, now) {
         const witBackground=witParts.length?'linear-gradient(to right,'+witParts.flatMap(p=>['transparent '+p.from+'%','#23866e '+p.from+'%','#23866e '+p.to+'%','transparent '+p.to+'%']).join(',')+')':undefined;
         return {key:a,time,now:now>=a && now<b,ev:ev.some(slot=>slot.a<b && slot.b>a),ev2:ev2.some(slot=>slot.a<b && slot.b>a),wit:wit.some(slot=>slot.a<b && slot.b>a),rate,
             witMinutes,witBackground,
-            height:rate===null?4:max===min?50:15+85*(rate-min)/(max-min)};
+            height:rate===null?0:Math.abs(rate) / range * 100,
+            top:rate===null||rate<=0?zeroTop:(max-rate) / range * 100};
     });
     const blocks = (slots, name) => {
         const result = [];
@@ -50,7 +54,7 @@ function planView(d, now) {
         }
         return result;
     };
-    return {cells, labels:[0,24,48,72,95].map(i=>({key:i,text:(i===0||i===95?new Date(cells[i].key).toLocaleDateString('nl-NL',{weekday:'short'})+' ':'')+cells[i].time})),
+    return {cells, zeroTop, labels:[0,24,48,72,95].map(i=>({key:i,text:(i===0||i===95?new Date(cells[i].key).toLocaleDateString('nl-NL',{weekday:'short'})+' ':'')+cells[i].time})),
         blocks:[...blocks(ev,'Auto'),...blocks(ev2,'Jeep rechts'),...blocks(wit,'Thuisaccu')].sort((a,b)=>new Date(a.start)-new Date(b.start))};
 }
 
@@ -104,7 +108,7 @@ function navigation(route) {
     const link = ([,target,label,icon,module], mobile=false) => `<a href="./${target}"${target===route?' aria-current="page"':''}${module?` v-if="navigationModules.${module}!==false${module==='battery'?'||navigationModules.inverter!==false':''}"`:''} class="${!mobile&&pages.findIndex(page=>page[1]===target)>3?'ess-nav-secondary':''}"><v-icon icon="${icon}" size="20"></v-icon><span>${label}</span></a>`;
     return `<nav class="ess-nav" aria-label="Hoofdnavigatie">${pages.map(page=>link(page)).join('')}<details class="ess-more"><summary><v-icon icon="mdi-dots-horizontal" size="20"></v-icon><span>Meer</span></summary><div class="ess-more-menu">${pages.slice(4).map(page=>link(page,true)).join('')}</div></details></nav>`;
 }
-const timeline = `<section class="ess-timeline" aria-label="Gezamenlijke laadplanning"><h3>Komende 24 uur</h3><div class="ess-timeline-row" v-if="navigationModules.ev!==false"><span>Auto · gepland laden</span><div class="ess-timeline-track"><i v-for="cell in combinedPlan.cells" :key="'ev-'+cell.key" :class="{ev:cell.ev,now:cell.now}" :title="cell.time+(cell.ev?' · Auto gepland':' · Niet gepland')"></i></div></div><div class="ess-timeline-row" v-if="navigationModules.battery!==false"><span>Thuisaccu · gepland netladen</span><div class="ess-timeline-track"><i v-for="cell in combinedPlan.cells" :key="'wit-'+cell.key" :class="{wit:cell.wit,now:cell.now}" :title="cell.time+(cell.wit?' · Accu gepland':' · Niet gepland')"></i></div></div><div class="ess-timeline-row"><span>Stroomprijs · all-in per kWh</span><div class="ess-timeline-track ess-price-bars"><i v-for="cell in combinedPlan.cells" :key="'price-'+cell.key" :class="{missing:cell.rate===null,negative:cell.rate!==null&&cell.rate<0,now:cell.now}" :style="{height:cell.height+'%'}" :title="cell.time+' · '+priceLabel(cell.rate)"></i></div></div><div class="ess-timeline-axis"><span v-for="label in combinedPlan.labels" :key="label.key">{{label.text}}</span></div><p class="subtle">Groen: accu · paars: auto · omlijning: huidig kwartier. Planning is geen bevestiging van werkelijk laden.</p><details class="ess-slot-list"><summary>Laadblokken en kwartierprijzen</summary><p v-if="!combinedPlan.blocks.length" class="subtle">Geen laadblokken gepland.</p><ul><li v-for="(block,index) in combinedPlan.blocks" :key="index"><b>{{block.name}}</b><span>{{slotRange(block.start,block.end)}}</span></li></ul><details><summary>Alle kwartierprijzen</summary><ul><li v-for="cell in combinedPlan.cells" :key="cell.key"><span>{{cell.time}}</span><b>{{priceLabel(cell.rate)}}</b></li></ul></details></details></section>`;
+const timeline = `<section class="ess-timeline" aria-label="Gezamenlijke laadplanning"><h3>Komende 24 uur</h3><div class="ess-timeline-row" v-if="navigationModules.ev!==false"><span>Auto · gepland laden</span><div class="ess-timeline-track"><i v-for="cell in combinedPlan.cells" :key="'ev-'+cell.key" :class="{ev:cell.ev,now:cell.now}" :title="cell.time+(cell.ev?' · Auto gepland':' · Niet gepland')"></i></div></div><div class="ess-timeline-row" v-if="navigationModules.battery!==false"><span>Thuisaccu · gepland netladen</span><div class="ess-timeline-track"><i v-for="cell in combinedPlan.cells" :key="'wit-'+cell.key" :class="{wit:cell.wit,now:cell.now}" :title="cell.time+(cell.wit?' · Accu gepland':' · Niet gepland')"></i></div></div><div class="ess-timeline-row"><span>Stroomprijs · all-in per kWh</span><div class="ess-timeline-track ess-price-bars" :style="{'--price-zero':combinedPlan.zeroTop+'%'}"><span class="ess-price-zero">€ 0</span><i v-for="cell in combinedPlan.cells" :key="'price-'+cell.key" :class="{missing:cell.rate===null,negative:cell.rate!==null&&cell.rate<0,now:cell.now}" :style="{height:cell.height+'%',top:cell.top+'%'}" :title="cell.time+' · '+priceLabel(cell.rate)"></i></div></div><div class="ess-timeline-axis"><span v-for="label in combinedPlan.labels" :key="label.key">{{label.text}}</span></div><p class="subtle">Groen: accu · paars: auto · omlijning: huidig kwartier. Planning is geen bevestiging van werkelijk laden.</p><details class="ess-slot-list"><summary>Laadblokken en kwartierprijzen</summary><p v-if="!combinedPlan.blocks.length" class="subtle">Geen laadblokken gepland.</p><ul><li v-for="(block,index) in combinedPlan.blocks" :key="index"><b>{{block.name}}</b><span>{{slotRange(block.start,block.end)}}</span></li></ul><details><summary>Alle kwartierprijzen</summary><ul><li v-for="cell in combinedPlan.cells" :key="cell.key"><span>{{cell.time}}</span><b>{{priceLabel(cell.rate)}}</b></li></ul></details></details></section>`;
 const empty = text => `<div class="ess-empty">${text} <a href="./configuratie">Naar Configuratie</a></div>`;
 
 function details(panel, title, subtitle='') {

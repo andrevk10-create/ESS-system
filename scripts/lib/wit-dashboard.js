@@ -1,8 +1,10 @@
+const {witMeasurementStamp} = require('./wit-runtime');
+
 function witHealthModel(states, flow, now) {
     const numeric = v => v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v);
     const fresh = (id, maxAge) => {
         const item = states[id];
-        const age = now - new Date(item && (item.last_reported || item.last_updated || item.last_changed) || 0).getTime();
+        const age = now - witMeasurementStamp(item);
         return !!item && !['unknown', 'unavailable', ''].includes(String(item.state).toLowerCase()) && age >= -60000 && age <= maxAge;
     };
     const grid = flow.get('ess_wit_grid_charge_status') || {};
@@ -56,6 +58,7 @@ module.exports = function improveWitDashboard(flows) {
     // Rebuild this isolated suffix on every run; never duplicate generated code.
     mapper.func = mapper.func.replace(/\/\/ BEGIN WIT HEALTH[\s\S]*?\/\/ END WIT HEALTH\n/g, '');
     const insert = `// BEGIN WIT HEALTH
+${witMeasurementStamp.toString()}
 ${witHealthModel.toString()}
 dashboard.wit.runtime = witHealthModel(states, flow, Date.now());
 if ((dashboard.configuration.config.modules || {}).battery !== false && dashboard.wit.runtime.level !== 'ok') {

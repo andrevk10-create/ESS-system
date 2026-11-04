@@ -83,6 +83,19 @@ async function main() {
         return {s, values, flow, run};
     };
     let f = fixture();
+    for (const chargingCar of ['', '_2', null]) {
+        const replay = fixture();
+        replay.values.ess_wit_ev_only = true;
+        replay.values.ess_wit_grid_charge_mode = 'on';
+        for (const id of Object.keys(replay.s)) if (id.startsWith('sensor.p1_meter_')) delete replay.s[id];
+        for (const suffix of ['', '_2']) {
+            replay.s['sensor.ev_charger'+suffix+'_status'] = reading(chargingCar===suffix?'charging':'idle','',now);
+            replay.s['sensor.ev_charger'+suffix+'_power'] = reading(chargingCar===suffix?11000:0,'W',now);
+        }
+        const result = replay.run('esswitgrid_ctrl1');
+        assert.equal(!!result?.[0],chargingCar===null,'Only a charging car can block the scheduled start when P1 is absent');
+        if (chargingCar!==null) assert.match(replay.values.ess_wit_grid_charge_status.status,/auto laadt/);
+    }
     {
         const savedNow=now;now=new Date(2026,9,19,12).getTime();
         const replay=fixture();

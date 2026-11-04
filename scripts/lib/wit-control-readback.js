@@ -135,7 +135,7 @@ if(transport) {
 ${guardMarker}`);
     // Stop and release still use the existing adapter; only charge writes change.
     grid.wires[0]=['esswitgrid_transport_dispatch'];grid.wires[1]=['esswitgrid_transport_dispatch'];grid.wires[2]=['esswitgrid_transport_dispatch'];
-    const helperSource=[runtime.witNumber,runtime.witFresh,runtime.witBatteryLimit,witChargeSoc,witReadbackResult,witGridTransport].map(f=>f.toString()).join('\n');
+    const helperSource=[runtime.witNumber,runtime.witMeasurementStamp,runtime.witFresh,runtime.witBatteryLimit,witChargeSoc,witReadbackResult,witGridTransport].map(f=>f.toString()).join('\n');
     add(fn('esswitgrid_transport_dispatch','Stuur één veilige WIT-laadopdracht',helperSource+"\nreturn witGridTransport(flow,global,msg,false,Date.now());",[['esswitgrid_transport_api'],['esswitgrid_ctrl1']]));
     add(api('esswitgrid_transport_api','Schrijf en controleer WIT-laadregisters','',['esswitgrid_transport_reply']));
     add(fn('esswitgrid_transport_reply','Bevestig echte WIT-laadopdracht',helperSource+"\nreturn witGridTransport(flow,global,msg,true,Date.now());",[['esswitgrid_transport_api'],['esswitgrid_ctrl1']]));

@@ -6,9 +6,15 @@ function witNumber(value) {
     return Number.isFinite(n) ? n : null;
 }
 
+function witMeasurementStamp(item) {
+    // HA's cached last_reported can lag a newer state update.
+    return Math.max(0, ...[item?.last_reported, item?.last_updated, item?.last_changed]
+        .map(value => Date.parse(value)).filter(Number.isFinite));
+}
+
 function witFresh(item, now, maxAge) {
     if (!item || ['unknown', 'unavailable', ''].includes(String(item.state).toLowerCase())) return false;
-    const stamp = new Date(item.last_reported || item.last_updated || item.last_changed || 0).getTime();
+    const stamp = witMeasurementStamp(item);
     return stamp > 0 && now - stamp >= -60000 && now - stamp <= maxAge;
 }
 
@@ -168,4 +174,4 @@ function witCommandWatch(previous, now, commandConfirmed, powerConfirmed) {
     return { action:'start', state:{ attempts:state.attempts + 1, waitingSince:now } };
 }
 
-module.exports = { witNumber, witFresh, witSolarWindow, witHouseReserve, witBatteryLimit, witCommandWatch };
+module.exports = { witNumber, witMeasurementStamp, witFresh, witSolarWindow, witHouseReserve, witBatteryLimit, witCommandWatch };

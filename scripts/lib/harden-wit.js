@@ -7,7 +7,7 @@ module.exports = function hardenWit(flows) {
     const ev = get('esswitaudi_ctrl1');
     const exportControl = get('esswitexport_ctrl');
     for (const n of [grid, ev]) {
-        n.func = n.func.replace('item.last_updated || item.last_changed', 'item.last_reported || item.last_updated || item.last_changed');
+        n.func = n.func.replace('new Date(item.last_updated || item.last_changed || 0).getTime()', 'witMeasurementStamp(item)');
         n.func = helperSource + '\n' + n.func;
         n.func = n.func.replace(/const tomorrowPrefix = 'sensor.energy_production_tomorrow';[\s\S]*?const tomorrowForecastKwh = [^;]*;/,
             `const solarWindow = witSolarWindow(states, flow.get('ess_system_config') || {}, now, flow.get('ess_solar_forecast_audit'), ${n === grid});

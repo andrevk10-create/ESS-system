@@ -92,9 +92,11 @@
 .ess-refresh .ess-timeline-row{margin:12px 0}
 .ess-refresh .ess-timeline-row>span{display:block;font-size:.8125rem;margin-bottom:6px}
 .ess-refresh .ess-timeline-axis{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);gap:8px}
-.ess-refresh .ess-price-bars{align-items:end;height:50px}
-.ess-refresh .ess-price-bars i{background:#9bb5bd;min-height:3px}
-.ess-refresh .ess-price-bars i.missing{height:3px!important;background:#e4e9eb}
+.ess-refresh .ess-price-bars{position:relative;grid-template-rows:minmax(0,1fr);align-items:start;height:68px}
+.ess-refresh .ess-price-bars::after{content:"";position:absolute;inset-inline:0;top:var(--price-zero);border-top:1px solid var(--muted);pointer-events:none}
+.ess-refresh .ess-price-bars i{position:relative;background:#9bb5bd}
+.ess-refresh .ess-price-bars i.missing{background:transparent}
+.ess-refresh .ess-price-zero{position:absolute;right:0;top:var(--price-zero);transform:translateY(-50%);z-index:1;background:var(--paper,#fff);padding:0 4px;font-size:.7rem;pointer-events:none}
 .ess-refresh .ess-price-bars i.negative{background:#18846e}
 .ess-refresh .ess-slot-list{margin-top:12px}
 .ess-refresh .ess-slot-list li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.875rem}
