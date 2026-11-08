@@ -1,17 +1,33 @@
 const assert=require('node:assert/strict');
-const {sharedSiteBudget:site,sharedEvPlanningKw:ev,sharedWitSlotKw:wit,sharedManualSlots:manualSlots}=require('../scripts/lib/shared-charging-budget');
+const {sharedSiteBudget:site,sharedEvPlanningKw,sharedWitSlotKw,sharedManualSlots}=require('../scripts/lib/shared-charging-budget');
 const {witManualChargePlan:manual,witKnownPricePlan:automatic}=require('../scripts/lib/wit-known-price-plan');
 const now=Date.parse('2026-10-25T00:00:00Z'),hour=3600000;
 const values={ess_system_config:{specs:{phases:3,voltage:230,mainFuseA:25,evGridChargePowerKw:11,ev2GridChargePowerKw:11},entities:{'sensor.ev_charger_status':'sensor.left','sensor.ev_charger_2_status':'sensor.right'}},
     ess_house_consumption_learning:{schemaVersion:2,forecastKwh:48},ess_audi_smart_enabled:true,ess_jeep_smart_enabled:true};
 for(const car of ['audi','jeep'])values['ess_'+car+'_control_status']={enabled:true,energyNeeded:30,phaseCount:3,updatedAt:new Date(now).toISOString(),selectedSlots:[]};
 const flow={get:k=>values[k]};
+const states={
+    'sensor.ev_charger_status':{state:'ready_to_charge'},
+    'sensor.ev_charger_2_status':{state:'ready_to_charge'}
+};
+const ev=(...args)=>sharedEvPlanningKw(...args,states);
+const wit=(...args)=>sharedWitSlotKw(...args,states);
+const manualSlots=(...args)=>sharedManualSlots(...args,states);
 const capacity=site(flow),a=ev(flow,'audi',11,now),b=ev(flow,'jeep',11,now);
 assert(a<11&&b<11);assert(a+b<=capacity.totalKw+.000001,'Both cars share one site budget after household reserve');
 assert(30/a>30/11,'Shared power increases the required charging time');
 for(const car of ['audi','jeep'])values['ess_'+car+'_control_status'].selectedSlots=[{start:new Date(now).toISOString(),end:new Date(now+hour).toISOString(),powerKw:car==='audi'?a:b}];
 assert(wit(flow,now,now+900000,8,now)<.000001,'Battery cannot also claim 8 kW while EVs consume the budget');
 assert.equal(wit(flow,now+hour,now+2*hour,8,now),8,'Battery can use freed capacity after the car blocks');
+for(const [role,other] of [['sensor.ev_charger_status','jeep'],['sensor.ev_charger_2_status','audi']]){
+    states[role].state='disconnected';
+    assert.equal(ev(flow,other,11,now),11,'A disconnected peer cannot reserve power');
+    assert(wit(flow,now,now+900000,8,now)>0,'A disconnected car releases its stale slots immediately');
+    states[role].state='ready_to_charge';
+}
+for(const state of Object.values(states))state.state='disconnected';
+assert.equal(wit(flow,now,now+900000,8,now),8,'The full battery budget is available with both cars disconnected');
+for(const state of Object.values(states))state.state='ready_to_charge';
 const prepared=manualSlots(flow,[],now,8),plan=manual(prepared,now,8,8);
 assert(plan[0].start>=now+hour,'Manual battery estimate includes waiting for both EV blocks');
 assert(plan.at(-1).end>=now+2*hour-1);

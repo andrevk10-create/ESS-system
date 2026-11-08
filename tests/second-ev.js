@@ -57,6 +57,26 @@ assert.equal(f.values.ess_audi_control_status,undefined,'Jeep never changes Audi
     live.run('essjeep_ess00000000000d');
     assert.equal(live.values.ess_jeep_control_status.estimatedEVSoc,65,'Older reports cannot replace the last known level');
 }
+for(const [car,id,role] of [
+    ['audi','ess00000000000d','sensor.ev_charger_status'],
+    ['jeep','essjeep_ess00000000000d','sensor.ev_charger_2_status']
+]){
+    const planned=fixture();
+    planned.values['ess_'+car+'_smart_enabled']=true;
+    planned.values['ess_'+car+'_force_full']=false;
+    planned.states['sensor.ev_state_of_charge']=reading(40,'%');
+    planned.run(id);
+    assert(planned.values['ess_'+car+'_control_status'].selectedSlots.length>0);
+    planned.states[role].state='disconnected';
+    planned.run(id);
+    const status=planned.values['ess_'+car+'_control_status'];
+    assert.deepEqual(status.selectedSlots,[]);
+    assert.equal(status.scheduledNow,false);
+    assert.equal(status.targetCurrent,0);
+    planned.states[role].state='ready_to_charge';
+    planned.run(id);
+    assert(planned.values['ess_'+car+'_control_status'].selectedSlots.length>0);
+}
 f.run('essjeep_settings',{topic:'ess/jeep/departure-soc',payload:85});
 assert.equal(f.values.ess_jeep_settings.departureSoc,85);
 assert.equal(chargingPreferences(f.flow).ev2.departureSoc,85);
