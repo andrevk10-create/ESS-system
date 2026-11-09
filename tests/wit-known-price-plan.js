@@ -160,12 +160,14 @@ for(const shift of [86400000,7*86400000,13*86400000]){
  assert(p.remainingEnergyKwh<.001);
  const reached=plan(prices,now,{...reserve,storedKwh:30},forecast,{});
  assert(reached.goal.reached);
- assert(plan(prices,now,{...reserve,storedKwh:29.95},forecast,{}).goal.reached,'Match the actual controller target tolerance');
+ assert(plan(prices,now,{...reserve,storedKwh:29.95},forecast,{}).goal.reached,'A virtually full battery needs no automatic refill');
+ const nearlyFull=plan(prices,now,{...reserve,storedKwh:29.1},forecast,{});
+ assert(nearlyFull.goal.reached && nearlyFull.selectedSlots.length===0,'97% must not trigger a new automatic refill to 100%');
  const rearmed=plan(prices,now+60000,{...reserve,storedKwh:26.9,previousGoal:reached.goal},forecast,{});
  assert(!rearmed.goal.reached&&rearmed.selectedSlots.length>0,'A ten-point SOC drop rearms a genuine refill');
  const next=plan(prices,now+60000,{...reserve,storedKwh:29.8,previousGoal:reached.goal},forecast,{});
  assert.equal(next.selectedSlots.length,0,'Replanning after reaching the target must not restart top-ups');
- const changed=plan(prices,now+60000,{...reserve,storedKwh:29.8,previousGoal:{...reached.goal,deadline:reached.goal.deadline-1}},forecast,{});
+ const changed=plan(prices,now+60000,{...reserve,storedKwh:28.9,previousGoal:{...reached.goal,deadline:reached.goal.deadline-1}},forecast,{});
  assert.equal(changed.goal.reached,false,'A different deadline resets the achieved goal');
  const rescue=plan(prices,now+60000,{...reserve,storedKwh:6,previousGoal:reached.goal},forecast,{});
  assert(rescue.selectedSlots.length>0,'An achieved target never disables minimum-reserve protection');

@@ -39,9 +39,9 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const deadline=lastAffordable&&lastAffordable.end>=cheapest.end?lastAffordable.end:nominalDeadline;
     const target=Math.min(r.capacityKwh,Math.max(0,r.targetSoc/100*r.capacityKwh));
     const reserveFloor=Math.min(target,r.capacityKwh*.20),hardwareFloor=r.capacityKwh*.10;
-    // Match the controller stop tolerance (0.2 percentage point). Rearm only
+    // Skip automatic refills within three percentage points of the target. Rearm only
     // after a real 10-point drop, or when the goal/window changes.
-    const goalReached=r.storedKwh>=target-r.capacityKwh*.002||(r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.storedKwh>target-r.capacityKwh*.10);
+    const goalReached=r.storedKwh+1e-9>=target-r.capacityKwh*.03||(r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.storedKwh>target-r.capacityKwh*.10);
     const houseRate=r.houseKwh/86400000;
     const demandCache=new Map();
     const demandAt=at=>{
