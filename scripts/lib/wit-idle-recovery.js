@@ -9,7 +9,12 @@ function witIdleRecoveryReady(flow, now) {
     const reset = () => { flow.set('ess_wit_idle_recovery_probe', null); return false; };
     const transient = /^(WIT-opdracht mislukt: |WIT-registerterugmelding ontbreekt of is ongeldig$|Geen laad- of ontlaadvermogen na herstelpoging$|WIT neemt de laadopdracht niet over|WIT-opdracht blijft onderweg$|WIT-vrijgave niet bevestigd$|Verse WIT-registerterugmelding of koppeling ontbreekt$|Verse WIT-devicebinding ontbreekt tijdens fasecontrole$|Power Imbalance niet (tijdig|recent) uit bevestigd)/;
     const busy = ['ess_wit_grid_charge_status', 'ess_wit_audi_discharge_status']
-        .some(key => { const s = flow.get(key) || {}; return s.sessionOwned || s.active || s.releasing || s.pendingUntil > now; });
+        .some(key => {
+            const s = flow.get(key) || {};
+            // A failed, inactive grid session is precisely what release must repair.
+            const failedGrid = key === 'ess_wit_grid_charge_status' && s.commandFault === true && s.active === false;
+            return s.active || s.pendingUntil > now || (!failedGrid && (s.sessionOwned || s.releasing));
+        });
     const last = flow.get('ess_wit_idle_recovery_audit');
     if (!fault || !transient.test(fault.reason || '') || fault.resetRequested ||
         !['auto', 'on'].includes(flow.get('ess_wit_grid_charge_mode')) ||
@@ -21,7 +26,7 @@ function witIdleRecoveryReady(flow, now) {
         rb.authorityEntity !== mapped('select.growatt_grid_control_authority') ||
         ack.remoteEntity !== rb.remoteEntity || ack.authorityEntity !== rb.authorityEntity ||
         rb.at <= fault.at || now - rb.at < 0 || now - rb.at > 120000 ||
-        rb.remote !== 0 || rb.authority !== 1 || rb.periods !== 0 || rb.duration !== 2 ||
+        !((rb.remote === 0 && rb.authority === 1) || (rb.remote === 1 && rb.authority === 0)) || rb.periods !== 0 || rb.duration !== 2 ||
         busy || flow.get('ess_wit_grid_transport') || flow.get('ess_wit_manual_recovery') ||
         (last && now - last.at < 900000)) return reset();
     const signature = JSON.stringify([fault.at, ack.at, rb.deviceId, rb.configEntryId, rb.remoteEntity, rb.authorityEntity]);

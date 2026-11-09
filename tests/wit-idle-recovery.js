@@ -51,3 +51,11 @@ const flows=require('../flows.json');
 assert.deepEqual(flows.find(n=>n.id==='esswitgrid_ctrl1').wires[6],['esswit_audit_write']);
 assert.equal(flows.find(n=>n.id==='esswit_audit_write').overwriteFile,'false');
 console.log('WIT idle recovery: expired ESS lease, independent readings, external ownership, schedules, throttle and durable audit passed');
+
+for (const [authority,remote] of [[1,0],[0,1]]) {
+ const q=fixture();Object.assign(q.v.ess_wit_control_readback,{authority,remote});
+ q.v.ess_wit_grid_charge_status={sessionOwned:true,releasing:true,commandFault:true,active:false,pendingUntil:0};
+ assert.equal(ready(q,now),false);
+ q.v.ess_wit_control_readback.at=now+60000;
+ assert.equal(ready(q,now+60000),true,'Failed inactive ESS ownership cannot deadlock release');
+}
