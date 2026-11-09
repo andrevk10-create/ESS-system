@@ -125,7 +125,9 @@ function witBatteryLimit(states, config, direction, fallbackW, now, reported) {
     const roles = direction === 'charge'
         ? ['sensor.battery_charge_power_limit', 'sensor.battery_charge_current_limit']
         : ['sensor.battery_discharge_power_limit', 'sensor.battery_discharge_current_limit'];
-    let limit = fallbackW;
+    // Net charging requests the installation rating; the inverter applies its own dynamic taper.
+    // Explicit zero/unavailable limits still prevent issuing an unusable command.
+    let limit = direction==='charge'?Math.min(fallbackW,8000):fallbackW;
     const voltageItem = states['sensor.growatt_battery_battery_voltage'];
     let voltage = voltageItem && witNumber(voltageItem.state);
     // Above the old 8 kW ceiling require fresh, device-bound native/VPP limits.
@@ -141,7 +143,7 @@ function witBatteryLimit(states, config, direction, fallbackW, now, reported) {
         const amps = direction === 'charge' ? reported.chargeCurrentA : reported.dischargeCurrentA;
         if (!Number.isFinite(power) || power < 0 || !Number.isFinite(amps) || amps < 0 ||
             voltage == null || voltage <= 0 || !(voltageFresh || nativeVoltage!==null && nativeVoltage>0 && nativeVoltage<=1000)) return 0;
-        limit = Math.min(limit,power,amps*voltage);
+        limit = direction==='charge'?(power===0||amps===0?0:limit):Math.min(limit,power,amps*voltage);
     } else limit = Math.min(limit,8000);
     for (const role of roles) {
         const mapped = config.entities && config.entities[role];
@@ -151,6 +153,7 @@ function witBatteryLimit(states, config, direction, fallbackW, now, reported) {
         // A configured BMS limit at zero or unavailable must never be ignored.
         if (n === null || n === undefined || n < 0 || !witFresh(item, now, 5 * 60000)) return 0;
         const unit = String(item.attributes && item.attributes.unit_of_measurement || '').toLowerCase();
+        if(direction==='charge'&&['kw','w','a'].includes(unit)){if(n===0)limit=0;continue;}
         if (unit === 'kw') limit = Math.min(limit, n * 1000);
         else if (unit === 'w') limit = Math.min(limit, n);
         else if (unit === 'a' && voltage !== null && voltage > 0 && witFresh(voltageItem, now, 5 * 60000)) limit = Math.min(limit, n * voltage);

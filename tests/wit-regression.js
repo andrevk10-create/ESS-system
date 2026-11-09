@@ -45,7 +45,7 @@ async function main() {
     states = {'sensor.battery_charge_current_limit':reading(150, 'A', now),
         'sensor.growatt_battery_battery_voltage':reading(52, 'V', now),
         'sensor.battery_discharge_power_limit':reading(2, 'kW', now)};
-    assert.equal(witBatteryLimit(states, caps, 'charge', 12000, now), 7800);
+    assert.equal(witBatteryLimit(states, caps, 'charge', 12000, now), 8000);
     assert.equal(witBatteryLimit(states, caps, 'discharge', 8000, now), 2000);
     states['sensor.battery_charge_current_limit'] = reading(0, 'A', now);
     assert.equal(witBatteryLimit(states, caps, 'charge', 12000, now), 0);
@@ -558,4 +558,5 @@ async function main() {
     console.log('WIT regression: forecast dates, reserves, BMS, handover, lease, readback, mapped writes and dashboard OK');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
+
 

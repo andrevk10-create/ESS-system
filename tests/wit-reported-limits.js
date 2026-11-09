@@ -2,8 +2,8 @@ const assert=require('assert'),{witBatteryLimit}=require('../scripts/lib/wit-run
 const now=Date.now(),config={entities:{'select.growatt_grid_remote_power_control_enable':'select.wit'}},states={'sensor.growatt_battery_battery_voltage':{state:'54.4',last_reported:new Date(now).toISOString()}};
 const limits={remoteEntity:'select.wit',at:now,chargePowerW:13056,dischargePowerW:13056,chargeCurrentA:150,dischargeCurrentA:150};
 const limit=r=>witBatteryLimit(states,config,'charge',14000,now,r);
-assert.strictEqual(limit(limits),8160);
-assert.strictEqual(limit({...limits,chargeCurrentA:240}),13056);
+assert.strictEqual(limit(limits),8000);
+assert.strictEqual(limit({...limits,chargeCurrentA:240}),8000);
 assert.strictEqual(limit({...limits,chargePowerW:0}),0);
 assert.strictEqual(limit({...limits,chargeCurrentA:0}),0);
 assert.strictEqual(limit({...limits,at:now-120001}),8000);
@@ -11,7 +11,7 @@ assert.strictEqual(limit({...limits,remoteEntity:'select.other'}),8000);
 assert.strictEqual(limit(null),8000);
 assert.strictEqual(limit({...limits,chargeCurrentA:NaN}),0);
 const oldVoltage={'sensor.growatt_battery_battery_voltage':{state:'54.4',last_updated:new Date(now-600000).toISOString()}};
-assert.strictEqual(witBatteryLimit(oldVoltage,config,'charge',8000,now,{...limits,reportedVoltageV:53.1}),7965,'Fresh native voltage keeps safe current conversion working when the unchanged HA voltage is old');
+assert.strictEqual(witBatteryLimit(oldVoltage,config,'charge',8000,now,{...limits,reportedVoltageV:53.1}),8000,'Fresh native feedback permits the full configured net charge request');
 assert.strictEqual(witBatteryLimit(oldVoltage,config,'charge',8000,now,limits),0,'Missing fresh voltage still blocks');
 assert.strictEqual(witBatteryLimit(oldVoltage,config,'charge',8000,now,{...limits,reportedVoltageV:0}),0);
 const flows=require('../flows.json'),save=flows.find(n=>n.id==='esswit_limits_save');
@@ -30,3 +30,7 @@ const invalid=structuredClone(message);invalid.witLimits.values[0]=65535;run(inv
 assert.strictEqual(context.ess_wit_battery_limits,null);
 assert.strictEqual(context.ess_wit_battery_limit_history.length,1440);
 console.log('Reported WIT power/current limits: native 150 A, 240 A, zero, stale, binding and unavailable OK');
+
+assert.strictEqual(limit({...limits,chargePowerW:2553.6}),8000,'Temporary taper must not spread future charging across the day');
+assert.strictEqual(witBatteryLimit(states,config,'charge',6000,now,limits),6000,'Lower installation limit remains binding');
+assert.strictEqual(witBatteryLimit(states,config,'discharge',14000,now,limits),8160,'Discharge regulation is unchanged');
