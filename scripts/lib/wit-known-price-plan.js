@@ -24,7 +24,9 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const horizon=ordered.at(-1)?.end??now;
     const empty={selectedSlots:[],deadline:null,horizon,bridgeDeadline:null,bridgeEnergyKwh:0,refillEnergyKwh:0,remainingEnergyKwh:0,reserveShortfallKwh:0,projectedSoc:null,minimumSoc:null,houseKwh:0,solarKwh:0};
     if(!ordered.length||!Number.isFinite(r.storedKwh)||!(r.capacityKwh>0)||!(r.efficiency>0)||!Number.isFinite(r.chargeKw)||r.chargeKw<0)return empty;
-    const cheapest=ordered.slice().sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start)[0];
+    // A cheap horizon-end quarter cannot prepare for a peak that has already passed.
+    const useful=ordered.filter(s=>ordered.some(later=>later.start>=s.end&&later.allInPrice-s.allInPrice/r.efficiency-wear>=minimumBenefit));
+    const cheapest=(useful.length?useful:ordered).slice().sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start)[0];
     const nominalDeadline=witPriceDeadline(ordered,cheapest.start)??horizon;
     const opportunities=ordered.map(s=>{
         const future=ordered.filter(p=>p.start>=s.end).map(p=>p.allInPrice);
@@ -39,11 +41,8 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const deadline=lastAffordable&&lastAffordable.end>=cheapest.end?lastAffordable.end:nominalDeadline;
     const target=Math.min(r.capacityKwh,Math.max(0,r.targetSoc/100*r.capacityKwh));
     const reserveFloor=Math.min(target,r.capacityKwh*.20),hardwareFloor=r.capacityKwh*.10;
-    // Skip automatic refills within three percentage points of the target. Rearm only
-    // after a real 10-point drop, or when the goal/window changes.
-    const goalReached=r.storedKwh+1e-9>=target-r.capacityKwh*.03||(r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.storedKwh>target-r.capacityKwh*.10);
-    // Use the energy already in a nearly full battery before reserving grid slots.
-    const highChargeHold=r.storedKwh>=r.capacityKwh*.95||(r.previousGoal?.highChargeHold===true&&r.storedKwh>r.capacityKwh*.90);
+    // A present SOC is not a promise of the SOC at a future cheap window.
+    const goalReached=(now>=cheapest.start&&r.storedKwh>=target-r.capacityKwh*.002)||r.storedKwh>target-r.capacityKwh*.10&&r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.previousGoal.reachedAt>=Math.floor(cheapest.start/900000)*900000;
     const houseRate=r.houseKwh/86400000;
     const demandCache=new Map();
     const demandAt=at=>{
@@ -104,7 +103,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     for(const t of points.filter(t=>t>now)){
         const state=simulate(),row=state.trace.find(p=>p.at===t);
         const deficit=Math.max(0,reserveFloor-Math.min(row?.raw??stateAt(state,t),stateAt(state,t)));
-        if(!highChargeHold&&deficit>.001)allocate(t,deficit/r.efficiency,true);
+        if(deficit>.001)allocate(t,deficit/r.efficiency,true);
         const after=simulate(),actual=after.trace.find(p=>p.at===t);
         reserveShortfallKwh=Math.max(reserveShortfallKwh,reserveFloor-(actual?.raw??stateAt(after,t)));
     }
@@ -113,7 +112,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     // reserve checkpoint remains protected by the reserve pass above.
     const refillStock=simulation=>Math.max(0,...simulation.trace.filter(p=>p.at>=cheapest.end).map(p=>p.stored));
     for(let pass=0;pass<=candidates.length;pass++){
-        const need=goalReached||highChargeHold?0:Math.max(0,target-refillStock(simulate()))/r.efficiency;
+        const need=goalReached?0:Math.max(0,target-refillStock(simulate()))/r.efficiency;
         if(need<=.001)break;
         const before=[...chosen.values()].reduce((a,b)=>a+b,0);
         allocate(deadline,need,false);
@@ -124,8 +123,8 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const bridgeEnergyKwh=selectedSlots.filter(s=>s.end<=cheapest.start).reduce((sum,s)=>sum+s.energyKwh,0);
     return {selectedSlots,deadline,horizon,bridgeDeadline:cheapest.start>now?cheapest.start:null,bridgeEnergyKwh,
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,
-        remainingEnergyKwh:goalReached||highChargeHold?0:Math.max(0,target-refillStock(projected))/r.efficiency,
-        goal:{reached:goalReached,deadline,targetSoc:r.targetSoc,highChargeHold},
+        remainingEnergyKwh:goalReached?0:Math.max(0,target-refillStock(projected))/r.efficiency,
+        goal:{reached:goalReached||(now>=cheapest.start&&r.storedKwh>=target-r.capacityKwh*.002),reachedAt:goalReached?(r.previousGoal?.reachedAt??now):now,deadline,targetSoc:r.targetSoc},
         targetReachedSoc:refillStock(projected)/r.capacityKwh*100,
         reserveShortfallKwh:Math.max(0,reserveShortfallKwh),projectedSoc:projected.stored/r.capacityKwh*100,
         minimumSoc:projected.min/r.capacityKwh*100,houseKwh:demandAt(deadline),solarKwh:solarAt(deadline)};
@@ -194,3 +193,5 @@ ${marker}`);
 };
 module.exports.witKnownPricePlan=witKnownPricePlan;
 module.exports.witManualChargePlan=witManualChargePlan;
+
+

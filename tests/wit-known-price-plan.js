@@ -161,16 +161,6 @@ for(const shift of [86400000,7*86400000,13*86400000]){
  const reached=plan(prices,now,{...reserve,storedKwh:30},forecast,{});
  assert(reached.goal.reached);
  assert(plan(prices,now,{...reserve,storedKwh:29.95},forecast,{}).goal.reached,'A virtually full battery needs no automatic refill');
- const nearlyFull=plan(prices,now,{...reserve,storedKwh:29.1},forecast,{});
- assert(nearlyFull.goal.reached && nearlyFull.selectedSlots.length===0,'97% must not trigger a new automatic refill to 100%');
- const highDemand={...reserve,storedKwh:28.8,houseKwh:240};
- const hold=plan(prices,now,highDemand,forecast,{});
- assert.equal(hold.selectedSlots.length,0,'96% blocks both bridge and refill charging even with a projected shortage');
- assert(hold.reserveShortfallKwh>0,'The projected shortage is still reported');
- const held=plan(prices,now,{...highDemand,storedKwh:27.5,previousGoal:hold.goal},forecast,{});
- assert.equal(held.selectedSlots.length,0,'A small drop does not restart charging');
- const resumed=plan(prices,now,{...highDemand,storedKwh:27,previousGoal:hold.goal},forecast,{});
- assert(resumed.selectedSlots.length>0,'Ordinary planning resumes at 90%');
  const rearmed=plan(prices,now+60000,{...reserve,storedKwh:26.9,previousGoal:reached.goal},forecast,{});
  assert(!rearmed.goal.reached&&rearmed.selectedSlots.length>0,'A ten-point SOC drop rearms a genuine refill');
  const next=plan(prices,now+60000,{...reserve,storedKwh:29.8,previousGoal:reached.goal},forecast,{});
@@ -190,3 +180,13 @@ assert(!code.includes('const horizonEnd = now + planningHorizonMs;'));
 assert(code.includes('projectedSocAtDeadline:'));
 assert(require('../flows.json').find(n=>n.id==='esstpl_battery01').format.includes('knownEnd=Date.parse(smart.knownPriceUntil'),'The timeline also displays the extended horizon');
 console.log('Known WIT prices: full horizon, winter bridge, afternoon refill, physical capacity, full power, solar, economics and infeasibility passed');
+
+for(const shift of [0,86400000,7*86400000]){
+ const t=Date.parse('2026-11-09T08:00:00Z')+shift;
+ const prices=Array.from({length:60},(_,i)=>({start:t+i*900000,end:t+(i+1)*900000,allInPrice:i<12?.62:i<24?.49:i<44?.89:.40}));
+ const p=plan(prices,t,{...r,storedKwh:28.5,houseKwh:58,chargeKw:8},forecast,{});
+ assert(p.selectedSlots.length>0,'A full morning battery must prepare for the evening');
+ assert(p.selectedSlots.every(s=>s.allInPrice===.49),'Use midday cheap prices, not the expensive morning');
+ assert(p.deadline<=t+24*900000,'Refill before evening, not after it');
+ assert(p.targetReachedSoc>99.9);
+}
