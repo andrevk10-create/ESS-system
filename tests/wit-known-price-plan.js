@@ -163,6 +163,14 @@ for(const shift of [86400000,7*86400000,13*86400000]){
  assert(plan(prices,now,{...reserve,storedKwh:29.95},forecast,{}).goal.reached,'A virtually full battery needs no automatic refill');
  const nearlyFull=plan(prices,now,{...reserve,storedKwh:29.1},forecast,{});
  assert(nearlyFull.goal.reached && nearlyFull.selectedSlots.length===0,'97% must not trigger a new automatic refill to 100%');
+ const highDemand={...reserve,storedKwh:28.8,houseKwh:240};
+ const hold=plan(prices,now,highDemand,forecast,{});
+ assert.equal(hold.selectedSlots.length,0,'96% blocks both bridge and refill charging even with a projected shortage');
+ assert(hold.reserveShortfallKwh>0,'The projected shortage is still reported');
+ const held=plan(prices,now,{...highDemand,storedKwh:27.5,previousGoal:hold.goal},forecast,{});
+ assert.equal(held.selectedSlots.length,0,'A small drop does not restart charging');
+ const resumed=plan(prices,now,{...highDemand,storedKwh:27,previousGoal:hold.goal},forecast,{});
+ assert(resumed.selectedSlots.length>0,'Ordinary planning resumes at 90%');
  const rearmed=plan(prices,now+60000,{...reserve,storedKwh:26.9,previousGoal:reached.goal},forecast,{});
  assert(!rearmed.goal.reached&&rearmed.selectedSlots.length>0,'A ten-point SOC drop rearms a genuine refill');
  const next=plan(prices,now+60000,{...reserve,storedKwh:29.8,previousGoal:reached.goal},forecast,{});

@@ -42,6 +42,8 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     // Skip automatic refills within three percentage points of the target. Rearm only
     // after a real 10-point drop, or when the goal/window changes.
     const goalReached=r.storedKwh+1e-9>=target-r.capacityKwh*.03||(r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.storedKwh>target-r.capacityKwh*.10);
+    // Use the energy already in a nearly full battery before reserving grid slots.
+    const highChargeHold=r.storedKwh>=r.capacityKwh*.95||(r.previousGoal?.highChargeHold===true&&r.storedKwh>r.capacityKwh*.90);
     const houseRate=r.houseKwh/86400000;
     const demandCache=new Map();
     const demandAt=at=>{
@@ -102,7 +104,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     for(const t of points.filter(t=>t>now)){
         const state=simulate(),row=state.trace.find(p=>p.at===t);
         const deficit=Math.max(0,reserveFloor-Math.min(row?.raw??stateAt(state,t),stateAt(state,t)));
-        if(deficit>.001)allocate(t,deficit/r.efficiency,true);
+        if(!highChargeHold&&deficit>.001)allocate(t,deficit/r.efficiency,true);
         const after=simulate(),actual=after.trace.find(p=>p.at===t);
         reserveShortfallKwh=Math.max(reserveShortfallKwh,reserveFloor-(actual?.raw??stateAt(after,t)));
     }
@@ -111,7 +113,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     // reserve checkpoint remains protected by the reserve pass above.
     const refillStock=simulation=>Math.max(0,...simulation.trace.filter(p=>p.at>=cheapest.end).map(p=>p.stored));
     for(let pass=0;pass<=candidates.length;pass++){
-        const need=goalReached?0:Math.max(0,target-refillStock(simulate()))/r.efficiency;
+        const need=goalReached||highChargeHold?0:Math.max(0,target-refillStock(simulate()))/r.efficiency;
         if(need<=.001)break;
         const before=[...chosen.values()].reduce((a,b)=>a+b,0);
         allocate(deadline,need,false);
@@ -122,8 +124,8 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const bridgeEnergyKwh=selectedSlots.filter(s=>s.end<=cheapest.start).reduce((sum,s)=>sum+s.energyKwh,0);
     return {selectedSlots,deadline,horizon,bridgeDeadline:cheapest.start>now?cheapest.start:null,bridgeEnergyKwh,
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,
-        remainingEnergyKwh:goalReached?0:Math.max(0,target-refillStock(projected))/r.efficiency,
-        goal:{reached:goalReached,deadline,targetSoc:r.targetSoc},
+        remainingEnergyKwh:goalReached||highChargeHold?0:Math.max(0,target-refillStock(projected))/r.efficiency,
+        goal:{reached:goalReached,deadline,targetSoc:r.targetSoc,highChargeHold},
         targetReachedSoc:refillStock(projected)/r.capacityKwh*100,
         reserveShortfallKwh:Math.max(0,reserveShortfallKwh),projectedSoc:projected.stored/r.capacityKwh*100,
         minimumSoc:projected.min/r.capacityKwh*100,houseKwh:demandAt(deadline),solarKwh:solarAt(deadline)};
