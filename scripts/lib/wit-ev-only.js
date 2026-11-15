@@ -19,9 +19,7 @@ module.exports = function apply(flows) {
     grid.func = witCarCharging.toString() + '\n' + grid.func.replace(stop, stop +
         `\nif (${mode} && witCarCharging(states, now)) return stopOwned('Netladen wacht: auto laadt', details);`)
         .replaceAll("if (!((flow.get('ess_wit_hardware_grid_guard')", `if (!(${mode}) && !((flow.get('ess_wit_hardware_grid_guard')`)
-        .replace('const gridCommandLimitW = ', `const gridCommandLimitW = ${mode} ? planLimitW : `)
-        .replace('const sharedPriceSlots=slots.map', `const sharedPriceSlots=${mode} ? slots : slots.map`)
-        .replace('witManualChargePlan(sharedManualSlots(flow,slots,now,planLimitW/1000,states),', `witManualChargePlan(${mode} ? slots : sharedManualSlots(flow,slots,now,planLimitW/1000,states),`);
+        .replace('const gridCommandLimitW = ', `const gridCommandLimitW = ${mode} ? planLimitW : `);
     for (const id of ['esswitgrid_transport_dispatch', 'esswitgrid_transport_reply']) {
         const node = flows.find(n => n.id === id);
         const anchor = 'const phaseRoles=';

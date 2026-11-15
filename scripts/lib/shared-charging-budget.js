@@ -24,7 +24,37 @@ function sharedEvPlanningKw(flow,car,maximum,now,states){
     const reservedPerPhase=Math.min(peerMax/peerPhases,site.phaseKw/2);
     return Math.max(0,Math.min(ownCap,(site.phaseKw-reservedPerPhase)*ownPhases));
 }
+function exclusiveWitSlotKw(flow,start,end,maximum,now,states){
+    const currentEnd=(Math.floor(now/900000)+1)*900000;
+    for(const car of ['audi','jeep']){
+        const suffix=car==='audi'?'':'_2';
+        const state=states?.['sensor.ev_charger'+suffix+'_status'];
+        const power=states?.['sensor.ev_charger'+suffix+'_power'];
+        const fresh=item=>{const age=now-Date.parse(item?.last_reported||item?.last_updated||item?.last_changed||'');return age>=0&&age<=120000;};
+        const watts=Number(power?.state)*(String(power?.attributes?.unit_of_measurement||'').toLowerCase()==='kw'?1000:1);
+        const charging=fresh(state)&&String(state.state).toLowerCase()==='charging'||fresh(power)&&['w','kw'].includes(String(power?.attributes?.unit_of_measurement||'').toLowerCase())&&watts>=300;
+        // Actual charging wins even without a plan or when smart charging is off.
+        if(charging&&start<currentEnd&&end>now)return 0;
+        if(!evCableConnected(state?.state))continue;
+        const plan=flow.get('ess_'+car+'_control_status');
+        if(!plan||plan.enabled===false||flow.get('ess_'+car+'_smart_enabled')===false)continue;
+        if((plan.selectedSlots||[]).some(s=>Date.parse(s.start)<end&&Date.parse(s.end)>start))return 0;
+        const age=now-Date.parse(plan.updatedAt||'');
+        if(!(age>=0&&age<=150000)){
+            // Do not turn a stale request into an all-day reservation.
+            if(plan.energyNeeded>0&&start<currentEnd&&end>now)return 0;
+            continue;
+        }
+        if(plan.forceFull||plan.controlled&&['force-full','deadline','ultra-cheap','climate-support'].includes(plan.controlMode)){
+            const kw=Number(plan.plannedChargePowerKw)||11;
+            const until=now+Math.max(900000,Math.max(0,Number(plan.energyNeeded)||0)/kw*3600000);
+            if(start<until&&end>now)return 0;
+        }
+    }
+    return maximum;
+}
 function sharedWitSlotKw(flow,start,end,maximum,now,states){
+    if(flow.get('ess_wit_ev_only')===true)return exclusiveWitSlotKw(flow,start,end,maximum,now,states);
     const site=sharedSiteBudget(flow);let phaseReserved=0;
     for(const car of ['audi','jeep']){
         const role=car==='audi'?'sensor.ev_charger_status':'sensor.ev_charger_2_status';
@@ -73,18 +103,19 @@ const departureEnergyNeeded = !vehicleConnected || audiSoc === null ? null :`)
     const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
     const anchor="const knownPricePlan=mode==='auto'?witKnownPricePlan(slots,now,";
     if(!grid.func.includes(anchor))throw Error('Shared battery planning anchor missing');
-    grid.func=evCableConnected.toString()+'\n'+sharedSiteBudget.toString()+'\n'+sharedWitSlotKw.toString()+'\n'+sharedManualSlots.toString()+'\n'+grid.func.replace(anchor,"const sharedPriceSlots=slots.map(s=>({...s,sharedChargeKw:sharedWitSlotKw(flow,s.start,s.end,reserveInputs.chargeKw,now,states)}));\nconst knownPricePlan=mode==='auto'?witKnownPricePlan(sharedPriceSlots,now,");
+    grid.func=exclusiveWitSlotKw.toString()+'\n'+evCableConnected.toString()+'\n'+sharedSiteBudget.toString()+'\n'+sharedWitSlotKw.toString()+'\n'+sharedManualSlots.toString()+'\n'+grid.func.replace(anchor,"const sharedPriceSlots=slots.map(s=>({...s,sharedChargeKw:sharedWitSlotKw(flow,s.start,s.end,reserveInputs.chargeKw,now,states)}));\nconst knownPricePlan=mode==='auto'?witKnownPricePlan(sharedPriceSlots,now,");
     grid.func=grid.func.replace('witManualChargePlan(slots,now,remainingEnergyKwh,planLimitW/1000)','witManualChargePlan(sharedManualSlots(flow,slots,now,planLimitW/1000,states),now,remainingEnergyKwh,planLimitW/1000)');
     for(const n of flows.filter(n=>n.type==='ui-template'&&n.format))n.format=n.format.replace('Eigen laadplanning in detail','Eigen laadplanning in detail · gedeelde aansluiting')
         .replace('<span>GEPLAND VERMOGEN</span>','<span>GEPLAND VERMOGEN · GEDEELDE AANSLUITING</span>');
 };
+module.exports.exclusiveWitSlotKw=exclusiveWitSlotKw;
 module.exports.sharedSiteBudget=sharedSiteBudget;
 module.exports.sharedEvPlanningKw=sharedEvPlanningKw;
 module.exports.sharedWitSlotKw=sharedWitSlotKw;
 module.exports.sharedManualSlots=sharedManualSlots;
 module.exports.unapply=function unapply(flows){
     for(const n of flows.filter(n=>n.func)){
-        n.func=n.func.replace(/^function (?:evCableConnected|sharedSiteBudget|sharedEvPlanningKw|sharedWitSlotKw|sharedManualSlots)\([\s\S]*?^\}\r?\n/gm,'')
+        n.func=n.func.replace(/^function (?:exclusiveWitSlotKw|evCableConnected|sharedSiteBudget|sharedEvPlanningKw|sharedWitSlotKw|sharedManualSlots)\([\s\S]*?^\}\r?\n/gm,'')
             .replace(/const configuredChargePowerKw = ([^\n]+);\r?\nconst netChargePowerKw=Math\.max\(\.001,sharedEvPlanningKw\([^\n]+\);/g,'const netChargePowerKw = $1;')
             .replace(/    sharedPowerBudget:true,\r?\n    configuredChargePowerKw,\r?\n/g,'')
             .replace(/const vehicleConnected = evCableConnected\(chargerStatus\);\r?\nconst departureEnergyNeeded = !vehicleConnected \|\| audiSoc === null \? null :/g, 'const departureEnergyNeeded = audiSoc === null ? null :')

@@ -39,6 +39,6 @@ module.exports = function apply(flows) {
     const marker = 'const scheduledSlot = selectedSlots.find(';
     if (!grid.func.includes(marker)) throw Error('Running charge block anchor missing');
     grid.func = witRunningBlock.toString()+'\n'+grid.func.replace(marker,
-        "if (mode === 'auto') selectedSlots = witRunningBlock(selectedSlots, previous, slots, now, reserveInputs.chargeKw);\n"+marker);
+        "if (mode === 'auto') selectedSlots = witRunningBlock(selectedSlots, previous, sharedPriceSlots, now, reserveInputs.chargeKw);\n"+marker);
 };
 module.exports.witRunningBlock = witRunningBlock;
