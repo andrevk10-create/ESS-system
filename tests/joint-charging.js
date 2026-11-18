@@ -20,3 +20,14 @@ for(const car of ['audi','jeep']){
 }
 assert(flows.find(n=>n.id==='esswitgrid_ctrl1').initialize.includes("ess_joint_charging_16kw', true"));
 console.log('Joint 16 kW: both cars, full-power WIT, requested EV current cap, own charging and stale readback passed');
+// The final write must credit an already running WIT charge even if HA's PV
+// zero has not changed; otherwise 8 kW falsely shrinks to about 6 kW.
+{
+ const n=flows.find(n=>n.id==='esswitgrid_transport_dispatch').func;
+ const a=n.indexOf('const ownedStatus='),b=n.indexOf('\n',n.indexOf('const headroom=',a));
+ const evaluate=new Function('flow','now','power','scale','role','pvRole','credited','phase','limit',jointOwnChargeW.toString()+'\n'+require('../scripts/lib/charging-priority').evPriorityReservation.toString()+'\nconst mapping={},raw={},spec={};\n'+n.slice(a,b)+'\nreturn headroom;');
+ v.ess_wit_control_readback.at=now;
+ v.ess_wit_grid_charge_status={sessionOwned:true};
+ const headroom=evaluate(flow,now,7514,1,()=>({state:'0',attributes:{unit_of_measurement:'W'}}),'pv',0,[3484,3056,3305],5520);
+ assert(headroom>=8000,'Existing charge is included when evaluating the next absolute setpoint');
+}

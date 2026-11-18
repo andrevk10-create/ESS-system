@@ -32,6 +32,7 @@ module.exports=function apply(flows){
  .replace('sharedChargeKw:sharedWitSlotKw(flow,s.start,s.end,reserveInputs.chargeKw,now,states)','sharedChargeKw:jointWitKw(flow,states,now,reserveInputs.chargeKw,s.start,s.end)')
  .replace('const currentForcedPowerW = previous.sessionOwned', 'const ownedMeasuredNetW=directSolarW!==null?jointOwnChargeW(flow,previous,now,Math.max(0,measuredChargeW-Math.max(0,directSolarW))):0;\nconst currentForcedPowerW = previous.sessionOwned').replace('Math.min(measuredNetChargeW, Math.max(0, Number(previous.targetPowerW) || 0))','Math.max(ownedMeasuredNetW,Math.min(measuredNetChargeW, Math.max(0, Number(previous.targetPowerW) || 0)))')
  .replaceAll('measuredNetChargeW >= 200', '(solarUsable ? measuredNetChargeW : directSolarW === 0 ? measuredChargeW : 0) >= 200')
+ .replace("if (!chargeOption || vppRatePercent === null || durationMinutes === null", "if (durationMinutes === null")
  .replace('const externalBatteryChargeW = Math.max(0, actualBatteryChargeW - currentForcedPowerW);','const externalBatteryChargeW = Math.max(0, actualBatteryChargeW - Math.max(currentForcedPowerW,jointOwnChargeW(flow,previous,now,actualBatteryChargeW)));')
  .replace('const gridCommandLimitW = ', 'const jointLimitW=jointWitKw(flow,states,now,planLimitW/1000)*1000;\nconst gridCommandLimitW = Math.min(jointLimitW, ')
  .replace(/(const gridCommandLimitW = [^\n]+);/,'$1);');
@@ -40,6 +41,7 @@ module.exports=function apply(flows){
  for(const id of ['esswitgrid_transport_dispatch','esswitgrid_transport_reply']){
   const n=flows.find(n=>n.id===id);
   n.func=helpers+n.func.replace(/if \(flow.get\('ess_wit_ev_only'\) === true && witCarCharging\([\s\S]*?\},now\)\) \{flow.set\(key,null\);return \[null,\{payload:now\}\];\}/,'')
+   .replace('const headroom=', 'const ownedStatus=flow.get(\'ess_wit_grid_charge_status\')||{};\n        const rawPv=Number(role(pvRole)?.state);\n        const ownCredit=Number.isFinite(rawPv)&&rawPv>=0&&power!==null?jointOwnChargeW(flow,ownedStatus,now,Math.max(0,power*scale-rawPv*(String(role(pvRole)?.attributes?.unit_of_measurement).toLowerCase()===\'kw\'?1000:1))):0;\n        const creditedOwn=Math.max(credited,ownCredit);\n        const headroom=').replace('limit-w+credited/3','limit-w+creditedOwn/3')
    .replace('const bmsLimit=','const jointStates=Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]]));\n        if(jointWitKw(flow,jointStates,now,(Number(spec.maximumBatteryChargePowerKw)||8))===0){flow.set(key,null);return [null,{payload:now}];}\n        const bmsLimit=');
  }
  for(const [id,car]of [['ess00000000000d','audi'],['essjeep_ess00000000000d','jeep']]){

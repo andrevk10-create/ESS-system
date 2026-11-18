@@ -372,6 +372,11 @@ async function main() {
     f.run('esswitgrid_ctrl1');
     assert.equal(f.values.ess_wit_grid_charge_status.powerConfirmed,false);
 
+    f=fixture();
+    f.s['select.growatt_mode_vpp'].attributes.options=[];
+    f.s['number.growatt_vpp_power_rate'].state='unknown';
+    assert(f.run('esswitgrid_ctrl1')?.[0],'Direct Modbus transport does not depend on unused Mode VPP UI controls');
+
     // Unchanged PV zero must not contradict fresh measured battery charging.
     now=date(6,20);f=fixture();
     f.s['sensor.energy_production_tomorrow']=reading(2,'kWh',now);
