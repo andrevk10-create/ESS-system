@@ -4787,5 +4787,6 @@ require('./lib/wit-running-block')(flows);
 require('./lib/dashboard-concise')(flows);
 require('./lib/wit-sole-controller')(flows);
 require('./lib/wit-ev-only')(flows);
+require('./lib/joint-charging')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);
