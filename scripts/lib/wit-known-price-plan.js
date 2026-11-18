@@ -39,10 +39,11 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     // last-minute top-ups this planner must avoid.
     const lastAffordable=opportunities.filter(s=>s.eligible&&s.end<=nominalDeadline).at(-1);
     const deadline=lastAffordable&&lastAffordable.end>=cheapest.end?lastAffordable.end:nominalDeadline;
+    const refillWindowStart=Math.min(...opportunities.filter(s=>s.eligible&&s.end<=deadline&&s.allInPrice<=cheapest.allInPrice+.01).map(s=>s.start),cheapest.start);
     const target=Math.min(r.capacityKwh,Math.max(0,r.targetSoc/100*r.capacityKwh));
     const reserveFloor=Math.min(target,r.capacityKwh*.20),hardwareFloor=r.capacityKwh*.10;
     // A present SOC is not a promise of the SOC at a future cheap window.
-    const goalReached=(now>=cheapest.start&&r.storedKwh>=target-r.capacityKwh*.002)||r.storedKwh>target-r.capacityKwh*.10&&r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.previousGoal.reachedAt>=Math.floor(cheapest.start/900000)*900000;
+    const goalReached=(now>=refillWindowStart&&r.storedKwh>=target-r.capacityKwh*.002)||r.storedKwh>target-r.capacityKwh*.10&&r.previousGoal?.reached===true&&r.previousGoal.deadline===deadline&&r.previousGoal.targetSoc===r.targetSoc&&r.previousGoal.reachedAt>=Math.floor(refillWindowStart/900000)*900000;
     const houseRate=r.houseKwh/86400000;
     const demandCache=new Map();
     const demandAt=at=>{
@@ -102,6 +103,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
             const add=room(s,wanted);
             if(add<=.001)continue;
             chosen.set(s,used+add);remaining-=add;
+            if(!wholeQuarter&&refillStock(simulate())>=target-.001)break;
             if(remaining<=.001)break;
         }
     };
@@ -116,7 +118,10 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     // Reach the target in the refill window; do not buy later maintenance
     // pulses merely to keep the exact target at the final boundary. Every
     // reserve checkpoint remains protected by the reserve pass above.
-    const refillStock=simulation=>Math.max(0,...simulation.trace.filter(p=>p.at>=cheapest.end).map(p=>p.stored));
+    // The single cheapest quarter must not force a second refill after the
+    // battery already filled in the same cheap price band (within 1 ct/kWh).
+
+    const refillStock=simulation=>Math.max(0,...simulation.trace.filter(p=>p.at>refillWindowStart).map(p=>p.stored));
     for(let pass=0;pass<=candidates.length;pass++){
         const need=goalReached?0:Math.max(0,target-refillStock(simulate()))/r.efficiency;
         if(need<=.001)break;
@@ -182,7 +187,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     return {selectedSlots,deadline,horizon,bridgeDeadline:cheapest.start>now?cheapest.start:null,bridgeEnergyKwh,
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,
         remainingEnergyKwh:goalReached?0:Math.max(0,target-refillStock(projected))/r.efficiency,
-        goal:{reached:goalReached||(now>=cheapest.start&&r.storedKwh>=target-r.capacityKwh*.002),reachedAt:goalReached?(r.previousGoal?.reachedAt??now):now,deadline,targetSoc:r.targetSoc},
+        goal:{reached:goalReached||(now>=refillWindowStart&&r.storedKwh>=target-r.capacityKwh*.002),reachedAt:goalReached?(r.previousGoal?.reachedAt??now):now,deadline,targetSoc:r.targetSoc},
         targetReachedSoc:refillStock(projected)/r.capacityKwh*100,
         reserveShortfallKwh:Math.max(0,reserveShortfallKwh),projectedSoc:projected.stored/r.capacityKwh*100,
         minimumSoc:projected.min/r.capacityKwh*100,houseKwh:demandAt(deadline),solarKwh:solarAt(deadline)};

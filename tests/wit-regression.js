@@ -372,6 +372,18 @@ async function main() {
     f.run('esswitgrid_ctrl1');
     assert.equal(f.values.ess_wit_grid_charge_status.powerConfirmed,false);
 
+    // Unchanged PV zero must not contradict fresh measured battery charging.
+    now=date(6,20);f=fixture();
+    f.s['sensor.energy_production_tomorrow']=reading(2,'kWh',now);
+    output=f.run('esswitgrid_ctrl1');
+    f.s['select.growatt_grid_remote_power_control_enable'].state='Enabled';
+    f.s['number.growatt_battery_remote_charge_and_discharge_power'].state=String(output[0].payload.powerPercent);
+    f.s['sensor.growatt_battery_battery_power']=reading(7514,'W',now);
+    f.s['sensor.growatt_solar_solar_total_power']=reading(0,'W',now-86400000);
+    f.values.ess_wit_control_readback={deviceId:'wit',at:now,authority:1,remote:1,percent:output[0].payload.powerPercent,remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority'};
+    f.run('esswitgrid_ctrl1');
+    assert.equal(f.values.ess_wit_grid_charge_status.powerConfirmed,true,'Fresh 7.5 kW is confirmed even if unchanged PV zero retains yesterday timestamp');
+
     // Full release: expired lease, failed authority write, waiting, mapped
     // second step, and opposite controller exclusion for both directions.
     for (const id of ['esswitgrid_ctrl1','esswitaudi_ctrl1']) {

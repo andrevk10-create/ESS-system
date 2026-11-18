@@ -59,7 +59,7 @@ assert(result.bridgeEnergyKwh>0,'Winter consumption requires a real reserve brid
 assert(result.refillEnergyKwh>0,'Plan a separate final refill');
 assert(result.selectedSlots.some(s=>s.start>=now+17*hour),'Cheap afternoon charging must be visible immediately');
 assert(result.selectedSlots.every(s=>s.allInPrice<.35),'No scattered expensive charging');
-assert(result.projectedSoc>=99.99);
+assert(result.targetReachedSoc>=99.99);
 assert(result.reserveShortfallKwh<.001,'The bridge covers every intervening reserve checkpoint');
 assert(result.minimumSoc>=20-.001);
 assert(result.selectedSlots.every(s=>s.powerKw===8),'Every selected block charges at full available power');
@@ -70,7 +70,7 @@ function replay(p,reserve){let stored=reserve.storedKwh,min=stored,max=stored;fo
 const physical=replay(result,r);
 assert(physical.max<=30.0001,'Plan never promises energy beyond physical storage');
 assert(physical.min>=6-.001);
-assert(Math.abs(physical.stored-30)<.001);
+assert(physical.max>=29.999,'Reach the target once; later consumption does not demand top-ups');
 const full=plan(slots,now,{...r,storedKwh:30,houseKwh:10},forecast,{});
 assert.equal(full.bridgeEnergyKwh,0,'Enough existing reserve avoids night charging');
 assert(full.selectedSlots.every(s=>s.start>=now+17*hour));
@@ -232,4 +232,15 @@ for(const shift of [0,86400000,7*86400000]){
  const blocked=prices.map((s,i)=>({...s,sharedChargeKw:i===9?0:8}));
  const evPlan=plan(blocked,t,reserve,forecast,{});
  assert(evPlan.selectedSlots.every(s=>s.end<=t+9*900000||s.start>=t+10*900000),'Consolidation never crosses EV reservations');
+}
+// Once the target is physically attained, the allocator must stop inside its
+// current pass, rather than consuming the rest of an outdated energy deficit.
+{
+ const t=Date.parse('2026-11-18T08:00:00Z');
+ const prices=Array.from({length:32},(_,i)=>({start:t+i*900000,end:t+(i+1)*900000,allInPrice:i<20?.26+(i%3)*.001:.6}));
+ const p=plan(prices,t,{...r,storedKwh:3.3,houseKwh:67,solarFactor:0},forecast,{});
+ assert(p.targetReachedSoc>=99.99);
+ const end=p.selectedSlots.at(-1).end;
+ const again=plan(prices,end,{...r,storedKwh:29.9,houseKwh:67,previousGoal:{...p.goal,reached:true,reachedAt:end}},forecast,{});
+ assert.equal(again.selectedSlots.length,0,'A small SOC dip after filling cannot restart maintenance pulses');
 }

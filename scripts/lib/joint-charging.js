@@ -31,6 +31,7 @@ module.exports=function apply(flows){
  grid.func=helpers+grid.func.replace("if (flow.get('ess_wit_ev_only') === true && witCarCharging(states, now)) return stopOwned('Netladen wacht: auto laadt', details);",'')
  .replace('sharedChargeKw:sharedWitSlotKw(flow,s.start,s.end,reserveInputs.chargeKw,now,states)','sharedChargeKw:jointWitKw(flow,states,now,reserveInputs.chargeKw,s.start,s.end)')
  .replace('const currentForcedPowerW = previous.sessionOwned', 'const ownedMeasuredNetW=directSolarW!==null?jointOwnChargeW(flow,previous,now,Math.max(0,measuredChargeW-Math.max(0,directSolarW))):0;\nconst currentForcedPowerW = previous.sessionOwned').replace('Math.min(measuredNetChargeW, Math.max(0, Number(previous.targetPowerW) || 0))','Math.max(ownedMeasuredNetW,Math.min(measuredNetChargeW, Math.max(0, Number(previous.targetPowerW) || 0)))')
+ .replaceAll('measuredNetChargeW >= 200', '(solarUsable ? measuredNetChargeW : directSolarW === 0 ? measuredChargeW : 0) >= 200')
  .replace('const externalBatteryChargeW = Math.max(0, actualBatteryChargeW - currentForcedPowerW);','const externalBatteryChargeW = Math.max(0, actualBatteryChargeW - Math.max(currentForcedPowerW,jointOwnChargeW(flow,previous,now,actualBatteryChargeW)));')
  .replace('const gridCommandLimitW = ', 'const jointLimitW=jointWitKw(flow,states,now,planLimitW/1000)*1000;\nconst gridCommandLimitW = Math.min(jointLimitW, ')
  .replace(/(const gridCommandLimitW = [^\n]+);/,'$1);');
