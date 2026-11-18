@@ -191,12 +191,15 @@ function witGridTransport(flow, global, msg, reply, now) {
         };
         const phaseRoles=[1,2,3].map(n=>'sensor.p1_meter_vermogen_fase_'+n);
         const phase=phaseRoles.map(id=>{const n=freshNumber(id);return n===null?null:n*(String(role(id)?.attributes?.unit_of_measurement).toLowerCase()==='kw'?1000:1);});
-        const soc=witChargeSoc(flow,{'sensor.growatt_battery_battery_soc':role('sensor.growatt_battery_battery_soc'),'sensor.growatt_battery_battery_power':role('sensor.growatt_battery_battery_power')},config,now).soc;
+        const socReading=witChargeSoc(flow,{'sensor.growatt_battery_battery_soc':role('sensor.growatt_battery_battery_soc'),'sensor.growatt_battery_battery_power':role('sensor.growatt_battery_battery_power')},config,now);
+        const soc=socReading.soc;
         const configuredTarget=Math.max(20,Math.min(100,Number(flow.get('ess_wit_grid_charge_target_soc'))||80));
         const plannedTarget=Number(flow.get('ess_wit_grid_charge_status')?.targetSoc);
         const target=String(flow.get('ess_wit_grid_charge_mode')||'auto')==='auto'&&Number.isFinite(plannedTarget)&&plannedTarget>=20
             ? Math.min(configuredTarget,plannedTarget) : configuredTarget;
-        const telemetryFresh = ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power'].some(id => {
+        // Native SOC is a fresh mapped battery measurement even if HA keeps zero-power timestamps unchanged.
+        // It permits a request; only a later measured power change confirms charging.
+        const telemetryFresh = socReading.source==='register' || ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power'].some(id => {
             const item=role(id), stamp=new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime();
             return item && !['unknown','unavailable',''].includes(String(item.state)) && now-stamp>=0 && now-stamp<=120000;
         });

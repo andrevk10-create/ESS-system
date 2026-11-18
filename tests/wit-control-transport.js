@@ -327,3 +327,22 @@ for(const cancel of ['off','releasing','unowned','remapped']){
  assert(t.values.ess_wit_command_fault);
 }
 console.log('WIT transport: readback, atomic charge, fuse limits and verified balanced phase mode OK');
+// v2.0.7 + state_changed cache: unchanged zero power is not a dead battery.
+for(const issue of [null,'stale','mapping','device','target']){
+ const f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
+ for(const role of ['sensor.growatt_battery_battery_power','sensor.growatt_solar_solar_total_power','sensor.growatt_battery_battery_soc'])f.states[role].last_updated=new Date(now-86400000).toISOString();
+ f.states['sensor.growatt_battery_battery_soc'].state='10';
+ f.values.ess_wit_battery_limits={...binding,socEntity:'sensor.growatt_battery_battery_soc',at:now,reportedSoc:10,chargePowerW:8000};
+ if(issue==='stale')f.values.ess_wit_battery_limits.at=now-120001;
+ if(issue==='mapping')f.values.ess_wit_battery_limits.socEntity='sensor.other_battery';
+ if(issue==='device')f.values.ess_wit_battery_limits.deviceId='other-device';
+ if(issue==='target')f.values.ess_wit_battery_limits.reportedSoc=80;
+ const out=f.run({payload:{value:44}});
+ assert.equal(!!out?.[0],issue===null,'Only a fresh bound native SOC below target permits startup: '+issue);
+ if(issue===null){
+  assert.deepEqual(out[0].payload.data.service_data.values,[1,2,44]);
+  assert.equal(f.values.ess_wit_grid_write_ack,undefined,'Dispatch is not confirmation');
+  assert(!f.values.ess_wit_grid_charge_status.powerConfirmed,'SOC alone never proves actual charging');
+ }
+}
+console.log('WIT startup: unchanged zero-power cache, native SOC freshness/binding, target and no false confirmation passed');
