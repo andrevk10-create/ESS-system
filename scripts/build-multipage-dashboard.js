@@ -3,6 +3,7 @@ const path = require('path');
 
 const flowPath = path.join(__dirname, '..', 'flows.json');
 const flows = JSON.parse(fs.readFileSync(flowPath, 'utf8'));
+require('./lib/joint-charging').unapply(flows);
 require('./lib/heat-pump-history').unapply(flows);
 require('./lib/ev-solar-export').unapply(flows);
 require('./lib/ev-manual-soc').unapply(flows);
@@ -28,7 +29,7 @@ const MAPPER_ID = 'ess00000000000a';
 const CONTROL_ID = 'ess00000000000c';
 
 const DEFAULT_SYSTEM_CONFIG = {
-  version: 2,
+  version: 3,
   siteName: 'Smart ESS',
   modules: {
     energy: true,
@@ -47,7 +48,7 @@ const DEFAULT_SYSTEM_CONFIG = {
     batteryCapacityKwh: 30,
     inverterRatedPowerKw: 18,
     maximumBatteryPowerKw: 8,
-    maximumBatteryChargePowerKw: 8,
+    maximumBatteryChargePowerKw: 9,
     evBatteryCapacityKwh: 86,
     evMaximumCurrentA: 25,
     evGridChargePowerKw: 11,
@@ -564,6 +565,7 @@ function normalize(input) {
     if (sourceVersion < 2 && Number(source.specs && source.specs.evGridChargePowerKw) === 10) {
         config.specs.evGridChargePowerKw = defaults.specs.evGridChargePowerKw;
     }
+    if (sourceVersion < 3 && Number(source.specs?.maximumBatteryChargePowerKw) === 8) config.specs.maximumBatteryChargePowerKw = 9;
     for (const canonical of Object.keys(config.entities)) {
         const value = String(source.entities && source.entities[canonical] || '').trim().toLowerCase();
         config.entities[canonical] = entityPattern.test(value) ? value : '';
@@ -852,10 +854,11 @@ return [refresh, write];`,
   initialize:`const current = flow.get('ess_system_config');
 if (!current) {
     flow.set('ess_system_config', ${systemConfigJson});
-} else if ((Number(current.version) || 1) < 2) {
+} else if ((Number(current.version) || 1) < 3) {
     const migrated = JSON.parse(JSON.stringify(current));
-    migrated.version = 2;
-    if (Number((migrated.specs || {}).evGridChargePowerKw) === 10) migrated.specs.evGridChargePowerKw = 11;
+    migrated.version = 3;
+    if (Number(migrated.specs?.maximumBatteryChargePowerKw) === 8) migrated.specs.maximumBatteryChargePowerKw = 9;
+    if ((Number(current.version) || 1) < 2 && Number((migrated.specs || {}).evGridChargePowerKw) === 10) migrated.specs.evGridChargePowerKw = 11;
     flow.set('ess_system_config', migrated);
 }`, finalize:'', libs:[],
   x:520, y:740, wires:[[MAPPER_ID, CONTROL_ID, 'ess00000000000d', ids.witExportControl, ids.witEVControl, ids.witGridChargeControl],[ids.configFileWrite, ids.configBackupWrite]]
@@ -4788,5 +4791,6 @@ require('./lib/dashboard-concise')(flows);
 require('./lib/wit-sole-controller')(flows);
 require('./lib/wit-ev-only')(flows);
 require('./lib/joint-charging')(flows);
+require('./lib/wit-delivered-rate')(flows);
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 2)}\n`);

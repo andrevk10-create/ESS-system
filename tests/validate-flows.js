@@ -391,7 +391,7 @@ const migratedResult = new Function('global', 'flow', 'node', 'msg', configContr
     { status:() => undefined, warn:() => undefined },
     { topic:'ess/config/restore', payload:JSON.stringify(oldDefaultConfig) }
 );
-assert.strictEqual(migrationValues.ess_system_config.version, 2, 'Een lokaal versie 1-profiel moet naar configuratieversie 2 migreren');
+assert.strictEqual(migrationValues.ess_system_config.version, 3, 'Een lokaal versie 1-profiel moet naar configuratieversie 3 migreren');
 assert.strictEqual(migrationValues.ess_system_config.specs.evGridChargePowerKw, 11, 'De oude standaard van 10 kW moet naar het werkelijke 11 kW-laadvermogen migreren');
 assert(migratedResult[1] && JSON.parse(migratedResult[1].payload).specs.evGridChargePowerKw === 11, 'De gemigreerde waarde moet ook in de lokale back-up worden opgeslagen');
 const customPowerConfig = { ...discovered, version:1, specs:{ ...discovered.specs, evGridChargePowerKw:7.4 } };

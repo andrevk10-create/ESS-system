@@ -33,7 +33,7 @@ module.exports = function apply(flows) {
         },now)) {flow.set(key,null);return [null,{payload:now}];}
         ${anchor}`)
             .replace('&& phase.some(n=>n===null)', `&& !(${mode}) && phase.some(n=>n===null)`)
-            .replace('const headroom=', `const headroom=(${mode}) ? 8000 : `);
+            .replace('const headroom=', `const headroom=(${mode}) ? 9000 : `);
     }
 };
 module.exports.witCarCharging = witCarCharging;

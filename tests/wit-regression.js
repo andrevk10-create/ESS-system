@@ -45,7 +45,7 @@ async function main() {
     states = {'sensor.battery_charge_current_limit':reading(150, 'A', now),
         'sensor.growatt_battery_battery_voltage':reading(52, 'V', now),
         'sensor.battery_discharge_power_limit':reading(2, 'kW', now)};
-    assert.equal(witBatteryLimit(states, caps, 'charge', 12000, now), 8000);
+    assert.equal(witBatteryLimit(states, caps, 'charge', 12000, now), 9000);
     assert.equal(witBatteryLimit(states, caps, 'discharge', 8000, now), 2000);
     states['sensor.battery_charge_current_limit'] = reading(0, 'A', now);
     assert.equal(witBatteryLimit(states, caps, 'charge', 12000, now), 0);
@@ -196,7 +196,7 @@ async function main() {
     f.s['number.growatt_battery_remote_charge_and_discharge_power'] = reading(30, '%', now);
     for (const phase of [1,2,3]) f.s['sensor.p1_meter_vermogen_fase_'+phase] = reading(4000, 'W', now);
     f.run('esswitgrid_ctrl1');
-    assert(f.values.ess_wit_grid_charge_status.targetPowerW <= 3180, 'Direct PV charging must not create imaginary net headroom');
+    assert(f.values.ess_wit_grid_charge_status.targetPowerW <= 3960, 'Direct PV charging must not create imaginary net headroom');
 
     f = fixture();
     f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);

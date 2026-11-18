@@ -42,7 +42,7 @@ module.exports=function apply(flows){
   const n=flows.find(n=>n.id===id);
   n.func=helpers+n.func.replace(/if \(flow.get\('ess_wit_ev_only'\) === true && witCarCharging\([\s\S]*?\},now\)\) \{flow.set\(key,null\);return \[null,\{payload:now\}\];\}/,'')
    .replace('const headroom=', 'const ownedStatus=flow.get(\'ess_wit_grid_charge_status\')||{};\n        const rawPv=Number(role(pvRole)?.state);\n        const ownCredit=Number.isFinite(rawPv)&&rawPv>=0&&power!==null?jointOwnChargeW(flow,ownedStatus,now,Math.max(0,power*scale-rawPv*(String(role(pvRole)?.attributes?.unit_of_measurement).toLowerCase()===\'kw\'?1000:1))):0;\n        const creditedOwn=Math.max(credited,ownCredit);\n        const headroom=').replace('limit-w+credited/3','limit-w+creditedOwn/3')
-   .replace('const bmsLimit=','const jointStates=Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]]));\n        if(jointWitKw(flow,jointStates,now,(Number(spec.maximumBatteryChargePowerKw)||8))===0){flow.set(key,null);return [null,{payload:now}];}\n        const bmsLimit=');
+   .replace('const bmsLimit=','const jointStates=Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]]));\n        if(jointWitKw(flow,jointStates,now,(Number(spec.maximumBatteryChargePowerKw)||9))===0){flow.set(key,null);return [null,{payload:now}];}\n        const bmsLimit=');
  }
  for(const [id,car]of [['ess00000000000d','audi'],['essjeep_ess00000000000d','jeep']]){
   const n=flows.find(n=>n.id===id),peer=car==='audi'?'jeep':'audi';
@@ -58,3 +58,13 @@ const requestedTargetCurrent = targetCurrent;`).replace('const refreshNeeded =',
 module.exports.jointCarKw=jointCarKw;
 module.exports.jointWitKw=jointWitKw;
 module.exports.jointOwnChargeW=jointOwnChargeW;
+
+// EV controllers are retained as source by the dashboard builder. Remove the
+// previous generated budget before applying it again, including old exports.
+module.exports.unapply=function unapply(flows){
+ for(const n of flows.filter(n=>n.func)){
+  n.func=n.func.replace(/^function (?:jointCarKw|jointWitKw|jointOwnChargeW)\([\s\S]*?^}\r?\n/gm,'')
+   .replace(/const witRequest=flow.get\('ess_wit_grid_charge_status'\)[\s\S]*?(?=const requestedTargetCurrent = targetCurrent;)/g,'')
+   .replace(/if\(targetCurrent>jointAmps\)targetCurrent=jointAmps>=minimumCurrent\?jointAmps:0;\r?\n/g,'');
+ }
+};

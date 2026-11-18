@@ -55,7 +55,7 @@ for(const hardwareSoc of [38,80]){
  for(const phase of [1,2,3])delete f.states['sensor.p1_meter_vermogen_fase_'+phase];
  const sent=f.run({payload:{value:100}});
  assert(sent[0],'Hardware grid guarding does not depend on HA phase readings');
- assert(sent[0].payload.data.service_data.values[2]<=44,'The 8 kW ceiling stays active');
+ assert(sent[0].payload.data.service_data.values[2]<=50,'The 9 kW ceiling stays active');
  f.values.ess_wit_grid_transport=null;
  f.values.ess_system_config.entities={[remoteRole]:remoteRole,[authorityRole]:authorityRole};
  f.values.ess_wit_battery_limits={remoteEntity:remoteRole,at:now,chargePowerW:0,chargeCurrentA:150,reportedVoltageV:52};
@@ -215,7 +215,7 @@ assert.equal(f.run({payload:{value:66}})[0].payload.data.service_data.values[2],
 f=fixture();Object.assign(f.values.ess_wit_control_readback,{authority:1,ac:1});
 f.values.ess_system_config={specs:{maximumBatteryChargePowerKw:18}};
 for(const [index,w]of [-1000,-2000,-3000].entries())f.states['sensor.p1_meter_vermogen_fase_'+(index+1)]=f.state(w);
-assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],44,'Even an old 18 kW setting and ample export headroom cannot exceed the 8 kW installation ceiling');
+assert.equal(f.run({payload:{value:100}})[0].payload.data.service_data.values[2],50,'Even an old 18 kW setting and ample export headroom cannot exceed the 9 kW installation ceiling');
 const phaseFixture=()=>{
  const t=fixture();t.values.ess_wit_imbalance_managed=true;
  Object.assign(t.values.ess_wit_control_readback,{authority:1,ac:1});

@@ -224,8 +224,8 @@ function witGridTransport(flow, global, msg, reply, now) {
         const coherent=Math.abs(stamp(powerRole)-stamp(pvRole))<=15000;
         const scale=Number(flow.get('ess_growatt_battery_power_scale'))===0.1?0.1:1;
         const credited=snapshot?.remote && snapshot.percent>0 && coherent && power!==null && pv!==null ? Math.min(Math.max(0,power*scale-Math.max(0,pv)),snapshot.percent/100*rated) : 0;
-        const headroom=flow.get('ess_wit_hardware_grid_guard')===true && flow.get('ess_wit_meter_includes_ev')===true ? 8000 : 3*Math.min(...phase.map(w=>limit-w+credited/3));
-        const bmsLimit=witBatteryLimit(Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]])),config,'charge',(Number(spec.maximumBatteryChargePowerKw)||8)*1000,now,flow.get('ess_wit_battery_limits'));
+        const headroom=flow.get('ess_wit_hardware_grid_guard')===true && flow.get('ess_wit_meter_includes_ev')===true ? 9000 : 3*Math.min(...phase.map(w=>limit-w+credited/3));
+        const bmsLimit=witBatteryLimit(Object.fromEntries(Object.entries(mapping||{}).map(([id,actual])=>[id,raw?.[actual]])),config,'charge',(Number(spec.maximumBatteryChargePowerKw)||9)*1000,now,flow.get('ess_wit_battery_limits'));
         op.powerPercent=Math.min(op.powerPercent,Math.floor(Math.max(0,Math.min(headroom,bmsLimit))/rated*100));
         flow.set('ess_wit_grid_applied_limit',{at:now,powerPercent:op.powerPercent,headroomW:headroom,batteryLimitW:bmsLimit,creditedNetChargeW:credited,phasePowerW:phase});
         if (op.powerPercent<3) {flow.set(key,null);return [null,{payload:now}];}
