@@ -1,3 +1,15 @@
+function witReleaseReadback(flow,now,since){
+    if(flow.get('ess_wit_readback_enabled')!==true)return null;
+    const rb=flow.get('ess_wit_control_readback'),config=flow.get('ess_system_config')||{};
+    const mapped=role=>config.entities?config.entities[role]:role;
+    const valid=rb?.deviceId&&rb.configEntryId&&Number.isFinite(rb.at)&&rb.at>=since&&now>=rb.at&&now-rb.at<=120000&&
+        rb.remoteEntity===mapped('select.growatt_grid_remote_power_control_enable')&&
+        rb.authorityEntity===mapped('select.growatt_grid_control_authority')&&
+        [0,1].includes(rb.authority)&&[0,1].includes(rb.remote);
+    // An enabled hardware readback is authoritative, including missing/stale data.
+    // Do not let optimistic selectors override it.
+    return {authorityOff:!!valid&&rb.authority===0,remoteOff:!!valid&&rb.remote===0};
+}
 // Apply after harden-wit: compatible with 0xAHA 2.0.4 and 2.0.5 betas.
 // Keep the session reserved until BOTH VPP switches confirm release.
 module.exports = function applyWitRelease(flows) {
@@ -10,7 +22,7 @@ module.exports = function applyWitRelease(flows) {
         const begin = n.func.indexOf(`function ${stop}(reason, details = {}) {`);
         const end = n.func.indexOf('\n}\n', begin) + 3;
         if (begin < 0 || end < 3) throw new Error('Missing WIT stop function');
-        n.func = n.func.slice(0, begin) + `function ${stop}(reason, details = {}) {
+        n.func = witReleaseReadback.toString()+'\n'+n.func.slice(0, begin) + `function ${stop}(reason, details = {}) {
     flow.set('${id === 'esswitgrid_ctrl1' ? 'ess_wit_charge_watch' : 'ess_wit_discharge_watch'}', null);
     ${id === 'esswitgrid_ctrl1' ? "flow.set('ess_wit_grid_transport', null);" : ''}
     if (previous.sessionOwned !== true) {
@@ -22,8 +34,9 @@ module.exports = function applyWitRelease(flows) {
     const disabled = (item, role) => item && String(item.state).toLowerCase() === 'disabled' && fresh(role, 120000);
     const since = Number(previous.releaseRequestedAt) || 0;
     const observedAfter = item => !since || new Date(item?.last_reported || item?.last_updated || item?.last_changed || 0).getTime() >= since;
-    const authorityOff = disabled(authority, 'select.growatt_grid_control_authority') && observedAfter(authority);
-    const remoteOff = disabled(remote, 'select.growatt_grid_remote_power_control_enable') && observedAfter(remote);
+    const registerRelease = witReleaseReadback(flow,now,since);
+    const authorityOff = registerRelease ? registerRelease.authorityOff : disabled(authority, 'select.growatt_grid_control_authority') && observedAfter(authority);
+    const remoteOff = registerRelease ? registerRelease.remoteOff : disabled(remote, 'select.growatt_grid_remote_power_control_enable') && observedAfter(remote);
     if (authorityOff && remoteOff) {
         save('blocked', { ...details, active:false, sessionOwned:false, releasing:false, releaseRequestedAt:0, releaseLastWriteAt:0, powerPercent:0, targetPowerW:0, status:reason });
         return null;
@@ -54,3 +67,5 @@ ${marker}`);
     action.name = 'Geef externe WIT-aansturing volledig vrij';
     action.data = `($c := $flowContext('ess_system_config'); $role := payload.releaseStep = 'remote' ? 'select.growatt_grid_remote_power_control_enable' : 'select.growatt_grid_control_authority'; $id := $exists($c) ? $lookup($c.entities, $role) : $role; $assert(payload.releaseStep in ['authority','remote'], 'Ongeldige WIT-vrijgavestap'); $assert($type($id) = 'string' and $contains($id, /^select\\.[a-z0-9_]+$/), 'WIT doelentiteit ontbreekt'); {"entity_id":$id,"option":"Disabled"})`;
 };
+
+module.exports.witReleaseReadback=witReleaseReadback;

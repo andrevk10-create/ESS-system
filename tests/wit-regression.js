@@ -401,6 +401,38 @@ async function main() {
         assert.equal(f.values[key].sessionOwned,false);
         assert.equal(f.values[key].releasing,false);
     }
+    // v2.0.7: unchanged Disabled selectors keep their old HA timestamp.
+    // Fresh mapped registers must finish release and permit fault recovery.
+    for(const id of ['esswitgrid_ctrl1','esswitaudi_ctrl1']){
+        now=date(6,20);f=fixture();
+        const key=id==='esswitgrid_ctrl1'?'ess_wit_grid_charge_status':'ess_wit_audi_discharge_status';
+        f.values.ess_wit_grid_charge_mode='off';
+        f.values.ess_wit_readback_enabled=true;
+        f.values[key]={sessionOwned:true,releasing:true,active:false,releaseRequestedAt:now-60000};
+        f.s['select.growatt_grid_control_authority']=reading('Disabled','',now-86400000);
+        f.s['select.growatt_grid_remote_power_control_enable']=reading('Disabled','',now-86400000);
+        f.values.ess_wit_control_readback={deviceId:'wit',configEntryId:'entry',at:now,authority:0,remote:0,periods:0,
+            remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority'};
+        f.run(id);
+        assert.equal(f.values[key].sessionOwned,false,'Fresh hardware OFF releases despite unchanged HA timestamps');
+        assert.equal(f.values[key].releasing,false);
+        f.values.ess_wit_command_fault={at:now-600000,reason:'Geen laad- of ontlaadvermogen na herstelpoging'};
+        const recover=require('../scripts/lib/wit-fault-recovery').witFaultRecovery;
+        const context={get:k=>f.values[k],set:(k,v)=>f.values[k]=v};
+        assert.equal(recover(context,now),false);
+        f.values.ess_wit_control_readback.at=now+60000;
+        assert.equal(recover(context,now+60000),true,'Normal automatic recovery resumes after two fresh released readings');
+    }
+    {
+        const release=require('../scripts/lib/wit-release').witReleaseReadback;
+        const rb={deviceId:'wit',configEntryId:'entry',at:now,authority:0,remote:0,
+            remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority'};
+        for(const change of [{at:now-120001},{at:now+1},{remoteEntity:'select.other'},{authority:1},{remote:1}]){
+            const values={ess_wit_readback_enabled:true,ess_wit_control_readback:{...rb,...change}};
+            const result=release({get:k=>values[k]},now,now-60000);
+            assert(!(result.authorityOff&&result.remoteOff),'Stale, mismatched or enabled registers cannot confirm release');
+        }
+    }
     const stopExpression = jsonata(get('esswitaudi_stop1').data);
     {
         const manual=fixture();manual.values.ess_wit_grid_charge_mode='on';manual.values.ess_nordpool_forecast=[];
