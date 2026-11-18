@@ -57,16 +57,17 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
     const sunPoints=['next_rising','next_setting'].map(k=>Date.parse(states?.['sun.sun']?.attributes?.[k])).filter(t=>Number.isFinite(t)&&t>now&&t<deadline);
     const hourPoints=(r.hourlyProfile?.segments||[]).flatMap(s=>[s.start,s.end]).filter(t=>t>now&&t<deadline);
     const points=[...new Set([now,deadline,...sunPoints,...hourPoints,...candidates.flatMap(s=>[s.start,s.end])])].sort((a,b)=>a-b);
-    const chosen=new Map();
+    const chosen=new Map(),front=new Set();
+    const interval=(s,e)=>front.has(s)?{start:s.start,end:s.start+e/s.chargeKw*3600000}:{start:s.end-e/s.chargeKw*3600000,end:s.end};
     const simulate=()=>{
-        const starts=[...chosen].map(([s,e])=>s.end-e/s.chargeKw*3600000);
+        const starts=[...chosen].flatMap(([s,e])=>{const t=interval(s,e);return [t.start,t.end];});
         const times=[...new Set([...points,...starts])].filter(t=>t>=now&&t<=deadline).sort((a,b)=>a-b);
         let stored=Math.min(r.capacityKwh,Math.max(0,r.storedKwh)),overflow=0,directGrid=0,min=stored;
         const trace=[];
         for(let i=1;i<times.length;i++){
             const from=times[i-1],to=times[i];
             let input=0;
-            for(const [s,e]of chosen){const start=s.end-e/s.chargeKw*3600000;input+=Math.max(0,Math.min(to,s.end)-Math.max(from,start))/3600000*s.chargeKw;}
+            for(const [s,e]of chosen){const t=interval(s,e);input+=Math.max(0,Math.min(to,t.end)-Math.max(from,t.start))/3600000*s.chargeKw;}
             // The WIT setpoint is battery charging power, not the whole-site import budget.
             // During a charge interval the grid supplies the house separately.
             // Charge starts/ends are simulation boundaries, including partial quarters.
@@ -123,8 +124,60 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
         allocate(deadline,need,false);
         if([...chosen.values()].reduce((a,b)=>a+b,0)-before<=.001)break;
     }
+    // Compact exact-energy fragments without buying extra energy or increasing cost.
+    // Every proposal is replayed against reserve, target, capacity and EV exclusions.
+    const describe=()=>{
+        const rows=[...chosen].filter(([,e])=>e>.001).map(([s,e])=>({...interval(s,e),s,e})).sort((a,b)=>a.start-b.start);
+        let runs=0,short=0,end=-Infinity,start=0;
+        for(const row of rows){if(row.start>end+1){if(runs&&end-start<900000-1)short++;runs++;start=row.start;}end=row.end;}
+        if(runs&&end-start<900000-1)short++;
+        return {rows,runs,short,cost:rows.reduce((n,x)=>n+x.e*x.s.allInPrice,0)};
+    };
+    const baseline=simulate(),requiredStock=refillStock(baseline);
+    points.push(...baseline.trace.map(p=>p.at));
+    const reserveChecks=baseline.trace.map(p=>({at:p.at,minimum:Math.min(reserveFloor,p.raw,p.stored)}));
+    const acceptable=()=>{
+        const trial=simulate();
+        return trial.overflow<=baseline.overflow+1e-6&&trial.directGrid<=baseline.directGrid+.001&&
+            refillStock(trial)>=requiredStock-.001&&
+            reserveChecks.every(p=>stateAt(trial,p.at)>=p.minimum-.001);
+    };
+    for(let pass=0;pass<4;pass++){
+        let best=describe(),changed=false;
+        // Put a partial quarter at the front when it can join the preceding run.
+        for(const [slot,energy]of chosen){
+            if(energy<=.001||energy>=(slot.end-slot.start)/3600000*slot.chargeKw-.001||front.has(slot))continue;
+            front.add(slot);const next=describe();
+            if((next.runs<best.runs||next.runs===best.runs&&next.short<best.short)&&acceptable()){best=next;changed=true;}
+            else front.delete(slot);
+        }
+        const sources=best.rows;
+        for(const source of sources){
+            const energy=chosen.get(source.s)||0;if(energy<=.001)continue;
+            const destinations=candidates.filter(s=>s!==source.s&&s.eligible&&Math.abs(s.start-source.s.start)<=3600000&&
+                (s.end-s.start)/3600000*s.chargeKw-(chosen.get(s)||0)>=energy-.000001)
+                .sort((a,b)=>a.allInPrice-b.allInPrice||a.start-b.start);
+            for(const destination of destinations){
+                const previous=chosen.get(destination)||0,wasFront=front.has(destination);
+                chosen.set(source.s,0);chosen.set(destination,previous+energy);
+                // Prefer joining an existing run; try both ends of the quarter.
+                let accepted=false;
+                for(const anchor of [false,true]){
+                    if(anchor)front.add(destination);else front.delete(destination);
+                    const next=describe();
+                    if(next.cost<=best.cost+1e-7&&(next.runs<best.runs||next.runs===best.runs&&next.short<best.short)&&acceptable()){
+                        best=next;changed=true;accepted=true;break;
+                    }
+                }
+                if(accepted)break;
+                chosen.set(source.s,energy);chosen.set(destination,previous);
+                if(wasFront)front.add(destination);else front.delete(destination);
+            }
+        }
+        if(!changed)break;
+    }
     const projected=simulate();
-    const selectedSlots=[...chosen].filter(([,e])=>e>.001).map(([s,energyKwh])=>({start:s.end-energyKwh/s.chargeKw*3600000,end:s.end,allInPrice:s.allInPrice,marketPrice:s.marketPrice,energyKwh,powerKw:s.chargeKw})).sort((a,b)=>a.start-b.start);
+    const selectedSlots=[...chosen].filter(([,e])=>e>.001).map(([s,energyKwh])=>({...interval(s,energyKwh),allInPrice:s.allInPrice,marketPrice:s.marketPrice,energyKwh,powerKw:s.chargeKw})).sort((a,b)=>a.start-b.start);
     const bridgeEnergyKwh=selectedSlots.filter(s=>s.end<=cheapest.start).reduce((sum,s)=>sum+s.energyKwh,0);
     return {selectedSlots,deadline,horizon,bridgeDeadline:cheapest.start>now?cheapest.start:null,bridgeEnergyKwh,
         refillEnergyKwh:selectedSlots.reduce((sum,s)=>sum+s.energyKwh,0)-bridgeEnergyKwh,

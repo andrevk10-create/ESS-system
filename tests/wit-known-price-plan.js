@@ -204,3 +204,32 @@ for(const shift of [0,86400000,7*86400000]){
   assert(p.targetReachedSoc>99.99);
  }
 }
+// Compact fragments by joining neighbours; retain tariff boundaries for costing.
+{
+ const t=Date.parse('2026-11-18T08:00:00Z');
+ const tariffs=[.202,.206,.207,.207,.206,.207,.203,.201,.201,.204,.205,.208,.203,.206,.203,.2,.201,.207,.208,.206,.201,.203,.202,.204,.6,.6,.6,.6,.6,.6,.6,.6];
+ const prices=tariffs.map((allInPrice,i)=>({start:t+i*900000,end:t+(i+1)*900000,allInPrice}));
+ const reserve={...r,storedKwh:19.819232847,houseKwh:78.826090140,solarFactor:0};
+ const p=plan(prices,t,reserve,forecast,{});
+ let runs=0,end=-1;
+ for(const s of p.selectedSlots){if(s.start>end+1)runs++;assert(s.start>=end,'No overlaps');end=s.end;assert.equal(s.powerKw,8);}
+ assert(runs<=6,'Former seven-start plan must consolidate at least one restart');
+ assert(sum(p)<=22.80510215,'Compaction does not buy extra energy');
+ const oldCost=2*(.202+.203+.201+.201+.203+.203+.2+.201+.201+.203+.202)+(.178572026+.626530124)*.204;
+ assert(p.selectedSlots.reduce((total,s)=>total+s.energyKwh*s.allInPrice,0)<=oldCost+1e-6,'Compaction must not increase costs');
+ const fragment=p.selectedSlots.find(s=>s.start===t+9*900000);
+ assert(fragment&&fragment.end<t+10*900000,'Partial quarter joins the previous block instead of starting at the end');
+ // Independent exact event replay, including the newly front-aligned partial end.
+ let stored=reserve.storedKwh,peak=stored,min=stored;
+ const events=[...new Set([t,p.deadline,...p.selectedSlots.flatMap(s=>[s.start,s.end])])].sort((a,b)=>a-b);
+ for(let i=1;i<events.length;i++){
+  const from=events[i-1],to=events[i];
+  const charge=p.selectedSlots.find(s=>s.start<=from&&s.end>=to);
+  stored+=(to-from)/hour*(charge?charge.powerKw*reserve.efficiency:-reserve.houseKwh/24);
+  min=Math.min(min,stored);peak=Math.max(peak,stored);
+ }
+ assert(min>=6-.001&&peak<=30.001&&peak>=29.999,'Compaction preserves physical reserve and target');
+ const blocked=prices.map((s,i)=>({...s,sharedChargeKw:i===9?0:8}));
+ const evPlan=plan(blocked,t,reserve,forecast,{});
+ assert(evPlan.selectedSlots.every(s=>s.end<=t+9*900000||s.start>=t+10*900000),'Consolidation never crosses EV reservations');
+}
