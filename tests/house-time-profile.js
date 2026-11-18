@@ -49,12 +49,12 @@ const r={storedKwh:18,capacityKwh:30,houseKwh:36,efficiency:.9,chargeKw:8,target
 const flat=plan(prices,now,r,{valid:false},{}),timed=plan(prices,now,{...r,hourlyProfile:profile},{valid:false},{});
 const overnight=p=>p.selectedSlots.filter(s=>s.end<=now+12*hour).reduce((sum,s)=>sum+s.energyKwh,0);
 assert(overnight(timed)<overnight(flat),'A quiet measured night reduces night charging without hiding daytime peaks');
-assert(timed.projectedSoc>=99.99&&timed.minimumSoc>=20-.001,'Refill goal and separate reserve remain covered');
+assert(timed.targetReachedSoc>=99.99&&timed.minimumSoc>=20-.001,'Refill goal and separate reserve remain covered');
 const interrupted={version:1,days:Object.fromEntries(['2026-10-13','2026-10-14','2026-10-15'].map(day=>[day,Array.from({length:24},(_,h)=>({seconds:1800,kwh:h<8?.2:1}))]))};
 const recoveredProfile=forecast(interrupted,now,now+30*hour,36);
 const recoveredPlan=plan(prices,now,{...r,hourlyProfile:recoveredProfile},{valid:false},{});
 assert(overnight(recoveredPlan)<overnight(flat),'Repeated interrupted night measurements improve the actual charge budget');
-assert(recoveredPlan.projectedSoc>=99.99&&recoveredPlan.minimumSoc>=20-.001,'Partial-data learning preserves the target and reserve in the planner simulation');
+assert(recoveredPlan.targetReachedSoc>=99.99&&recoveredPlan.minimumSoc>=20-.001,'Partial-data learning preserves the target and reserve in the planner simulation');
 const old=JSON.parse(JSON.stringify(known));old.days['2026-09-01']=old.days['2026-10-15'];
 const aged=step(old,{basePowerW:600},now);assert(!aged.days['2026-09-01'],'Expired hourly data is pruned');
 const daily={schemaVersion:2,currentDate:'2026-10-18',recentDays:[{date:'2026-09-25',kwh:10},{date:'2026-10-16',kwh:10},{date:'2026-10-17',kwh:40}],currentValueKwh:0,coverageHours:0};

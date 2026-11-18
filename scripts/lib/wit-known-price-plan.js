@@ -67,7 +67,12 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
             const from=times[i-1],to=times[i];
             let input=0;
             for(const [s,e]of chosen){const start=s.end-e/s.chargeKw*3600000;input+=Math.max(0,Math.min(to,s.end)-Math.max(from,start))/3600000*s.chargeKw;}
-            const raw=stored+input*r.efficiency-(demandAt(to)-demandAt(from))+Math.max(0,solarAt(to)-solarAt(from));
+            // The WIT setpoint is battery charging power, not the whole-site import budget.
+            // During a charge interval the grid supplies the house separately.
+            // Charge starts/ends are simulation boundaries, including partial quarters.
+            const houseDemand=demandAt(to)-demandAt(from);
+            const batteryDemand=input>1e-9?0:houseDemand;
+            const raw=stored+input*r.efficiency-batteryDemand+Math.max(0,solarAt(to)-solarAt(from));
             overflow+=Math.max(0,raw-(input>1e-9?target:r.capacityKwh));
             directGrid+=Math.max(0,hardwareFloor-raw);
             stored=Math.min(r.capacityKwh,Math.max(hardwareFloor,raw));min=Math.min(min,stored);

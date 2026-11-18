@@ -175,7 +175,8 @@ async function main() {
     const previousHouseDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now-86400000));
     f.values.ess_house_consumption_learning = {schemaVersion:2, updatedAt:new Date(now).toISOString(), forecastKwh:29, recentDays:[{date:previousHouseDay,kwh:29}]};
     f.run('esswitgrid_ctrl1');
-    assert(f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh > priorNeed);
+    assert(f.values.ess_wit_grid_charge_status.expectedHouseKwh>=29,'Learned household use remains available to the planner');
+    assert(f.values.ess_wit_grid_charge_status.gridEnergyNeededKwh>0,'Separate household supply must not remove the battery fill requirement');
 
     f = fixture();
     f.s['sensor.energy_production_tomorrow'] = reading(2, 'kWh', now);

@@ -66,7 +66,7 @@ assert(result.selectedSlots.every(s=>s.powerKw===8),'Every selected block charge
 assert(result.selectedSlots.every(s=>s.energyKwh<=8*(s.end-s.start)/hour+1e-8));
 // Independently replay the physical energy balance at minute resolution,
 // including partial final quarters and the hardware lower limit.
-function replay(p,reserve){let stored=reserve.storedKwh,min=stored,max=stored;for(let t=now;t<p.deadline;t+=60000){const end=Math.min(t+60000,p.deadline),energy=p.selectedSlots.reduce((sum,s)=>sum+Math.max(0,Math.min(end,s.end)-Math.max(t,s.start))/hour*s.powerKw,0);stored+=energy*reserve.efficiency-reserve.houseKwh*(end-t)/86400000;min=Math.min(min,stored);max=Math.max(max,stored);}return {stored,min,max};}
+function replay(p,reserve){let stored=reserve.storedKwh,min=stored,max=stored;for(let t=now;t<p.deadline;t+=60000){const end=Math.min(t+60000,p.deadline),energy=p.selectedSlots.reduce((sum,s)=>sum+Math.max(0,Math.min(end,s.end)-Math.max(t,s.start))/hour*s.powerKw,0);const chargeMs=p.selectedSlots.reduce((sum,s)=>sum+Math.max(0,Math.min(end,s.end)-Math.max(t,s.start)),0);stored+=energy*reserve.efficiency-reserve.houseKwh*((end-t)-chargeMs)/86400000;min=Math.min(min,stored);max=Math.max(max,stored);}return {stored,min,max};}
 const physical=replay(result,r);
 assert(physical.max<=30.0001,'Plan never promises energy beyond physical storage');
 assert(physical.min>=6-.001);
@@ -106,7 +106,7 @@ assert(sum(sunny)<sum(result),'Conservative forecast solar reduces grid purchase
  assert(sum(withSun)<sum(withoutSun),'Known afternoon solar must reduce planned net charging');
  const fillEnd=withSun.selectedSlots.at(-1).end;
  const sunUntilFill=witSolarBeforeDeadline(solar,s,at,fillEnd)*.35*r.efficiency;
- const expectedStored=reserve.storedKwh+sum(withSun)*r.efficiency-reserve.houseKwh*(fillEnd-at)/(24*hour)+sunUntilFill;
+ const expectedStored=reserve.storedKwh+sum(withSun)*r.efficiency-reserve.houseKwh*((fillEnd-at)-withSun.selectedSlots.reduce((total,s)=>total+s.end-s.start,0))/(24*hour)+sunUntilFill;
  assert(Math.abs(expectedStored-30)<.01,'Independently balance purchases, consumption and one solar credit at refill completion');
  assert(withSun.targetReachedSoc>=99.99,'Solar-aware charging reaches the target during the refill window');
  assert(withSun.projectedSoc<=withSun.targetReachedSoc+.001,'Deadline SOC honestly includes consumption after filling');
@@ -189,4 +189,18 @@ for(const shift of [0,86400000,7*86400000]){
  assert(p.selectedSlots.every(s=>s.allInPrice===.49),'Use midday cheap prices, not the expensive morning');
  assert(p.deadline<=t+24*900000,'Refill before evening, not after it');
  assert(p.targetReachedSoc>99.9);
+}
+
+// 30 kWh battery at 10%: 27 kWh stored / 90% efficiency = 30 kWh,
+// hence 3.75 charging hours at 8 kW, regardless of separately supplied house load.
+{
+ const t=Date.parse('2026-11-18T08:00:00Z');
+ const prices=Array.from({length:32},(_,i)=>({start:t+i*900000,end:t+(i+1)*900000,allInPrice:i<24?.2:.6}));
+ for(const houseKwh of [0,24,72,120]){
+  const p=plan(prices,t,{...r,storedKwh:3,houseKwh},forecast,{});
+  const purchased=p.selectedSlots.reduce((total,s)=>total+s.energyKwh,0);
+  assert(Math.abs(purchased-30)<.01,'House supplied during charging must not lengthen a 30 kWh fill: '+houseKwh);
+  assert(Math.abs(p.selectedSlots.reduce((total,s)=>total+(s.end-s.start)/hour,0)-3.75)<.002);
+  assert(p.targetReachedSoc>99.99);
+ }
 }
