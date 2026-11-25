@@ -76,7 +76,7 @@ function analyticsRecoveryRequest(flow,now){
     // Recover one day per request. Yesterday first, then older missing days;
     // once caught up, refresh today's finished quarters every five minutes.
     let bounds;
-    for(let n=1;n<=30;n++){const b=analyticsDayBounds(now,n);if(done[b.key]?.binding!==binding){bounds=b;break;}}
+    for(let n=1;n<=30;n++){const b=analyticsDayBounds(now,n);if(done[b.key]?.binding!==binding||done[b.key]?.version!==2){bounds=b;break;}}
     const sequence=flow.get('ess_analytics_sequence')||0;
     if(sequence%2===1)bounds=null;
     flow.set('ess_analytics_sequence',sequence+1);
@@ -112,8 +112,9 @@ function analyticsRecoveryApply(flow,msg,now){
             }
         }
     }
-    // Replace a completed day only when charger, source allocation and price
-    // history are complete. Delta booking makes repeated recovery idempotent.
+    // Recorder preserves unchanged states between reports. Recover complete power
+    // intervals even when the day has gaps or only part can be priced; keep the rest explicitly
+    // unpriced. Delta booking makes repeated recovery idempotent.
     if(ledger?.version===2&&!ledger.days[r.key]&&r.start>=ledger.startedAt){
         ledger.days[r.key]=Object.fromEntries(Object.keys(ledger.total).map(k=>[k,0]));
     }
@@ -125,37 +126,38 @@ function analyticsRecoveryApply(flow,msg,now){
             if(r.start>=now-48*3600000){
                 for(const [stamp,data]of Object.entries(recovered.quarters)){
                     const t=Number(stamp),value=data[car];
-                    if(!value||value.seconds<900||value.unpriced>1e-6)continue;
+                    if(!value||value.seconds<=0)continue;
                     let q=ledger.quarters.find(q=>q.start===t);
                     if(!q){q={start:t,...Object.fromEntries(Object.keys(ledger.total).map(k=>[k,0]))};ledger.quarters.push(q);}
-                    if(value.kwh<q[car+'Kwh']*.95)continue;
-                    const dk=value.kwh-q[car+'Kwh'],dc=value.cost-q[car+'Cost'],du=-q[car+'UnpricedKwh'];
+                    // Never replace better valued coverage with a poorer reconstruction.
+                    if(value.kwh<q[car+'Kwh']*.95||value.kwh-value.unpriced+1e-6<q[car+'Kwh']-q[car+'UnpricedKwh'])continue;
+                    const dk=value.kwh-q[car+'Kwh'],dc=value.cost-q[car+'Cost'],du=value.unpriced-q[car+'UnpricedKwh'];
                     for(const target of [ledger.total,daily]){target[car+'Kwh']+=dk;target[car+'Cost']+=dc;target[car+'UnpricedKwh']=Math.max(0,target[car+'UnpricedKwh']+du);}
                     ledger.cars[car].kwh+=dk;ledger.cars[car].cost+=dc;
                     if(Math.abs(dk)>1e-8||Math.abs(dc)>1e-8)ledger.cars[car].session=null;
-                    q[car+'Kwh']=value.kwh;q[car+'Cost']=value.cost;q[car+'UnpricedKwh']=0;
+                    q[car+'Kwh']=value.kwh;q[car+'Cost']=value.cost;q[car+'UnpricedKwh']=value.unpriced;
                 }
                 continue;
             }
             const oldEnergy=complete?daily[car+'Kwh']:prefix.reduce((s,q)=>s+q[car+'Kwh'],0);
             const oldCost=complete?daily[car+'Cost']:prefix.reduce((s,q)=>s+q[car+'Cost'],0);
             const oldUnpriced=complete?daily[car+'UnpricedKwh']:prefix.reduce((s,q)=>s+q[car+'UnpricedKwh'],0);
-            if(c.seconds<(r.end-r.start)/1000||c.unpriced>1e-6||c.kwh<oldEnergy*.95)continue;
+            if(c.seconds<=0||c.kwh<oldEnergy*.95||c.kwh-c.unpriced+1e-6<oldEnergy-oldUnpriced)continue;
             const deltaEnergy=c.kwh-oldEnergy,deltaCost=c.cost-oldCost;
             ledger.total[car+'Kwh']+=deltaEnergy;ledger.total[car+'Cost']+=deltaCost;
-            ledger.total[car+'UnpricedKwh']=Math.max(0,ledger.total[car+'UnpricedKwh']-oldUnpriced);
+            ledger.total[car+'UnpricedKwh']=Math.max(0,ledger.total[car+'UnpricedKwh']-oldUnpriced+c.unpriced);
             ledger.cars[car].kwh+=deltaEnergy;ledger.cars[car].cost+=deltaCost;
-            daily[car+'Kwh']+=deltaEnergy;daily[car+'Cost']+=deltaCost;daily[car+'UnpricedKwh']=Math.max(0,daily[car+'UnpricedKwh']-oldUnpriced);
+            daily[car+'Kwh']+=deltaEnergy;daily[car+'Cost']+=deltaCost;daily[car+'UnpricedKwh']=Math.max(0,daily[car+'UnpricedKwh']-oldUnpriced+c.unpriced);
             // Preserve live measurements after the recovery boundary. Populate
             // the same closed-quarter records used for the next reconciliation.
             for(const [stamp,data]of Object.entries(recovered.quarters)){
                 const t=Number(stamp);if(t<now-48*3600000)continue;
                 let q=ledger.quarters.find(q=>q.start===t);
                 if(!q){q={start:t,...Object.fromEntries(Object.keys(ledger.total).map(k=>[k,0]))};ledger.quarters.push(q);}
-                q[car+'Kwh']=data[car]?.kwh||0;q[car+'Cost']=data[car]?.cost||0;q[car+'UnpricedKwh']=0;
+                q[car+'Kwh']=data[car]?.kwh||0;q[car+'Cost']=data[car]?.cost||0;q[car+'UnpricedKwh']=data[car]?.unpriced||0;
             }
             ledger.cars[car].session=null;
-            if(complete&&ledger.quality?.days?.[r.key]){
+            if(complete&&c.seconds>=(r.end-r.start)/1000-1e-6&&ledger.quality?.days?.[r.key]){
                 const key=car+'MissingHours',old=ledger.quality.days[r.key][key]||0;
                 ledger.quality.days[r.key][key]=0;ledger.quality.total[key]=Math.max(0,ledger.quality.total[key]-old);
             }
@@ -164,7 +166,7 @@ function analyticsRecoveryApply(flow,msg,now){
         ledger.days=Object.fromEntries(Object.entries(ledger.days).sort(([a],[b])=>a.localeCompare(b)).slice(-32));
         flow.set('ess_energy_cost_ledger',ledger);
     }
-    const done=flow.get('ess_analytics_recovered')||{};done[r.key]={binding:r.binding,at:now,seconds:recovered.seconds};
+    const done=flow.get('ess_analytics_recovered')||{};done[r.key]={version:2,binding:r.binding,at:now,seconds:recovered.seconds};
     flow.set('ess_analytics_recovered',Object.fromEntries(Object.entries(done).sort(([a],[b])=>a.localeCompare(b)).slice(-31)));
     if(ledger){ledger.analyticsRecovered=flow.get('ess_analytics_recovered');flow.set('ess_energy_cost_ledger',ledger);}
     flow.set('ess_analytics_recovery_status',{at:now,date:r.key,seconds:recovered.seconds,cars:recovered.cars});

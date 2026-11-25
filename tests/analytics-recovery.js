@@ -61,6 +61,49 @@ ledger=costLedgerStep(null,sample,[],start-86400000);ledger.priceArchive=prices;
 assert.equal(ledger.days[day],undefined);
 values.ess_analytics_pending=partial;apply(flow,{analyticsRequest:partial,payload:[rows]},now);
 assert.equal(ledger.days[day].audiKwh,2);
+
+// A partially priced quarter still contributes its known energy and cost.
+ledger=costLedgerStep(null,sample,[],start);values.ess_energy_cost_ledger=ledger;
+ledger.priceArchive=[{start:start+300000,end:start+900000,price:.3}];
+const oneQuarter={...partial,end:start+900000};
+const quarterRows=[...rows,row('sensor.p1_meter_vermogen',4000,'W',start+300000)];
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[quarterRows]},now);
+assert(Math.abs(ledger.total.audiKwh-.5)<1e-9);
+assert(Math.abs(ledger.total.audiCost-.1)<1e-9);
+assert(Math.abs(ledger.total.audiUnpricedKwh-1/6)<1e-9);
+const partlyPriced=JSON.stringify(ledger.total);
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[quarterRows]},now);
+assert.equal(JSON.stringify(ledger.total),partlyPriced,'Partial prices must not double book');
+ledger.priceArchive=[];
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[quarterRows]},now);
+assert.equal(JSON.stringify(ledger.total),partlyPriced,'Missing prices cannot erase previously valued energy');
+ledger.priceArchive=prices;
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[quarterRows]},now);
+assert(Math.abs(ledger.total.audiCost-.15)<1e-9);assert.equal(ledger.total.audiUnpricedKwh,0);
+// Known minutes surrounding a power gap are not discarded with the quarter.
+ledger=costLedgerStep(null,sample,[],start);values.ess_energy_cost_ledger=ledger;ledger.priceArchive=prices;
+const shortGap=[...rows,row('sensor.ev_charger_power','unavailable','W',start+300000),row('sensor.ev_charger_power',2,'kW',start+600000)];
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[shortGap]},now);
+assert(Math.abs(ledger.total.audiKwh-1/3)<1e-9);assert(Math.abs(ledger.total.audiCost-.1)<1e-9);
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[rows]},now);
+assert.equal(ledger.total.audiKwh,.5);
+const better=JSON.stringify(ledger.total);
+values.ess_analytics_pending=oneQuarter;apply(flow,{analyticsRequest:oneQuarter,payload:[shortGap]},now);
+assert.equal(JSON.stringify(ledger.total),better,'A power gap cannot overwrite fuller coverage');
+// Old completed days also retain the known portion instead of rejecting a day.
+ledger=costLedgerStep(null,sample,[],start);values.ess_energy_cost_ledger=ledger;
+ledger.priceArchive=[{start:start+3600000,end,price:.3}];
+const whole={...partial,end};values.ess_analytics_pending=whole;
+apply(flow,{analyticsRequest:whole,payload:[rows]},end+3*86400000);
+assert.equal(ledger.total.audiKwh,48);assert.equal(ledger.total.audiUnpricedKwh,2);
+assert(Math.abs(ledger.total.audiCost-13.8)<1e-9);
+const oldTotal=JSON.stringify(ledger.total);values.ess_analytics_pending=whole;
+apply(flow,{analyticsRequest:whole,payload:[rows]},end+3*86400000);
+assert.equal(JSON.stringify(ledger.total),oldTotal);
+// Previously attempted days are reconsidered after this recovery upgrade.
+values.ess_energy_cost_ledger.analyticsRecovered={[day]:{binding:JSON.stringify(mapped)}};
+values.ess_analytics_sequence=0;values.ess_analytics_pending=null;
+assert.equal(request(flow,now).analyticsRequest.key,day);
 values.ess_analytics_pending=partial;values.ess_system_config.entities={...mapped,'sensor.ev_charger_power':'sensor.other'};
 assert.equal(apply(flow,{analyticsRequest:partial,payload:[rows]},now),null,'Reject replies after remapping');
 console.log('Analytics recovery: missing reports, explicit gaps, costs, no double booking, bounded catch-up, tariff archive and DST passed');
