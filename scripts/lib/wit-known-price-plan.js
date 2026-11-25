@@ -138,6 +138,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
         if(runs&&end-start<900000-1)short++;
         return {rows,runs,short,cost:rows.reduce((n,x)=>n+x.e*x.s.allInPrice,0)};
     };
+    const costCeiling=describe().cost+0.05/3;
     const baseline=simulate(),requiredStock=refillStock(baseline);
     points.push(...baseline.trace.map(p=>p.at));
     const reserveChecks=baseline.trace.map(p=>({at:p.at,minimum:Math.min(reserveFloor,p.raw,p.stored)}));
@@ -170,7 +171,7 @@ function witKnownPricePlan(input,now,r,solar,states,wear=.04,minimumBenefit=.01)
                 for(const anchor of [false,true]){
                     if(anchor)front.add(destination);else front.delete(destination);
                     const next=describe();
-                    if(next.cost<=best.cost+1e-7&&(next.runs<best.runs||next.runs===best.runs&&next.short<best.short)&&acceptable()){
+                    if(next.cost<=costCeiling+1e-9&&(next.runs<best.runs||next.runs===best.runs&&next.short<best.short)&&acceptable()){
                         best=next;changed=true;accepted=true;break;
                     }
                 }

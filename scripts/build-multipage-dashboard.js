@@ -3749,8 +3749,7 @@ if (regulator.func.includes('const cheapNowMinimumDurationMs =')) {
 // benodigde energie. Aansluitende kwartieren vormen vanzelf één laadsessie.
 // Alleen een kwartier dat al actief en eerder geselecteerd was, wordt tijdens
 // herberekening tot zijn eindtijd vastgehouden.
-const unifiedCheapestEVPlannerMarker = 'const keepCurrentPlannedSlot = previous.controlMode';
-if (!regulator.func.includes(unifiedCheapestEVPlannerMarker)) {
+if (!regulator.func.includes("function compactEvSlots(")) {
   const plannerStart = regulator.func.indexOf('function planCheapestSlots(');
   const plannerEnd = regulator.func.indexOf('\n\nconst statusEntity', plannerStart);
   if (plannerStart < 0 || plannerEnd < 0) throw new Error('EV-plannerfunctie niet gevonden.');
@@ -3783,9 +3782,9 @@ if (!regulator.func.includes(unifiedCheapestEVPlannerMarker)) {
         selectedEnergy += slot.energy;
     }
     selected.sort((a, b) => a.start - b.start);
-    return { selected, selectedEnergy, complete:selectedEnergy + 0.05 >= energyNeeded };
+    return { selected:compactEvSlots(candidates, selected, currentSlot), selectedEnergy, complete:selectedEnergy + 0.05 >= energyNeeded };
 }`;
-  regulator.func = regulator.func.slice(0, plannerStart) + unifiedPlanner + regulator.func.slice(plannerEnd);
+  regulator.func = regulator.func.slice(0, plannerStart) + unifiedPlanner + "\n" + require("./lib/compact-ev-slots").toString() + "\n" + regulator.func.slice(plannerEnd);
   const oldDeparturePlan = "const departurePlan = planCheapestSlots(forecast, departure, gridDepartureEnergyNeeded, new Set(), previous.controlMode === 'departure-plan' && Number(previous.targetCurrent) >= 6);";
   const unifiedDeparturePlan = `const previousSelectedSlots = Array.isArray(previous.selectedSlots) ? previous.selectedSlots : [];
 const keepCurrentPlannedSlot = previous.controlMode === 'departure-plan'
@@ -3797,7 +3796,7 @@ const keepCurrentPlannedSlot = previous.controlMode === 'departure-plan'
         return now >= start && now < end;
     });
 const departurePlan = planCheapestSlots(forecast, departure, gridDepartureEnergyNeeded, new Set(), keepCurrentPlannedSlot);`;
-  if (!regulator.func.includes(oldDeparturePlan)) throw new Error('Aanroep oude EV-planner niet gevonden.');
+  if (!regulator.func.includes(oldDeparturePlan) && !regulator.func.includes('const keepCurrentPlannedSlot =')) throw new Error('Aanroep oude EV-planner niet gevonden.');
   regulator.func = regulator.func.replace(oldDeparturePlan, unifiedDeparturePlan);
 }
 
