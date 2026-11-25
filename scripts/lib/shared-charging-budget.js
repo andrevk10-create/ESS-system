@@ -9,6 +9,7 @@ function sharedSiteBudget(flow){
     return {phases,voltage,phaseKw,totalKw:phaseKw*phases,houseKw};
 }
 function sharedEvPlanningKw(flow,car,maximum,now,states){
+    if(flow.get('ess_joint_charging_16kw')===true)return jointEvPlanningKw(flow,states,car,maximum,now);
     const config=flow.get('ess_system_config')||{},spec=config.specs||{},site=sharedSiteBudget(flow),peer=car==='audi'?'jeep':'audi';
     const own=flow.get('ess_'+car+'_control_status'),other=flow.get('ess_'+peer+'_control_status');
     const ownPhases=own?.phaseCount===1?1:Math.min(3,site.phases),peerPhases=other?.phaseCount===1?1:Math.min(3,site.phases);

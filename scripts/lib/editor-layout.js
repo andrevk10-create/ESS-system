@@ -27,7 +27,7 @@ module.exports=function editorLayout(flows){
         if(/^esswit_readback|^esswit_limits|^esswit_current/.test(id))return 'witread';
         if(/^esswitgrid_transport|^esswit_release_ack/.test(id))return 'witwrite';
         if(/^esswithist|^essp1hist/.test(id))return 'history';
-        if(/^essjvehicle|^essmanualsoc|^essclimateev|^essaudi_device|^essaudi_guard|^essaudi_climate|^essaudi_vehicle|^essaudi_power/.test(id))return 'vehicle';
+        if(/^essevrefresh_|^essjvehicle|^essmanualsoc|^essclimateev|^essaudi_device|^essaudi_guard|^essaudi_climate|^essaudi_vehicle|^essaudi_power/.test(id))return 'vehicle';
         if(/^essjeep/.test(id))return 'jeep01';
         if(/^essprefs|^essconfig|^esstpl_config/.test(id))return 'config';
         if(/^esslights/.test(id))return 'lights1';

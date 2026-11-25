@@ -51,7 +51,7 @@ if (audiDischarge.sessionOwned && now - new Date(audiDischarge.updatedAt || 0).g
     grid.func = grid.func.replace('const reserveProfile = reserveProfiles[reserveMode];',
         "const reserveProfile = { ...reserveProfiles[reserveMode], houseReserveKwh:witHouseReserve(flow.get('ess_house_consumption_learning'), reserveProfiles[reserveMode].houseReserveKwh) };");
     grid.func = grid.func.replace('const installationChargeLimitW = 12000;',
-        "const installationChargeLimitW = (Number((flow.get('ess_system_config') || {}).specs?.maximumBatteryChargePowerKw) || 9) * 1000;");
+        "const installationChargeLimitW = (Number((flow.get('ess_system_config') || {}).specs?.maximumBatteryChargePowerKw) || 8) * 1000;");
     grid.func = grid.func.replace('const designPhaseCurrentA = 22;',
         "const designPhaseCurrentA = Math.max(0, (Number((flow.get('ess_system_config') || {}).specs?.mainFuseA) || 25) - 1);");
     grid.func = grid.func.replace('const nominalVoltageV = 230;',

@@ -1,33 +1,53 @@
 const assert=require('node:assert/strict');
-const {jointWitKw,jointOwnChargeW}=require('../scripts/lib/joint-charging');
-const now=Date.now(),v={ess_joint_charging_16kw:true},flow={get:k=>v[k]};
-const state=(kw)=>({state:String(kw),attributes:{unit_of_measurement:'kW'},last_updated:new Date(now).toISOString()});
-for(const [a,b,expected]of [[0,0,8],[5,3,8],[8,0,8],[8.1,0,0],[11,0,0],[6,6,0]]){
- const states={'sensor.ev_charger_status':{state:'charging'},'sensor.ev_charger_2_status':{state:'charging'},'sensor.ev_charger_power':state(a),'sensor.ev_charger_2_power':state(b)};
- assert.equal(jointWitKw(flow,states,now,8),expected);
+const lib=require('../scripts/lib/joint-charging');const {jointAllocate, jointWitKw,jointCarKw,jointEvLimit,jointEvPlanningKw}=lib;
+const now=Date.now(),step=.69,ev={kw:11,step,min:4.14,phases:3},off={...ev,kw:0};
+for(const [a,b,w]of [[ev,off,8],[ev,ev,0],[ev,ev,8],[off,off,8]]){
+ const x=jointAllocate(a,b,w);assert(x.audi+x.jeep+x.wit<=16+1e-8);if(a.kw)assert(x.audi>=4.14);if(b.kw)assert(x.jeep>=4.14);if(w&&!(a.kw&&b.kw))assert(x.wit>7.5);if(a.kw&&b.kw)assert.equal(x.wit,0);
 }
-v.ess_wit_control_readback={at:now,deviceId:'wit',authority:1,remote:1,percent:44,remoteEntity:'select.growatt_grid_remote_power_control_enable',authorityEntity:'select.growatt_grid_control_authority'};
-assert.equal(jointOwnChargeW(flow,{sessionOwned:true},now,7514),7514,'Own measured charge must not count as external load');
-assert.equal(jointOwnChargeW(flow,{sessionOwned:false},now,7514),0);
-v.ess_wit_control_readback.at=now-120001;assert.equal(jointOwnChargeW(flow,{sessionOwned:true},now,7514),0);
-const flows=require('../flows.json');
-for(const car of ['audi','jeep']){
- const n=flows.find(n=>n.id===(car==='audi'?'ess00000000000d':'essjeep_ess00000000000d'));
- const from=n.func.indexOf('const witRequest='),to=n.func.indexOf('const requestedTargetCurrent',from);
- const cap=new Function('flow','states','now','phaseCount','minimumCurrent','targetCurrent',require('../scripts/lib/joint-charging').jointCarKw.toString()+'\n'+n.func.slice(from,to)+'return targetCurrent;');
- v.ess_wit_grid_charge_status={sessionOwned:true,targetPowerW:8000};
- const result=cap(flow,{},now,3,6,16);assert.equal(result,11);assert(result*690+8000<=16000);
+assert.equal(jointAllocate(ev,off,8).wit,8);assert(jointAllocate(ev,ev,0).audi+jointAllocate(ev,ev,0).jeep>15.8);
+const v={ess_joint_charging_16kw:true,ess_audi_smart_enabled:true,ess_jeep_smart_enabled:true,ess_system_config:{specs:{maximumBatteryChargePowerKw:8,voltage:230},entities:{'select.growatt_grid_remote_power_control_enable':'select.wit','select.growatt_grid_control_authority':'select.authority'}}};
+const flow={get:k=>v[k]},states={};
+for(const [car,suffix]of [['audi',''],['jeep','_2']]){
+ states['sensor.ev_charger'+suffix+'_status']={state:'ready_to_charge'};
+ states['sensor.ev_charger'+suffix+'_power']={state:'0',last_reported:new Date(now).toISOString(),attributes:{unit_of_measurement:'kW'}};
+ v['ess_'+car+'_control_status']={updatedAt:new Date(now).toISOString(),energyNeeded:20,phaseCount:3,selectedSlots:[{start:now,end:now+900000,powerKw:11}]};
+ v['ess_'+car+'_priority_request']={at:now,requested:true,currentA:16};
 }
-assert(flows.find(n=>n.id==='esswitgrid_ctrl1').initialize.includes("ess_joint_charging_16kw', true"));
-console.log('Joint 16 kW: both cars, full-power WIT, requested EV current cap, own charging and stale readback passed');
-// The final write must credit an already running WIT charge even if HA's PV
-// zero has not changed; otherwise 8 kW falsely shrinks to about 6 kW.
+assert.equal(jointWitKw(flow,states,now,8,now,now+900000),0,'Two cars take the window; WIT is the third consumer');
+v.ess_jeep_control_status.selectedSlots=[];
+assert(jointWitKw(flow,states,now,8,now,now+900000)>7.5,'One planned car leaves the full WIT share');
+v.ess_jeep_control_status.selectedSlots=[{start:now,end:now+900000,powerKw:11}];
+v.ess_wit_grid_charge_status={updatedAt:new Date(now).toISOString(),selectedSlots:[{start:now,end:now+900000}],sessionOwned:false};
+let amps={audi:0,jeep:0};
+for(let round=0;round<4;round++){
+ for(const car of ['jeep','audi']){amps[car]=jointEvLimit(flow,states,car,now,16,3);v['ess_'+car+'_control_status'].targetCurrent=amps[car];}
+ const kw=jointWitKw(flow,states,now,8);v.ess_wit_grid_charge_status.sessionOwned=true;v.ess_wit_grid_charge_status.targetPowerW=Math.floor(kw/18*100)*180;
+ assert(amps.audi*step+amps.jeep*step+v.ess_wit_grid_charge_status.targetPowerW/1000<=16+1e-8);
+}
+assert(amps.audi>=6&&amps.jeep>=6&&v.ess_wit_grid_charge_status.targetPowerW===0,'Two cars converge to shared charging without a third consumer');
+v.ess_audi_control_status.targetCurrent=25;v.ess_audi_control_status.updatedAt=new Date(now-180000).toISOString();assert.equal(jointCarKw(flow,states,'audi',now),0,'Expired setpoints do not block forever');
+states['sensor.ev_charger_power'].state='11';assert.equal(jointCarKw(flow,states,'audi',now),11,'Actual load remains reserved despite stale command');
+assert(jointWitKw(flow,states,now,8)<5,'Wait for real peer reductions before increasing WIT');
+states['sensor.ev_charger_power'].state='0';states['sensor.growatt_battery_battery_soc']={state:'30'};
+assert(jointEvPlanningKw(flow,states,'jeep',11,now)<9,'EV duration includes the other car sharing the window');
+v.ess_wit_control_readback={at:now,deviceId:'test',authority:1,remote:1,percent:44,remoteEntity:'select.wit',authorityEntity:'select.authority'};
+assert.equal(lib.jointOwnChargeW(flow,{sessionOwned:true},now,7500),7500);
+v.ess_wit_control_readback.remote=0;
+const flows=require('../flows.json');for(const n of flows.filter(n=>n.func))new Function('msg','flow','global','node',n.func);
+for(const [id,car]of [['ess00000000000d','audi'],['essjeep_ess00000000000d','jeep']]){
+ const n=flows.find(n=>n.id===id),start=n.func.indexOf('const witRequest='),end=n.func.indexOf('const requestedTargetCurrent',start);
+ const run=new Function('flow','states','now','phaseCount','minimumCurrent','targetCurrent',lib.jointHelpers+'\n'+n.func.slice(start,end)+'return targetCurrent');
+ assert(run(flow,states,now,3,6,16)>=6);
+}
+console.log('Joint allocation: both EVs, WIT overlap, two-consumer maximum, transition limits, stale reservations and planner capacity passed');
+
+// Existing 9 kW configurations migrate once; smaller explicit limits survive.
 {
- const n=flows.find(n=>n.id==='esswitgrid_transport_dispatch').func;
- const a=n.indexOf('const ownedStatus='),b=n.indexOf('\n',n.indexOf('const headroom=',a));
- const evaluate=new Function('flow','now','power','scale','role','pvRole','credited','phase','limit',jointOwnChargeW.toString()+'\n'+require('../scripts/lib/charging-priority').evPriorityReservation.toString()+'\nconst mapping={},raw={},spec={};\n'+n.slice(a,b)+'\nreturn headroom;');
- v.ess_wit_control_readback.at=now;
- v.ess_wit_grid_charge_status={sessionOwned:true};
- const headroom=evaluate(flow,now,7514,1,()=>({state:'0',attributes:{unit_of_measurement:'W'}}),'pv',0,[3484,3056,3305],5520);
- assert(headroom>=8000,'Existing charge is included when evaluating the next absolute setpoint');
+ const n=flows.find(n=>n.initialize?.includes('migrated.version = 4'));
+ for(const [old,expected]of [[9,8],[6,6],[8,8]]){
+  const values={ess_system_config:{version:3,specs:{maximumBatteryChargePowerKw:old,evGridChargePowerKw:10}}};
+  new Function('flow',n.initialize)({get:k=>values[k],set:(k,v)=>values[k]=v});
+  assert.equal(values.ess_system_config.specs.maximumBatteryChargePowerKw,expected);
+  assert.equal(values.ess_system_config.specs.evGridChargePowerKw,10,'Unrelated EV settings stay unchanged');
+ }
 }

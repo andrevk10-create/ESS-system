@@ -127,7 +127,7 @@ function witBatteryLimit(states, config, direction, fallbackW, now, reported) {
         : ['sensor.battery_discharge_power_limit', 'sensor.battery_discharge_current_limit'];
     // Net charging requests the installation rating; the inverter applies its own dynamic taper.
     // Explicit zero/unavailable limits still prevent issuing an unusable command.
-    let limit = direction==='charge'?Math.min(fallbackW,9000):fallbackW;
+    let limit = direction==='charge'?Math.min(fallbackW,8000):fallbackW;
     const voltageItem = states['sensor.growatt_battery_battery_voltage'];
     let voltage = voltageItem && witNumber(voltageItem.state);
     // Validate device-bound native limits when available.
@@ -144,7 +144,7 @@ function witBatteryLimit(states, config, direction, fallbackW, now, reported) {
         if (!Number.isFinite(power) || power < 0 || !Number.isFinite(amps) || amps < 0 ||
             voltage == null || voltage <= 0 || !(voltageFresh || nativeVoltage!==null && nativeVoltage>0 && nativeVoltage<=1000)) return 0;
         limit = direction==='charge'?(power===0||amps===0?0:limit):Math.min(limit,power,amps*voltage);
-    } else limit = Math.min(limit,direction==='charge'?9000:8000);
+    } else limit = Math.min(limit,direction==='charge'?8000:8000);
     for (const role of roles) {
         const mapped = config.entities && config.entities[role];
         if (!mapped) continue;

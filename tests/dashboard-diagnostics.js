@@ -53,7 +53,7 @@ const runConfig = (states, config, topic) => {
     return {data,output};
 };
 const modules = {energy:false,battery:false,inverter:false,ev:false,loads:false,lighting:false,climate:true,nas:false};
-const saved = {version:3,modules,specs:{},entities:{...mapping, 'climate.heating_zone_2':'climate.lab_heat_b'}};
+const saved = {version:4,modules,specs:{},entities:{...mapping, 'climate.heating_zone_2':'climate.lab_heat_b'}};
 const climateStates = {
     'climate.lab_heat_a':state('unavailable', null, {hvac_modes:['heat','auto'],friendly_name:'Tado zone A'}),
     'climate.lab_heat_b':state('heat', null, {hvac_modes:['heat','auto'],friendly_name:'Tado zone B'}),
