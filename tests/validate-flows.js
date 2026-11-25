@@ -154,7 +154,7 @@ for (const label of ['Synology NAS', 'OPSLAG', 'SCHIJF 2', 'SYSTEEM', 'BELASTING
 }
 assert(detailTemplates.system.format.includes('d.nas&&d.nas.volume') && detailTemplates.system.format.includes('d.nas&&d.nas.drive'), 'Systeempagina mist live Synology-volume- of schijfdata');
 assert(!detailTemplates.system.format.includes('button.nas_restart') && !detailTemplates.system.format.includes('button.nas_shutdown'), 'NAS-overzicht mag geen risicovolle herstart- of uitschakknop bevatten');
-assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 12, 'Autopagina heeft per auto een expliciet wisbare handmatige noodstand');
+assert.strictEqual((detailTemplates.ev.format.match(/<button /g) || []).length, 14, 'Autopagina heeft per auto een wisbare noodstand en SOC-verversknop');
 for (const template of Object.values(detailTemplates)) {
     assert.strictEqual(template.height, '0', 'Iedere detailpagina moet meegroeien met de inhoud');
     assert(!template.format.includes('Aanvullende systeemdiagnose') && !template.format.includes('Aanvullende verbruikssensoren') && !template.format.includes('Extra zonnesensoren'), 'Detailpagina bevat nog onnodige sensorinventarisatie');
@@ -619,7 +619,7 @@ runMapper(globalContext, flowContext, { status: () => undefined }, {});
 const audiControl = flows.find((node) => node.id === 'ess00000000000c');
 assert(audiControl, 'Veilige EV-hoofdschakelaar ontbreekt');
 assert.strictEqual((audiControl.func.match(/msg\.topic === 'ess\/audi\/solar-soc'/g) || []).length, 1, 'De EV-regeling mag de zonne-SOC-instelling maar één keer verwerken');
-assert.deepStrictEqual(detailTemplates.ev.wires, [[audiControl.id,'essjeep_settings','essjvehicle_request','essmanualsoc_set']], 'EV-bediening scheidt laden, voertuigacties en expliciete noodstand');
+assert.deepStrictEqual(detailTemplates.ev.wires, [[audiControl.id,'essjeep_settings','essjvehicle_request','essmanualsoc_set','essevrefresh_edge']], 'EV-bediening scheidt laden, voertuigacties en expliciete noodstand');
 assert.deepStrictEqual(ui.wires, [[audiControl.id,'esscosts_settings','esscosts_opening']], 'EV-snelbediening blijft beveiligd; kosteninstellingen hebben eigen topicfilters');
 const runEVControl = new Function('global', 'flow', 'node', 'msg', audiControl.func);
 const rejected = runEVControl(globalContext, flowContext, { warn: () => undefined, status: () => undefined }, { topic: 'verboden', payload: true });
@@ -1678,7 +1678,7 @@ assert(witGridChargeSettingsControl && witGridChargeInject && witGridChargeContr
 assert.strictEqual(witGridChargeInject.repeat, '60', 'WIT-netladen moet iedere minuut opnieuw plannen');
 assert.strictEqual(witGridChargeInject.once, true, 'WIT-netladen moet na een herstart automatisch starten');
 assert(witGridChargeSettingsControl.initialize.includes("ess_wit_grid_charge_mode', 'auto") && witGridChargeSettingsControl.initialize.includes("ess_wit_grid_charge_target_soc', 80"), 'Na een herstart moet WIT-netladen Automatisch met 80% als doel starten');
-assert(!witGridChargeControl.func.includes('departureTime') && !witGridChargeControl.func.includes('nextDeparture'), 'WIT-netladen mag geen vertrekdeadline vereisen');
+assert(!witGridChargeControl.func.replace(/function jointDeparture[\s\S]*?\n}/,'').includes('departureTime') && !witGridChargeControl.func.includes('nextDeparture'), 'WIT-netladen mag geen vertrekdeadline vereisen');
 assert(witGridChargeControl.func.includes('planningHorizonMs = 24 * 60 * 60 * 1000'), 'WIT-netladen moet steeds 24 uur vooruitkijken');
 assert(witGridChargeControl.func.includes('chargeEfficiency = 0.90') && witGridChargeControl.func.includes('wearCostPerKwh'), 'Laadverlies en accuslijtage moeten in de prijsselectie meetellen');
 assert(witGridChargeControl.func.includes('specs?.maximumBatteryChargePowerKw') && witGridChargeControl.func.includes('directBatteryLimitW'), 'WIT-netladen moet de installatie- en BMS-vermogensgrens respecteren');

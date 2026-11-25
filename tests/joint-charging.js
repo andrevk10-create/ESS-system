@@ -51,3 +51,28 @@ console.log('Joint allocation: both EVs, WIT overlap, two-consumer maximum, tran
   assert.equal(values.ess_system_config.specs.evGridChargePowerKw,10,'Unrelated EV settings stay unchanged');
  }
 }
+// Earlier deadlines win regardless of which controller runs first.
+{
+ const early={...ev,deadline:now+3600000},late={...ev,deadline:now+4*3600000};
+ const first=jointAllocate(early,late,8),reverse=jointAllocate(late,early,8);
+ assert(first.audi>first.jeep&&reverse.jeep>reverse.audi);
+ assert(first.audi+first.jeep<=16&&first.jeep>=4.14&&first.wit===0);
+ assert.equal(first.audi,reverse.jeep);assert.equal(first.jeep,reverse.audi);
+ assert(jointAllocate(off,late,0).jeep>first.jeep,'Once the early car finishes, capacity is released');
+ const {jointDeparture}=lib,localNow=new Date(2026,10,25,23,0).getTime();
+ const config={ess_audi_settings:{departureTime:'06:00'},ess_jeep_settings:{departureTime:'08:00'},ess_audi_control_status:{departureAt:new Date(localNow+20*3600000).toISOString()}};
+ const f={get:k=>config[k]};assert(jointDeparture(f,'audi',localNow)<jointDeparture(f,'jeep',localNow),'Use next departure across midnight and prefer current settings');
+ config.ess_audi_settings.departureTime='09:00';assert(jointDeparture(f,'audi',localNow)>jointDeparture(f,'jeep',localNow),'An edited departure takes effect immediately');
+ config.ess_audi_settings.departureTime='08:00';assert.equal(jointDeparture(f,'audi',localNow),jointDeparture(f,'jeep',localNow));
+ assert.equal(jointDeparture({get:()=>null},'audi',localNow),Infinity,'Missing deadline cannot claim first priority');
+}
+{
+ v.ess_wit_grid_charge_mode='off';v.ess_wit_control_readback.remote=0;v.ess_wit_grid_charge_status={};
+ v.ess_audi_settings={departureTime:'06:00'};v.ess_jeep_settings={departureTime:'08:00'};
+ const t=new Date(2026,10,25,23,0).getTime();
+ for(const car of ['audi','jeep']){v['ess_'+car+'_control_status']={updatedAt:new Date(t).toISOString(),phaseCount:3,energyNeeded:20,targetCurrent:0};v['ess_'+car+'_priority_request']={at:t,requested:true,currentA:16};}
+ assert(jointEvPlanningKw(flow,states,'audi',11,t)>jointEvPlanningKw(flow,states,'jeep',11,t),'Planning uses the same deadline priority as the commands');
+ for(let round=0;round<3;round++)for(const car of ['jeep','audi'])v['ess_'+car+'_control_status'].targetCurrent=jointEvLimit(flow,states,car,t,16,3);
+ assert(v.ess_audi_control_status.targetCurrent>v.ess_jeep_control_status.targetCurrent,'Runtime converges to early-departure priority even when the late car runs first');
+ assert((v.ess_audi_control_status.targetCurrent+v.ess_jeep_control_status.targetCurrent)*.69<=16);
+}

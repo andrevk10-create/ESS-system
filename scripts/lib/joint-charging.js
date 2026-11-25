@@ -1,3 +1,10 @@
+function jointDeparture(flow,car,now){
+ const settings=flow.get('ess_'+car+'_settings')||{},status=flow.get('ess_'+car+'_control_status')||{};
+ const time=String(settings.departureTime||status.departureTime||'');
+ const match=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+ if(match){const date=new Date(now);date.setHours(Number(match[1]),Number(match[2]),0,0);if(date.getTime()<=now)date.setDate(date.getDate()+1);return date.getTime();}
+ const at=Date.parse(status.departureAt||'');return Number.isFinite(at)&&at>now?at:Infinity;
+}
 function jointFresh(at,now){const t=typeof at==='number'?at:Date.parse(at||'');return now>=t&&now-t<=150000;}
 function jointMeasured(flow,states,car,now){
  const suffix=car==='audi'?'':'_2',p=states?.['sensor.ev_charger'+suffix+'_power'];
@@ -20,20 +27,20 @@ function jointCarDemand(flow,states,car,now,start,end,planning=false){
   needed=(p.selectedSlots||[]).some(s=>(typeof s.start==='number'?s.start:Date.parse(s.start))<end&&(typeof s.end==='number'?s.end:Date.parse(s.end))>start);
   if(jointFresh(p.updatedAt,now)&&(p.forceFull||['deadline','climate-support','ultra-cheap'].includes(p.controlMode))){const until=now+Math.max(900000,(Number(p.energyNeeded)||0)/Math.max(.1,p.plannedChargePowerKw||maximum)*3600000);needed=needed||start<until;}
  }else needed=jointFresh(r.at,now)&&r.requested||jointFresh(p.updatedAt,now)&&p.targetCurrent>=6;
- return {kw:needed?maximum:0,step,min:6*step,phases};
+ return {kw:needed?maximum:0,step,min:6*step,phases,deadline:jointDeparture(flow,car,now)};
 }
 function jointAllocate(a,b,wit){
  const result={audi:0,jeep:0,wit:0};let remaining=16;
- const list=[['audi',a],['jeep',b]];
+ const list=[['audi',a],['jeep',b]].sort((x,y)=>(x[1].deadline??Infinity)-(y[1].deadline??Infinity)||0);
  for(const [id,d]of list)if(d.fixed){result[id]=d.kw;remaining-=d.kw;}
  for(const [id,d]of list)if(!d.fixed&&d.kw>=d.min&&remaining>=d.min){result[id]=d.min;remaining-=d.min;}
  // At most two charging consumers: two requesting cars use the shared window.
  if(a.kw>=a.min&&a.kw>0&&b.kw>=b.min&&b.kw>0)wit=0;
  // One car can share with the full-power WIT.
  result.wit=Math.max(0,Math.min(8,wit,remaining));remaining-=result.wit;
- // Discrete amperes: fill the least-loaded car first, deterministically.
+ // Earliest departure gets spare amperes first; equal/unknown deadlines share fairly.
  for(let i=0;i<100;i++){
-  const next=list.filter(([id,d])=>!d.fixed&&result[id]>0&&result[id]+d.step<=d.kw+1e-8&&d.step<=remaining+1e-8).sort((x,y)=>result[x[0]]-result[y[0]])[0];
+  const next=list.filter(([id,d])=>!d.fixed&&result[id]>0&&result[id]+d.step<=d.kw+1e-8&&d.step<=remaining+1e-8).sort((x,y)=>(x[1].deadline??Infinity)-(y[1].deadline??Infinity)||result[x[0]]-result[y[0]])[0];
   if(!next)break;result[next[0]]+=next[1].step;remaining-=next[1].step;
  }
  return result;
@@ -91,7 +98,7 @@ function jointOwnChargeW(flow,previous,now,actual){
 }
 module.exports=function apply(flows){
  for(const n of flows.filter(n=>n.func))n.func=n.func.replace('function evPriorityReservation(flow,states,now,voltage) {',"function evPriorityReservation(flow,states,now,voltage) {\n    if(flow.get('ess_joint_charging_16kw')===true)return 0;");
- const helpers=[jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointOwnChargeW].map(f=>f.toString()).join('\n')+'\n';
+ const helpers=[jointDeparture,jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointOwnChargeW].map(f=>f.toString()).join('\n')+'\n';
  const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
  grid.initialize=(grid.initialize||'')+"\nflow.set('ess_joint_charging_16kw', true);";
  grid.initialize=grid.initialize.replace("flow.set('ess_wit_ev_only', true);","flow.set('ess_wit_ev_only', false);");
@@ -132,13 +139,13 @@ module.exports.jointOwnChargeW=jointOwnChargeW;
 // previous generated budget before applying it again, including old exports.
 module.exports.unapply=function unapply(flows){
  for(const n of flows.filter(n=>n.func)){
-  n.func=n.func.replace(/^function (?:jointFresh|jointMeasured|jointCarDemand|jointAllocate|jointWitDemand|jointCarKw|jointWitKw|jointEvPlanningKw|jointEvLimit|jointOwnChargeW)\([\s\S]*?^}\r?\n/gm,'')
+  n.func=n.func.replace(/^function (?:jointDeparture|jointFresh|jointMeasured|jointCarDemand|jointAllocate|jointWitDemand|jointCarKw|jointWitKw|jointEvPlanningKw|jointEvLimit|jointOwnChargeW)\([\s\S]*?^}\r?\n/gm,'')
    .replace(/const witRequest=flow.get\('ess_wit_grid_charge_status'\)[\s\S]*?(?=const requestedTargetCurrent = targetCurrent;)/g,'')
    .replace(/if\(targetCurrent>jointAmps\)targetCurrent=jointAmps>=minimumCurrent\?jointAmps:0;\r?\n/g,'');
  }
 };
 
-module.exports.jointHelpers=[jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointOwnChargeW].map(f=>f.toString()).join("\n");
+module.exports.jointHelpers=[jointDeparture,jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointOwnChargeW].map(f=>f.toString()).join("\n");
 module.exports.jointFresh=jointFresh;
 module.exports.jointMeasured=jointMeasured;
 module.exports.jointCarDemand=jointCarDemand;
@@ -149,3 +156,5 @@ module.exports.jointWitKw=jointWitKw;
 module.exports.jointEvPlanningKw=jointEvPlanningKw;
 module.exports.jointEvLimit=jointEvLimit;
 module.exports.jointOwnChargeW=jointOwnChargeW;
+
+module.exports.jointDeparture=jointDeparture;

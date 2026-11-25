@@ -10,3 +10,15 @@ for(const r of requests){r.refreshReply=[{entity_id:r.refreshAnchor,platform:r.r
 ctx.ess_system_config.entities['sensor.ev_state_of_charge']='sensor.rebound';assert.equal(run('dispatch',requests[0]),null,'A configuration change cannot refresh the old car');
 ha.states['sensor.right'].state='disconnected';assert.equal(run('dispatch',requests[1]),null,'Do not refresh after unplugging');
 console.log('Plug refresh: one request per connection, unknown gaps, correct integration/device and rebind checks passed');
+// Explicit refresh also works while unplugged and is rate-limited.
+ctx.ess_system_config.entities['sensor.ev_state_of_charge']='sensor.a_soc';ha.states['sensor.left'].state='disconnected';
+ctx.ess_audi_plug_refresh.at=Date.now()-31000;
+const manual=run('edge',{topic:'ess/vehicle/soc-refresh',payload:'audi'})[0];assert.equal(manual.length,1);assert(manual[0].refreshManual);
+manual[0].refreshReply=[{entity_id:'sensor.a_soc',platform:'audiconnect',device_id:'audi-device'}];
+assert(run('dispatch',manual[0]),'A manual refresh does not require a charging cable');
+assert.equal(run('edge',{topic:'ess/vehicle/soc-refresh',payload:'audi'}),null,'Repeated clicks cannot flood the cloud service');
+assert.equal(run('edge',{topic:'ess/vehicle/soc-refresh',payload:'other'}),null);
+const template=f.find(n=>n.id==='esstpl_ev0000001').format;
+assert.equal((template.match(/class="ess-soc-details"/g)||[]).length,2);
+assert(!template.includes('<p class="subtle ess-ev-reason">'),'Hide routine waiting and priority messages from vehicle cards');
+assert(!template.includes('Geen actieve opdracht'));

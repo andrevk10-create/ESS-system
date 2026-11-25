@@ -4778,6 +4778,7 @@ require('./lib/heat-pump-history')(flows);
 require('./lib/dashboard-copy')(flows);
 require('./lib/analytics-recovery')(flows);
 require('./lib/vehicle-plug-refresh')(flows);
+require('./lib/ev-concise')(flows);
 require('./lib/editor-layout')(flows);
 require('./lib/charging-dashboard-quality')(flows);
 require('./lib/wit-session-evidence')(flows);
