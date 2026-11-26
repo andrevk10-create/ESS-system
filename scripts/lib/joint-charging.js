@@ -33,12 +33,12 @@ function jointAllocate(a,b,wit){
  const result={audi:0,jeep:0,wit:0};let remaining=16;
  const list=[['audi',a],['jeep',b]].sort((x,y)=>(x[1].deadline??Infinity)-(y[1].deadline??Infinity)||0);
  for(const [id,d]of list)if(d.fixed){result[id]=d.kw;remaining-=d.kw;}
- for(const [id,d]of list)if(!d.fixed&&d.kw>=d.min&&remaining>=d.min){result[id]=d.min;remaining-=d.min;}
- // At most two charging consumers: two requesting cars use the shared window.
- if(a.kw>=a.min&&a.kw>0&&b.kw>=b.min&&b.kw>0)wit=0;
+ const winner=list.find(([,d])=>d.fixed&&d.kw>.2)||list.find(([,d])=>d.kw>=d.min&&d.kw>0);
+ for(const [id,d]of list)if(id===winner?.[0]&&!d.fixed&&d.kw>=d.min&&remaining>=d.min){result[id]=d.min;remaining-=d.min;}
+ // Only one car at a time; the WIT may share its charging window.
  // One car can share with the full-power WIT.
  result.wit=Math.max(0,Math.min(8,wit,remaining));remaining-=result.wit;
- // Earliest departure gets spare amperes first; equal/unknown deadlines share fairly.
+ // Give remaining whole amperes to the selected car.
  for(let i=0;i<100;i++){
   const next=list.filter(([id,d])=>!d.fixed&&result[id]>0&&result[id]+d.step<=d.kw+1e-8&&d.step<=remaining+1e-8).sort((x,y)=>(x[1].deadline??Infinity)-(y[1].deadline??Infinity)||result[x[0]]-result[y[0]])[0];
   if(!next)break;result[next[0]]+=next[1].step;remaining-=next[1].step;
@@ -71,7 +71,7 @@ function jointEvPlanningKw(flow,states,car,maximum,now){
  const soc=Number(states?.['sensor.growatt_battery_battery_soc']?.state),target=Number(flow.get('ess_wit_grid_charge_target_soc'))||100;
  const mode=flow.get('ess_wit_grid_charge_mode')||'auto';
  const wit=mode!=='off'&&Number.isFinite(soc)&&soc<target-.2?Math.min(8,Number(flow.get('ess_system_config')?.specs?.maximumBatteryChargePowerKw)||8):jointWitDemand(flow,now);
- return jointAllocate(a,b,wit)[car];
+ return jointAllocate(car==='audi'?a:{...a,kw:0,fixed:false},car==='jeep'?b:{...b,kw:0,fixed:false},wit)[car];
 }
 function jointEvLimit(flow,states,car,now,target,phases){
  if(flow.get('ess_joint_charging_16kw')!==true)return target;
@@ -83,11 +83,23 @@ function jointEvLimit(flow,states,car,now,target,phases){
  const requested=jointFresh(w.updatedAt,now)&&w.sessionOwned&&!w.releasing?Math.max(0,Number(w.targetPowerW)||0)/1000:0;
  const binding=flow.get('ess_system_config')?.entities?.['select.growatt_grid_remote_power_control_enable'];
  const native=jointFresh(rb?.at,now)&&rb.remoteEntity===binding&&rb.authority===1&&rb.remote===1?Math.max(0,Number(rb.percent)||0)/100*(Number(flow.get('ess_system_config')?.specs?.inverterRatedPowerKw)||18):0;
- // Do not start a third consumer during a WIT-to-two-cars handover.
- const peerDemand=car==='audi'?b:a,ownStatus=flow.get('ess_'+car+'_control_status')||{};
- if(peerDemand.kw>=peerDemand.min&&peerDemand.kw>0&&Math.max(requested,native)>.2&&jointCarKw(flow,states,car,now)<.2)return 0;
+ // Wait for the other car to stop before handing over, even with spare kW.
+ if(jointCarKw(flow,states,car==='audi'?'jeep':'audi',now)>.2)return 0;
  const remaining=Math.max(0,16-Math.max(requested,native)-jointCarKw(flow,states,car==='audi'?'jeep':'audi',now));
  const amps=Math.floor((Math.min(share,remaining)+1e-8)/step);return amps>=6?Math.min(target,amps):0;
+}
+
+function jointEvForecast(flow,states,car,now,forecast){
+ const peer=car==='audi'?'jeep':'audi',suffix=peer==='audi'?'':'_2';
+ if(flow.get('ess_'+peer+'_smart_enabled')!==true)return forecast;
+ if(!['awaiting_start','awaiting_authorization','ready_to_charge','charging','completed'].includes(states?.['sensor.ev_charger'+suffix+'_status']?.state))return forecast;
+ const ownDeadline=jointDeparture(flow,car,now),peerDeadline=jointDeparture(flow,peer,now);
+ if(peerDeadline>ownDeadline||peerDeadline===ownDeadline&&car==='audi')return forecast;
+ const status=flow.get('ess_'+peer+'_control_status')||{};
+ if(!jointFresh(status.updatedAt,now))return forecast;
+ const slots=status.selectedSlots||[];
+ const time=x=>typeof x==='number'?x:Date.parse(x);
+ return forecast.filter(s=>!slots.some(p=>time(p.start)<time(s.end)&&time(p.end)>time(s.start)));
 }
 
 function jointOwnChargeW(flow,previous,now,actual){
@@ -98,7 +110,7 @@ function jointOwnChargeW(flow,previous,now,actual){
 }
 module.exports=function apply(flows){
  for(const n of flows.filter(n=>n.func))n.func=n.func.replace('function evPriorityReservation(flow,states,now,voltage) {',"function evPriorityReservation(flow,states,now,voltage) {\n    if(flow.get('ess_joint_charging_16kw')===true)return 0;");
- const helpers=[jointDeparture,jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointOwnChargeW].map(f=>f.toString()).join('\n')+'\n';
+ const helpers=[jointDeparture,jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointEvForecast,jointOwnChargeW].map(f=>f.toString()).join('\n')+'\n';
  const grid=flows.find(n=>n.id==='esswitgrid_ctrl1');
  grid.initialize=(grid.initialize||'')+"\nflow.set('ess_joint_charging_16kw', true);";
  grid.initialize=grid.initialize.replace("flow.set('ess_wit_ev_only', true);","flow.set('ess_wit_ev_only', false);");
@@ -122,7 +134,7 @@ module.exports=function apply(flows){
  }
  for(const [id,car]of [['ess00000000000d','audi'],['essjeep_ess00000000000d','jeep']]){
   const n=flows.find(n=>n.id===id),peer=car==='audi'?'jeep':'audi';
-  n.func=helpers+n.func.replace('const requestedTargetCurrent = targetCurrent;',`const witRequest=flow.get('ess_wit_grid_charge_status')||{};
+  n.func=helpers+n.func.replace("const forecast = flow.get('ess_nordpool_forecast') || [];","const forecast = jointEvForecast(flow,states,'"+car+"',now,flow.get('ess_nordpool_forecast') || []);").replace('const requestedTargetCurrent = targetCurrent;',`const witRequest=flow.get('ess_wit_grid_charge_status')||{};
 const witKw=witRequest.sessionOwned&&!witRequest.releasing?Math.max(0,Number(witRequest.targetPowerW)||0)/1000:0;
 
 const jointPhases=phaseCount===1?1:3;
@@ -139,13 +151,13 @@ module.exports.jointOwnChargeW=jointOwnChargeW;
 // previous generated budget before applying it again, including old exports.
 module.exports.unapply=function unapply(flows){
  for(const n of flows.filter(n=>n.func)){
-  n.func=n.func.replace(/^function (?:jointDeparture|jointFresh|jointMeasured|jointCarDemand|jointAllocate|jointWitDemand|jointCarKw|jointWitKw|jointEvPlanningKw|jointEvLimit|jointOwnChargeW)\([\s\S]*?^}\r?\n/gm,'')
+  n.func=n.func.replace(/const forecast = jointEvForecast\(flow,states,'(?:audi|jeep)',now,flow.get\('ess_nordpool_forecast'\) \|\| \[\]\);/g,"const forecast = flow.get('ess_nordpool_forecast') || [];").replace(/^function (?:jointDeparture|jointFresh|jointMeasured|jointCarDemand|jointAllocate|jointWitDemand|jointCarKw|jointWitKw|jointEvPlanningKw|jointEvLimit|jointEvForecast|jointOwnChargeW)\([\s\S]*?^}\r?\n/gm,'')
    .replace(/const witRequest=flow.get\('ess_wit_grid_charge_status'\)[\s\S]*?(?=const requestedTargetCurrent = targetCurrent;)/g,'')
    .replace(/if\(targetCurrent>jointAmps\)targetCurrent=jointAmps>=minimumCurrent\?jointAmps:0;\r?\n/g,'');
  }
 };
 
-module.exports.jointHelpers=[jointDeparture,jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointOwnChargeW].map(f=>f.toString()).join("\n");
+module.exports.jointHelpers=[jointDeparture,jointFresh,jointMeasured,jointCarDemand,jointAllocate,jointWitDemand,jointCarKw,jointWitKw,jointEvPlanningKw,jointEvLimit,jointEvForecast,jointOwnChargeW].map(f=>f.toString()).join("\n");
 module.exports.jointFresh=jointFresh;
 module.exports.jointMeasured=jointMeasured;
 module.exports.jointCarDemand=jointCarDemand;
@@ -158,3 +170,5 @@ module.exports.jointEvLimit=jointEvLimit;
 module.exports.jointOwnChargeW=jointOwnChargeW;
 
 module.exports.jointDeparture=jointDeparture;
+
+module.exports.jointEvForecast=jointEvForecast;
